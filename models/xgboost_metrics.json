@@ -1,0 +1,200 @@
+{
+  "feature_names": [
+    "hour",
+    "temperature",
+    "Humidity%",
+    "Wind_speed_m/s",
+    "visibility",
+    "dew_point",
+    "Solar_Radiation_MJ/m2",
+    "rainfall",
+    "snowfall",
+    "hour_sin",
+    "hour_cos",
+    "hour_squared",
+    "day_of_week",
+    "is_weekend",
+    "temp_hour_interaction",
+    "temp_squared",
+    "is_peak_hour",
+    "rush_hour_intensity",
+    "good_biking_conditions",
+    "season_Autumn",
+    "season_Spring",
+    "season_Summer",
+    "season_Winter",
+    "holiday_Holiday",
+    "holiday_No Holiday",
+    "functioning_day_No",
+    "functioning_day_Yes",
+    "temp_category_cold",
+    "temp_category_cool",
+    "temp_category_freezing",
+    "temp_category_hot",
+    "temp_category_warm",
+    "time_of_day_afternoon",
+    "time_of_day_evening",
+    "time_of_day_morning",
+    "time_of_day_night"
+  ],
+  "feature_importance": [
+    {
+      "feature": "functioning_day_No",
+      "importance": 0.1238139420747757
+    },
+    {
+      "feature": "temp_category_warm",
+      "importance": 0.11831019073724747
+    },
+    {
+      "feature": "time_of_day_evening",
+      "importance": 0.11485695838928223
+    },
+    {
+      "feature": "functioning_day_Yes",
+      "importance": 0.11226538568735123
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "importance": 0.07503950595855713
+    },
+    {
+      "feature": "season_Winter",
+      "importance": 0.06833423674106598
+    },
+    {
+      "feature": "hour_squared",
+      "importance": 0.05832281336188316
+    },
+    {
+      "feature": "good_biking_conditions",
+      "importance": 0.04769479110836983
+    },
+    {
+      "feature": "hour_sin",
+      "importance": 0.04623712971806526
+    },
+    {
+      "feature": "rainfall",
+      "importance": 0.03656192496418953
+    },
+    {
+      "feature": "is_peak_hour",
+      "importance": 0.02569229155778885
+    },
+    {
+      "feature": "season_Autumn",
+      "importance": 0.016189124435186386
+    },
+    {
+      "feature": "hour_cos",
+      "importance": 0.015097825787961483
+    },
+    {
+      "feature": "hour",
+      "importance": 0.014928479678928852
+    },
+    {
+      "feature": "is_weekend",
+      "importance": 0.014818250201642513
+    },
+    {
+      "feature": "Humidity%",
+      "importance": 0.013501659035682678
+    },
+    {
+      "feature": "temp_squared",
+      "importance": 0.013351377099752426
+    },
+    {
+      "feature": "rush_hour_intensity",
+      "importance": 0.010800936259329319
+    },
+    {
+      "feature": "temperature",
+      "importance": 0.010377627797424793
+    },
+    {
+      "feature": "day_of_week",
+      "importance": 0.009342106059193611
+    },
+    {
+      "feature": "holiday_Holiday",
+      "importance": 0.00859931018203497
+    },
+    {
+      "feature": "season_Summer",
+      "importance": 0.008184936828911304
+    },
+    {
+      "feature": "holiday_No Holiday",
+      "importance": 0.006425182800740004
+    },
+    {
+      "feature": "season_Spring",
+      "importance": 0.006073583848774433
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "importance": 0.005024665966629982
+    },
+    {
+      "feature": "time_of_day_afternoon",
+      "importance": 0.0042448872700333595
+    },
+    {
+      "feature": "dew_point",
+      "importance": 0.0035148151218891144
+    },
+    {
+      "feature": "time_of_day_morning",
+      "importance": 0.0027094664983451366
+    },
+    {
+      "feature": "temp_category_cool",
+      "importance": 0.0023040177766233683
+    },
+    {
+      "feature": "visibility",
+      "importance": 0.0019184652483090758
+    },
+    {
+      "feature": "time_of_day_night",
+      "importance": 0.0015655432362109423
+    },
+    {
+      "feature": "Wind_speed_m/s",
+      "importance": 0.0014377000043168664
+    },
+    {
+      "feature": "snowfall",
+      "importance": 0.0010003605857491493
+    },
+    {
+      "feature": "temp_category_cold",
+      "importance": 0.0008578983834013343
+    },
+    {
+      "feature": "temp_category_freezing",
+      "importance": 0.0006026235641911626
+    },
+    {
+      "feature": "temp_category_hot",
+      "importance": 0.0
+    }
+  ],
+  "performance": {
+    "train_rmse": 64.360234198562,
+    "test_rmse": 153.30700280605254,
+    "train_r2": 0.9900380373001099,
+    "test_r2": 0.9435899257659912,
+    "train_mae": 44.02021789550781,
+    "test_mae": 90.87352752685547
+  },
+  "dataset_info": {
+    "total_samples": 8760,
+    "total_features": 36,
+    "train_samples": 7008,
+    "test_samples": 1752
+  }
+}

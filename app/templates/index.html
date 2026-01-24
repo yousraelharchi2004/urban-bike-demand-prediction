@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanFlow | Bike Demand Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-bicycle"></i>
+                <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link active">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Predictor</span>
+                </a>
+                <a href="/analytics" class="nav-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="/status" class="nav-link">
+                    <i class="fas fa-server"></i>
+                    <span>API Status</span>
+                </a>
+                <a href="/test" class="nav-link">
+                    <i class="fas fa-vial"></i>
+                    <span>Test Suite</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-tachometer-alt"></i> Dashboard</h3>
+            </div>
+            <div class="sidebar-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Model Accuracy</div>
+                    <div class="stat-value">92.4%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Predictions Today</div>
+                    <div class="stat-value">47</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg. Error</div>
+                    <div class="stat-value">±86 bikes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Models Available</div>
+                    <div class="stat-value" id="models-available">3</div> <!-- Updated to 3 -->
+                </div>
+            </div>
+            <div class="quick-actions">
+                <h4>Quick Actions</h4>
+                <button type="button" class="action-btn" onclick="loadSampleData()">
+                    <i class="fas fa-magic"></i> Load Sample Data
+                </button>
+                <button type="button" class="action-btn" onclick="clearForm()">
+                    <i class="fas fa-eraser"></i> Clear Form
+                </button>
+                <a href="/analytics" class="action-btn">
+                    <i class="fas fa-chart-bar"></i> View Analytics
+                </a>
+                <button type="button" class="action-btn" onclick="compareModels()">
+                    <i class="fas fa-balance-scale"></i> Compare Models
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="content-header">
+                <div class="header-left">
+                    <h1><i class="fas fa-biking"></i> Bike Demand Predictor</h1>
+                    <p class="subtitle">Real-time multimodal prediction engine for urban mobility planning</p>
+                </div>
+                <div class="header-status">
+                    <span class="status-indicator active"></span>
+                    <span class="status-text">Feature Engineering <span id="fe-status">Available</span></span>
+                </div>
+            </div>
+
+            <!-- Prediction Card -->
+            <div class="prediction-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-calculator"></i> Prediction Parameters</h2>
+                    <div class="card-tabs">
+                        <button type="button" class="tab-btn active" data-tab="basic">Basic</button>
+                        <button type="button" class="tab-btn" data-tab="advanced">Advanced</button>
+                        <button type="button" class="tab-btn" data-tab="weather">Weather</button>
+                        <button type="button" class="tab-btn" data-tab="features">Features</button>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <form id="prediction-form" class="prediction-form">
+                    <!-- Basic Tab -->
+                    <div class="form-tab active" id="basic-tab">
+                        <div class="form-section">
+                            <h3><i class="far fa-clock"></i> Time & Date</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="Hour">
+                                        <i class="fas fa-clock"></i> Hour (0-23)
+                                    </label>
+                                    <div class="input-with-slider">
+                                        <input type="number" id="Hour" name="Hour" min="0" max="23" value="14" required>
+                                        <input type="range" id="hour-slider" min="0" max="23" value="14" class="slider">
+                                    </div>
+                                    <div class="hour-description" id="hour-description">
+                                        Afternoon (2 PM) - Moderate demand expected
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="day_of_week">
+                                        <i class="fas fa-calendar-day"></i> Day of Week
+                                    </label>
+                                    <select id="day_of_week" name="day_of_week" class="day-of-week-input">
+                                        <option value="0">Monday</option>
+                                        <option value="1">Tuesday</option>
+                                        <option value="2">Wednesday</option>
+                                        <option value="3">Thursday</option>
+                                        <option value="4">Friday</option>
+                                        <option value="5">Saturday</option>
+                                        <option value="6">Sunday</option>
+                                    </select>
+                                    <small class="form-hint" id="day-of-week-hint">Optional for standard model</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3><i class="fas fa-cloud-sun"></i> Season</h3>
+                            <div class="season-selector">
+                                <div class="season-option" data-value="Spring">
+                                    <i class="fas fa-seedling"></i>
+                                    <span>Spring</span>
+                                </div>
+                                <div class="season-option active" data-value="Summer">
+                                    <i class="fas fa-sun"></i>
+                                    <span>Summer</span>
+                                </div>
+                                <div class="season-option" data-value="Winter">
+                                    <i class="fas fa-snowflake"></i>
+                                    <span>Winter</span>
+                                </div>
+                                <div class="season-option" data-value="Autumn">
+                                    <i class="fas fa-leaf"></i>
+                                    <span>Autumn</span>
+                                </div>
+                            </div>
+                            <!-- Season encoding will be handled by JavaScript -->
+                        </div>
+
+                        <div class="form-section">
+                            <h3><i class="fas fa-thermometer-half"></i> Weather Conditions</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="Temperature(캜)">
+                                        <i class="fas fa-temperature-high"></i> Temperature (°C)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Temperature(캜)" name="Temperature(캜)" value="22.5" required>
+                                        <span class="input-unit">°C</span>
+                                    </div>
+                                    <div class="temp-range">
+                                        <span class="range-label">Cold</span>
+                                        <input type="range" id="temp-slider" min="-10" max="40" value="22.5" step="0.5" class="slider">
+                                        <span class="range-label">Hot</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="Humidity(%)">
+                                        <i class="fas fa-tint"></i> Humidity (%)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Humidity(%)" name="Humidity(%)" value="60" required>
+                                        <span class="input-unit">%</span>
+                                    </div>
+                                    <div class="humidity-indicator">
+                                        <div class="humidity-bar">
+                                            <div class="humidity-fill" style="width: 60%"></div>
+                                        </div>
+                                        <div class="humidity-labels">
+                                            <span>Dry</span>
+                                            <span>Comfortable</span>
+                                            <span>Humid</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Tab -->
+                    <div class="form-tab" id="advanced-tab">
+                        <div class="form-section">
+                            <h3><i class="fas fa-wind"></i> Wind & Visibility</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="Wind speed (m/s)">
+                                        <i class="fas fa-wind"></i> Wind Speed (m/s)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Wind speed (m/s)" name="Wind speed (m/s)" value="2.5" required>
+                                        <span class="input-unit">m/s</span>
+                                    </div>
+                                    <div class="wind-description">
+                                        <i class="fas fa-flag"></i> Light breeze - Minimal impact on biking
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="Visibility (10m)">
+                                        <i class="fas fa-eye"></i> Visibility (10m)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="Visibility (10m)" name="Visibility (10m)" value="2000" required>
+                                        <span class="input-unit">m</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3><i class="fas fa-cloud-rain"></i> Precipitation</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="Rainfall(mm)">
+                                        <i class="fas fa-cloud-showers-heavy"></i> Rainfall (mm)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Rainfall(mm)" name="Rainfall(mm)" value="0.0" required>
+                                        <span class="input-unit">mm</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="Snowfall (cm)">
+                                        <i class="fas fa-snowflake"></i> Snowfall (cm)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Snowfall (cm)" name="Snowfall (cm)" value="0.0" required>
+                                        <span class="input-unit">cm</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weather Tab -->
+                    <div class="form-tab" id="weather-tab">
+                        <div class="form-section">
+                            <h3><i class="fas fa-sun"></i> Solar & Atmospheric</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="Solar Radiation (MJ/m2)">
+                                        <i class="fas fa-solar-panel"></i> Solar Radiation (MJ/m²)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Solar Radiation (MJ/m2)" name="Solar Radiation (MJ/m2)" value="1.5" required>
+                                        <span class="input-unit">MJ/m²</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="Dew point temperature(캜)">
+                                        <i class="fas fa-dewpoint"></i> Dew Point (°C)
+                                    </label>
+                                    <div class="input-with-unit">
+                                        <input type="number" step="0.1" id="Dew point temperature(캜)" name="Dew point temperature(캜)" value="10.0" required>
+                                        <span class="input-unit">°C</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3><i class="fas fa-calendar-alt"></i> Special Days</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Is Holiday?</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="holiday-toggle" hidden>
+                                        <label for="holiday-toggle" class="toggle-label">
+                                            <span class="toggle-handle"></span>
+                                            <span class="toggle-text-off">No</span>
+                                            <span class="toggle-text-on">Yes</span>
+                                        </label>
+                                    </div>
+                                    <!-- Hidden input for holiday -->
+                                    <input type="hidden" id="Holiday_No Holiday" name="Holiday_No Holiday" value="1">
+                                    <input type="hidden" id="Holiday_Holiday" name="Holiday_Holiday" value="0">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Functioning Day?</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="functioning-toggle" checked hidden>
+                                        <label for="functioning-toggle" class="toggle-label">
+                                            <span class="toggle-handle"></span>
+                                            <span class="toggle-text-off">No</span>
+                                            <span class="toggle-text-on">Yes</span>
+                                        </label>
+                                    </div>
+                                    <!-- Hidden input for functioning day -->
+                                    <input type="hidden" id="Functioning Day_Yes" name="Functioning Day_Yes" value="1">
+                                    <input type="hidden" id="Functioning Day_No" name="Functioning Day_No" value="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Features Tab -->
+                    <div class="form-tab" id="features-tab">
+                        <div class="form-section">
+                            <h3><i class="fas fa-rocket"></i> Model Selection</h3>
+                            <div class="model-selector-section">
+                                <div class="model-option active" data-model="original" onclick="selectModel('original')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-cube"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <h4>Standard Model</h4>
+                                        <p>14 core features • Fast prediction • High reliability</p>
+                                        <div class="model-stats">
+                                            <span class="stat">R²: 0.82</span>
+                                            <span class="stat">RMSE: 112.5</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator"></div>
+                                </div>
+                                
+                                <div class="model-option" data-model="improved" onclick="selectModel('improved')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-rocket"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <h4>Feature-Engineered Model</h4>
+                                        <p>35+ engineered features • Higher accuracy • Advanced patterns</p>
+                                        <div class="model-stats">
+                                            <span class="stat">R²: 0.92+</span>
+                                            <span class="stat">RMSE: ≤ 30</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator"></div>
+                                </div>
+                                
+                                <!-- XGBoost Model Option -->
+                                <div class="model-option" data-model="xgboost" onclick="selectModel('xgboost')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-lightning"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <h4>XGBoost Model</h4>
+                                        <p>Advanced gradient boosting • 35+ engineered features • High accuracy</p>
+                                        <div class="model-stats">
+                                            <span class="stat">R²: 0.94</span>
+                                            <span class="stat">RMSE: 153</span>
+                                            <span class="stat">MAE: 91</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3><i class="fas fa-info-circle"></i> Model Information</h3>
+                            <div class="model-info-grid">
+                                <div class="info-card">
+                                    <i class="fas fa-list-check"></i>
+                                    <h4>Original Model Features</h4>
+                                    <ul>
+                                        <li>Hour (0-23)</li>
+                                        <li>Temperature (°C)</li>
+                                        <li>Humidity (%)</li>
+                                        <li>Wind Speed (m/s)</li>
+                                        <li>Visibility (10m)</li>
+                                        <li>Dew Point (°C)</li>
+                                        <li>Solar Radiation (MJ/m²)</li>
+                                        <li>Rainfall (mm)</li>
+                                        <li>Snowfall (cm)</li>
+                                        <li>Season (Spring/Summer/Winter)</li>
+                                        <li>Holiday (Yes/No)</li>
+                                        <li>Functioning Day (Yes/No)</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="info-card">
+                                    <i class="fas fa-brain"></i>
+                                    <h4>Additional Features in Improved & XGBoost Models</h4>
+                                    <ul>
+                                        <li>Day of Week (0-6)</li>
+                                        <li>Hour squared & cubed</li>
+                                        <li>Peak hour detection</li>
+                                        <li>Weather severity score</li>
+                                        <li>Temperature-humidity interaction</li>
+                                        <li>Wind chill calculation</li>
+                                        <li>Workday patterns</li>
+                                        <li>Weekend patterns</li>
+                                        <li>Advanced gradient boosting features</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="form-actions">
+                        <button type="submit" class="predict-btn" id="predict-btn">
+                            <div class="btn-content">
+                                <i class="fas fa-bolt"></i>
+                                <span id="predict-btn-text">Generate Prediction</span>
+                                <span id="model-indicator" class="model-indicator original">Standard</span>
+                            </div>
+                            <div class="btn-loader" id="btn-loader">
+                                <div class="loader-dots">
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                </div>
+                            </div>
+                        </button>
+                        <button type="button" class="secondary-btn" onclick="loadSampleData()">
+                            <i class="fas fa-flask"></i>
+                            <span>Load Sample Data</span>
+                        </button>
+                        <button type="button" class="secondary-btn" onclick="compareModels()" id="compare-btn">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Compare Models</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section">
+                <div class="result-card">
+                    <div class="result-header">
+                        <h3>
+                            <i class="fas fa-chart-line"></i> Prediction Results
+                            <span id="model-type-badge" class="model-badge original">Standard Model</span>
+                        </h3>
+                        <div class="result-meta">
+                            <span class="timestamp" id="prediction-timestamp">--:-- --</span>
+                            <span class="confidence" id="confidence-badge">--% confidence</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-body">
+                        <div class="result-placeholder" id="result-placeholder">
+                            <i class="fas fa-arrow-up"></i>
+                            <p>Enter parameters and generate prediction to see results</p>
+                        </div>
+                        
+                        <div class="result-content" id="result-content" style="display: none;">
+                            <div class="prediction-main">
+                                <div class="bike-count">
+                                    <div class="count-number" id="prediction-count">0</div>
+                                    <div class="count-label">Bikes Required</div>
+                                </div>
+                                <div class="prediction-details">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Model Used</span>
+                                        <span class="detail-value" id="detail-model">Standard Random Forest</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Features</span>
+                                        <span class="detail-value" id="detail-features">14</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Response Time</span>
+                                        <span class="detail-value" id="response-time">0.00s</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Prediction ID</span>
+                                        <span class="detail-value" id="prediction-id">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="prediction-breakdown">
+                                <h4>Model Performance</h4>
+                                <div class="metrics-grid">
+                                    <div class="metric-item">
+                                        <div class="metric-label">R² Score</div>
+                                        <div class="metric-value" id="metric-r2">0.820</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">RMSE</div>
+                                        <div class="metric-value" id="metric-rmse">112.5</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">MAE</div>
+                                        <div class="metric-value" id="metric-mae">87.2</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Accuracy Gap</div>
+                                        <div class="metric-value" id="metric-gap">15.3%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <button class="action-btn-small" onclick="copyPrediction()">
+                                    <i class="far fa-copy"></i> Copy Result
+                                </button>
+                                <button class="action-btn-small" onclick="exportPrediction()">
+                                    <i class="far fa-file-export"></i> Export
+                                </button>
+                                <a href="/analytics" class="action-btn-small">
+                                    <i class="fas fa-chart-bar"></i> View Analytics
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="insights-card">
+                    <div class="insights-header">
+                        <h3><i class="fas fa-lightbulb"></i> AI Insights</h3>
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="insights-body">
+                        <div class="insight-item" id="model-insight">
+                            <div class="insight-icon">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Model Recommendation</h4>
+                                <p>Using <strong>standard model</strong>. Switch to feature-engineered or XGBoost model for potentially better accuracy.</p> <!-- Updated text -->
+                            </div>
+                        </div>
+                        <div class="insight-item" id="weather-insight">
+                            <div class="insight-icon">
+                                <i class="fas fa-sun"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Weather Impact</h4>
+                                <p>Current conditions suggest <strong>high biking suitability</strong> with optimal temperature and low precipitation.</p>
+                            </div>
+                        </div>
+                        <div class="insight-item" id="time-insight">
+                            <div class="insight-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Time Analysis</h4>
+                                <p>Selected time falls in <strong>moderate demand period</strong>. Morning/evening peaks show 40% higher demand.</p>
+                            </div>
+                        </div>
+                        <div class="insight-item" id="feature-insight">
+                            <div class="insight-icon">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <div class="insight-content">
+                                <h4>Feature Engineering</h4>
+                                <p><strong>35+ engineered features available</strong> including peak hour detection, weather severity, and interactions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <div class="footer-brand">
+                    <i class="fas fa-bicycle"></i>
+                    <span>UrbanFlow Intelligence</span>
+                </div>
+                <p class="footer-description">
+                    Advanced predictive analytics with feature engineering for urban mobility optimization
+                </p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-links">
+                    <a href="/status"><i class="fas fa-server"></i> API Status</a>
+                    <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                    <a href="#" onclick="compareModels(); return false;"><i class="fas fa-balance-scale"></i> Compare Models</a>
+                </div>
+                <div class="footer-meta">
+                    <span class="version">v2.3.0</span> <!-- Updated version -->
+                    <span class="status-indicator active"></span>
+                    <span class="status-text">Tri-Model System Available</span> <!-- Updated text -->
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 UrbanFlow Predictive Systems. Graduation Project - Urban Shared Bike Rental Demand Prediction System with Feature Engineering.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Initialize tabs
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabName = button.getAttribute('data-tab');
+                
+                // Update active tab button
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Show corresponding tab content
+                document.querySelectorAll('.form-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                const tabContent = document.getElementById(`${tabName}-tab`);
+                if (tabContent) {
+                    tabContent.classList.add('active');
+                }
+            });
+        });
+
+        // Initialize season selector
+        document.querySelectorAll('.season-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.season-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                // Season encoding handled by JavaScript
+            });
+        });
+
+        // Hour slider sync - FIXED IDs
+        const hourInput = document.getElementById('Hour');
+        const hourSlider = document.getElementById('hour-slider');
+        
+        if (hourInput && hourSlider) {
+            hourInput.addEventListener('input', () => {
+                hourSlider.value = hourInput.value;
+                updateHourDescription(hourInput.value);
+            });
+            
+            hourSlider.addEventListener('input', () => {
+                hourInput.value = hourSlider.value;
+                updateHourDescription(hourSlider.value);
+            });
+        }
+
+        // Temperature slider sync - FIXED IDs
+        const tempInput = document.getElementById('Temperature(캜)');
+        const tempSlider = document.getElementById('temp-slider');
+        
+        if (tempInput && tempSlider) {
+            tempInput.addEventListener('input', () => {
+                tempSlider.value = tempInput.value;
+                updateWeatherInsight(tempInput.value);
+            });
+            
+            tempSlider.addEventListener('input', () => {
+                tempInput.value = tempSlider.value;
+                updateWeatherInsight(tempSlider.value);
+            });
+        }
+
+        // Humidity indicator - FIXED ID
+        const humidityInput = document.getElementById('Humidity(%)');
+        if (humidityInput) {
+            humidityInput.addEventListener('input', () => {
+                const humidityBar = document.querySelector('.humidity-fill');
+                if (humidityBar) {
+                    humidityBar.style.width = `${humidityInput.value}%`;
+                }
+            });
+        }
+
+        // Toggle switches
+        const holidayToggle = document.getElementById('holiday-toggle');
+        const functioningToggle = document.getElementById('functioning-toggle');
+        
+        if (holidayToggle) {
+            holidayToggle.addEventListener('change', () => {
+                // Update hidden inputs
+                document.getElementById('Holiday_No Holiday').value = holidayToggle.checked ? 0 : 1;
+                document.getElementById('Holiday_Holiday').value = holidayToggle.checked ? 1 : 0;
+            });
+        }
+        
+        if (functioningToggle) {
+            functioningToggle.addEventListener('change', () => {
+                // Update hidden inputs
+                document.getElementById('Functioning Day_Yes').value = functioningToggle.checked ? 1 : 0;
+                document.getElementById('Functioning Day_No').value = functioningToggle.checked ? 0 : 1;
+            });
+        }
+
+        // Model selection - Updated to handle three models
+        document.querySelectorAll('.model-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const modelName = option.getAttribute('data-model');
+                // This will be handled by the selectModel function in script.js
+                if (typeof selectModel === 'function') {
+                    selectModel(modelName);
+                } else {
+                    // Fallback if script.js not loaded
+                    handleModelSelection(modelName);
+                }
+            });
+        });
+
+        // Helper functions
+        function updateHourDescription(hour) {
+            const hourNum = parseInt(hour);
+            let description = "Moderate demand expected";
+            
+            if (hourNum >= 0 && hourNum <= 5) {
+                description = "Late Night - Very low demand expected";
+            } else if (hourNum >= 6 && hourNum <= 9) {
+                description = "Morning Peak - High demand expected";
+            } else if (hourNum >= 10 && hourNum <= 15) {
+                description = "Daytime - Moderate demand expected";
+            } else if (hourNum >= 16 && hourNum <= 19) {
+                description = "Evening Peak - Very high demand expected";
+            } else if (hourNum >= 20 && hourNum <= 23) {
+                description = "Evening - Low to moderate demand expected";
+            }
+            
+            const hourDesc = document.getElementById('hour-description');
+            if (hourDesc) {
+                hourDesc.textContent = description;
+            }
+        }
+
+        function updateWeatherInsight(temp) {
+            const tempNum = parseFloat(temp);
+            let insight = "Current conditions suggest ";
+            
+            if (tempNum < 5) {
+                insight += "<strong>low biking suitability</strong> due to cold temperatures.";
+            } else if (tempNum < 15) {
+                insight += "<strong>moderate biking suitability</strong> with cooler conditions.";
+            } else if (tempNum < 25) {
+                insight += "<strong>high biking suitability</strong> with optimal temperature.";
+            } else {
+                insight += "<strong>reduced biking suitability</strong> due to heat.";
+            }
+            
+            const weatherInsight = document.getElementById('weather-insight');
+            if (weatherInsight) {
+                const pElement = weatherInsight.querySelector('p');
+                if (pElement) {
+                    pElement.innerHTML = insight;
+                }
+            }
+        }
+
+        // Handle model selection (fallback if script.js not available)
+        function handleModelSelection(modelName) {
+            // Update model option selection
+            document.querySelectorAll('.model-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            const selectedOption = document.querySelector(`.model-option[data-model="${modelName}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('active');
+            }
+            
+            // Update UI elements based on selected model
+            const modelIndicator = document.getElementById('model-indicator');
+            const modelBadge = document.getElementById('model-type-badge');
+            const predictBtnText = document.getElementById('predict-btn-text');
+            
+            if (modelName === 'original') {
+                if (modelIndicator) {
+                    modelIndicator.className = 'model-indicator original';
+                    modelIndicator.textContent = 'Standard';
+                }
+                if (modelBadge) {
+                    modelBadge.className = 'model-badge original';
+                    modelBadge.textContent = 'Standard Model';
+                }
+                if (predictBtnText) {
+                    predictBtnText.textContent = 'Generate Prediction';
+                }
+                updateModelInsight('standard');
+            } else if (modelName === 'improved') {
+                if (modelIndicator) {
+                    modelIndicator.className = 'model-indicator improved';
+                    modelIndicator.textContent = 'Improved';
+                }
+                if (modelBadge) {
+                    modelBadge.className = 'model-badge improved';
+                    modelBadge.textContent = 'Feature-Engineered Model';
+                }
+                if (predictBtnText) {
+                    predictBtnText.textContent = 'Generate Enhanced Prediction';
+                }
+                updateModelInsight('feature-engineered');
+            } else if (modelName === 'xgboost') {
+                if (modelIndicator) {
+                    modelIndicator.className = 'model-indicator xgboost';
+                    modelIndicator.textContent = 'XGBoost';
+                }
+                if (modelBadge) {
+                    modelBadge.className = 'model-badge xgboost';
+                    modelBadge.textContent = 'XGBoost Model';
+                }
+                if (predictBtnText) {
+                    predictBtnText.textContent = 'Generate XGBoost Prediction';
+                }
+                updateModelInsight('xgboost');
+            }
+            
+            // Update models available count if needed
+            const modelsAvailable = document.getElementById('models-available');
+            if (modelsAvailable && modelsAvailable.textContent === '2') {
+                modelsAvailable.textContent = '3';
+            }
+        }
+
+        function updateModelInsight(modelType) {
+            const modelInsight = document.getElementById('model-insight');
+            if (modelInsight) {
+                const pElement = modelInsight.querySelector('p');
+                if (pElement) {
+                    if (modelType === 'standard') {
+                        pElement.innerHTML = 'Using <strong>standard model</strong>. Switch to feature-engineered or XGBoost model for potentially better accuracy.';
+                    } else if (modelType === 'feature-engineered') {
+                        pElement.innerHTML = 'Using <strong>feature-engineered model</strong> with advanced feature engineering. Best for complex patterns.';
+                    } else if (modelType === 'xgboost') {
+                        pElement.innerHTML = 'Using <strong>XGBoost model</strong> with gradient boosting. Provides high accuracy and fast predictions.';
+                    }
+                }
+            }
+        }
+
+        // Show notification function
+        function showNotification(message, type = 'info') {
+            // This will be handled by the showNotification function in script.js
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(message, type);
+            } else {
+                console.log(`Notification [${type}]: ${message}`);
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('✅ DOM loaded, initializing...');
+            
+            // Check if script.js functions are available
+            if (typeof initPage === 'function') {
+                initPage();
+            } else {
+                // Fallback initialization
+                updateHourDescription(14);
+                updateWeatherInsight(22.5);
+            }
+            
+            // Initialize models available count
+            const modelsAvailable = document.getElementById('models-available');
+            if (modelsAvailable) {
+                modelsAvailable.textContent = '3';
+            }
+        });
+
+        // Provide global access to handleModelSelection
+        window.handleModelSelection = handleModelSelection;
+        window.updateModelInsight = updateModelInsight;
+    </script>
+</body>
+</html>

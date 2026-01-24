@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanFlow | Analytics Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Analytics Dashboard Specific Styles */
+        .analytics-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px 40px;
+        }
+
+        /* Navigation */
+        .analytics-nav {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-title i {
+            color: var(--primary);
+        }
+
+        .time-filter-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .time-filter {
+            display: flex;
+            gap: 8px;
+            background: var(--gray-100);
+            padding: 4px;
+            border-radius: var(--radius-md);
+        }
+
+        .time-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .custom-range-btn {
+            position: relative;
+        }
+
+        .custom-range-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Main Dashboard Grid */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            grid-column: span 12;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .kpi-icon.accuracy { background: linear-gradient(135deg, #4361ee, #3a0ca3); }
+        .kpi-icon.error { background: linear-gradient(135deg, #f72585, #b5179e); }
+        .kpi-icon.predictions { background: linear-gradient(135deg, #4cc9f0, #4361ee); }
+        .kpi-icon.features { background: linear-gradient(135deg, #7209b7, #3a0ca3); }
+
+        .kpi-content {
+            flex: 1;
+        }
+
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .kpi-label {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .kpi-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .kpi-trend.positive { color: var(--success); }
+        .kpi-trend.negative { color: var(--danger); }
+
+        /* Chart Cards */
+        .chart-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card.full-width {
+            grid-column: span 12;
+        }
+
+        .chart-card.half-width {
+            grid-column: span 6;
+        }
+
+        .chart-card.third-width {
+            grid-column: span 4;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .chart-header h3 {
+            font-size: 1.2rem;
+            color: var(--dark);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-header h3 i {
+            color: var(--primary);
+        }
+
+        .chart-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chart-action-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--gray-200);
+            background: white;
+            border-radius: var(--radius-sm);
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chart-action-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 300px;
+        }
+
+        /* Chart Insight Text */
+        .chart-insight {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: rgba(67, 97, 238, 0.05);
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--primary);
+            font-size: 0.9rem;
+            color: var(--gray-700);
+        }
+
+        .chart-insight i {
+            color: var(--warning);
+            margin-right: 6px;
+        }
+
+        .chart-insight strong {
+            color: var(--dark);
+        }
+
+        /* Prediction History */
+        .history-card {
+            grid-column: span 6;
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .history-header h3 {
+            font-size: 1.2rem;
+            color: var(--dark);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-header h3 i {
+            color: var(--primary);
+        }
+
+        .history-filters {
+            display: flex;
+            gap: 8px;
+        }
+
+        .history-filter {
+            padding: 6px 12px;
+            border: 1px solid var(--gray-200);
+            background: white;
+            border-radius: var(--radius-sm);
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .history-filter.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .history-item {
+            padding: 16px;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+            border-left: 4px solid var(--primary);
+        }
+
+        .history-item:hover {
+            background: white;
+            box-shadow: var(--shadow-sm);
+            transform: translateX(4px);
+        }
+
+        .history-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-id {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+
+        .history-time {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .history-prediction {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 8px 0;
+        }
+
+        .history-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .feature-tag {
+            padding: 4px 10px;
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* Model Insights Card */
+        .insights-card {
+            grid-column: span 6;
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .insights-header {
+            margin-bottom: 20px;
+        }
+
+        .insights-header h3 {
+            font-size: 1.2rem;
+            color: var(--dark);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .insights-header h3 i {
+            color: var(--primary);
+        }
+
+        /* Insights List Styling */
+        .insights-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .insight-item {
+            padding: 16px;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+        }
+
+        .insight-item:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .insight-item.performance {
+            border-left-color: var(--success);
+            background: rgba(6, 214, 160, 0.05);
+        }
+
+        .insight-item.features {
+            border-left-color: var(--warning);
+            background: rgba(255, 209, 102, 0.05);
+        }
+
+        .insight-item.data {
+            border-left-color: var(--info);
+            background: rgba(76, 201, 240, 0.05);
+        }
+
+        .insight-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insight-title i {
+            font-size: 0.9rem;
+        }
+
+        .insight-desc {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+        }
+
+        /* Export Panel */
+        .export-section {
+            grid-column: span 12;
+            background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .export-header {
+            margin-bottom: 24px;
+        }
+
+        .export-header h3 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .export-header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            max-width: 800px;
+        }
+
+        .export-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .export-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .export-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .export-card h4 {
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .export-card p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .export-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            padding: 10px 20px;
+            background: white;
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .export-btn.csv { background: #06d6a0; color: white; }
+        .export-btn.json { background: #ffd166; color: #333; }
+        .export-btn.html { background: #7209b7; color: white; }
+        .export-btn.pdf { background: #ef476f; color: white; }
+
+        .batch-export {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .batch-export h4 {
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .batch-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .batch-btn {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-md);
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 200px;
+            justify-content: center;
+        }
+
+        .batch-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Email Modal Styles */
+        .email-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .email-modal-overlay.active {
+            display: flex;
+        }
+
+        .email-modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        .email-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .email-modal-header h3 {
+            font-size: 1.3rem;
+            color: #333;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .email-modal-header h3 i {
+            color: #4361ee;
+        }
+
+        .email-modal-close {
+            background: #f5f5f5;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .email-modal-close:hover {
+            background: #e5e5e5;
+            color: #333;
+        }
+
+        .email-modal-body {
+            padding: 20px;
+        }
+
+        .email-form-group {
+            margin-bottom: 20px;
+        }
+
+        .email-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .email-input:focus {
+            outline: none;
+            border-color: #4361ee;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .email-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333;
+            transition: all 0.2s ease;
+            background: white;
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .email-textarea:focus {
+            outline: none;
+            border-color: #4361ee;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .email-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .email-checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .email-checkbox:checked {
+            background-color: #4361ee;
+            border-color: #4361ee;
+        }
+
+        .email-checkbox-label {
+            color: #333;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .email-modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .email-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .email-btn-cancel {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .email-btn-cancel:hover {
+            background: #e5e5e5;
+        }
+
+        .email-btn-send {
+            background: #4361ee;
+            color: white;
+        }
+
+        .email-btn-send:hover {
+            background: #3a0ca3;
+            transform: translateY(-1px);
+        }
+
+        /* Date Range Picker Modal Styles */
+        .date-range-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .date-range-modal-overlay.active {
+            display: flex;
+        }
+
+        .date-range-modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        .date-range-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .date-range-modal-header h3 {
+            font-size: 1.3rem;
+            color: #333;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-range-modal-header h3 i {
+            color: #4361ee;
+        }
+
+        .date-range-modal-close {
+            background: #f5f5f5;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .date-range-modal-close:hover {
+            background: #e5e5e5;
+            color: #333;
+        }
+
+        .date-range-modal-body {
+            padding: 20px;
+        }
+
+        .date-range-form-group {
+            margin-bottom: 20px;
+        }
+
+        .date-range-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .date-range-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .date-range-input:focus {
+            outline: none;
+            border-color: #4361ee;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .date-range-presets {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .date-range-presets h4 {
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .preset-btn {
+            padding: 10px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            color: #333;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            border-color: #4361ee;
+            color: #4361ee;
+            background: rgba(67, 97, 238, 0.05);
+        }
+
+        .date-range-summary {
+            padding: 15px;
+            background: rgba(67, 97, 238, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid #4361ee;
+            margin-top: 20px;
+        }
+
+        .date-range-summary h4 {
+            font-size: 0.95rem;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .date-range-summary p {
+            font-size: 0.9rem;
+            color: #666;
+            margin: 4px 0;
+        }
+
+        .date-range-modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .date-range-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cancel-btn {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .cancel-btn:hover {
+            background: #e5e5e5;
+        }
+
+        .apply-btn {
+            background: #4361ee;
+            color: white;
+        }
+
+        .apply-btn:hover {
+            background: #3a0ca3;
+            transform: translateY(-1px);
+        }
+
+        /* Custom range info display */
+        .custom-range-info {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(6, 214, 160, 0.1);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: var(--success);
+            border-left: 3px solid var(--success);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Filter info display */
+        .filter-info {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(67, 97, 238, 0.1);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Animations */
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Add Email Button to Export Section */
+        .email-export-btn {
+            position: relative;
+        }
+
+        .email-export-btn::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 8px;
+            height: 8px;
+            background: #4361ee;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .chart-card.half-width,
+            .chart-card.third-width,
+            .history-card,
+            .insights-card {
+                grid-column: span 12;
+            }
+            
+            .export-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .analytics-container {
+                padding: 0 16px 24px;
+            }
+            
+            .analytics-nav {
+                flex-direction: column;
+                gap: 16px;
+                align-items: stretch;
+            }
+            
+            .nav-left {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .time-filter {
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            
+            .nav-actions {
+                flex-direction: column;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .export-actions,
+            .batch-buttons {
+                flex-direction: column;
+            }
+            
+            .export-btn,
+            .batch-btn {
+                width: 100%;
+                min-width: auto;
+            }
+            
+            .email-modal,
+            .date-range-modal {
+                width: 95%;
+                margin: 10px;
+            }
+            
+            .email-modal-footer,
+            .date-range-modal-footer {
+                flex-direction: column;
+            }
+            
+            .email-btn,
+            .date-range-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .preset-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .time-filter {
+                flex-wrap: wrap;
+            }
+            
+            .time-btn {
+                flex: 1;
+                min-width: 70px;
+                justify-content: center;
+            }
+        }
+
+        /* Loading States */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .loading-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        /* Scrollbar Styling */
+        .history-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .history-list::-webkit-scrollbar-track {
+            background: #f5f5f5;
+            border-radius: 3px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 3px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb:hover {
+            background: #ccc;
+        }
+        
+        /* Filter Count Display */
+        #filterCount {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+        
+        /* Refresh Button Styling */
+        .refresh-btn {
+            position: relative;
+        }
+        
+        .refresh-btn.refreshing i {
+            animation: spin 1s linear infinite;
+        }
+        
+        .refresh-btn.refreshing::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius-md);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--gray-600);
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            color: var(--gray-300);
+        }
+        
+        .empty-state p {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-bicycle"></i>
+                <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Predictor</span>
+                </a>
+                <a href="/analytics" class="nav-link active">
+                    <i class="fas fa-analytics"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="/status" class="nav-link">
+                    <i class="fas fa-server"></i>
+                    <span>API Status</span>
+                </a>
+                <a href="/test" class="nav-link">
+                    <i class="fas fa-vial"></i>
+                    <span>Test Suite</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Email Modal -->
+    <div class="email-modal-overlay" id="emailModal">
+        <div class="email-modal">
+            <div class="email-modal-header">
+                <h3><i class="fas fa-paper-plane"></i> Email Analytics Report</h3>
+                <button class="email-modal-close" onclick="closeEmailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="email-modal-body">
+                <form id="emailForm">
+                    <div class="email-form-group">
+                        <label for="emailRecipients">Recipients (comma separated)</label>
+                        <input type="text" id="emailRecipients" class="email-input" 
+                               placeholder="recipient1@example.com, recipient2@example.com" required>
+                        <div id="recipientsError" style="color: #ef476f; font-size: 0.85rem; margin-top: 6px; display: none;">
+                            Please enter valid email addresses
+                        </div>
+                    </div>
+                    
+                    <div class="email-form-group">
+                        <label for="emailSubject">Subject</label>
+                        <input type="text" id="emailSubject" class="email-input" 
+                               value="UrbanFlow Analytics Report" required>
+                    </div>
+                    
+                    <div class="email-form-group">
+                        <label for="emailMessage">Message</label>
+                        <textarea id="emailMessage" class="email-textarea">
+Dear Team,
+
+Please find attached the latest UrbanFlow Analytics Report.
+
+This report includes:
+• Model performance metrics and accuracy trends
+• Recent prediction history and insights
+• Feature importance analysis
+• Hourly demand patterns
+• Export-ready data for further analysis
+
+The report is generated based on the most recent data available and provides comprehensive insights into our bike demand prediction model's performance.
+
+Best regards,
+UrbanFlow Analytics System
+                        </textarea>
+                    </div>
+                    
+                    <div class="email-form-group">
+                        <label>Report Format</label>
+                        <div class="email-checkbox-group">
+                            <input type="checkbox" id="includePDF" class="email-checkbox" checked>
+                            <label for="includePDF" class="email-checkbox-label">
+                                Include PDF Report
+                            </label>
+                        </div>
+                        <div class="email-checkbox-group">
+                            <input type="checkbox" id="includeCSV" class="email-checkbox" checked>
+                            <label for="includeCSV" class="email-checkbox-label">
+                                Include CSV Data
+                            </label>
+                        </div>
+                        <div class="email-checkbox-group">
+                            <input type="checkbox" id="includeCharts" class="email-checkbox">
+                            <label for="includeCharts" class="email-checkbox-label">
+                                Include Chart Images
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="email-form-group">
+                        <label>Schedule Options</label>
+                        <div class="email-checkbox-group">
+                            <input type="checkbox" id="scheduleReport" class="email-checkbox">
+                            <label for="scheduleReport" class="email-checkbox-label">
+                                Schedule regular report (weekly)
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="email-modal-footer">
+                <button type="button" class="email-btn email-btn-cancel" onclick="closeEmailModal()">
+                    Cancel
+                </button>
+                <button type="button" class="email-btn email-btn-send" onclick="sendAnalyticsEmail()">
+                    <i class="fas fa-paper-plane"></i>
+                    Send Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range Picker Modal -->
+    <div class="date-range-modal-overlay" id="dateRangeModal">
+        <div class="date-range-modal">
+            <div class="date-range-modal-header">
+                <h3><i class="fas fa-calendar-alt"></i> Select Date Range</h3>
+                <button class="date-range-modal-close" onclick="closeDateRangeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="date-range-modal-body">
+                <div class="date-range-form">
+                    <div class="date-range-form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" class="date-range-input" 
+                               max="<?php echo date('Y-m-d'); ?>">
+                    </div>
+                    
+                    <div class="date-range-form-group">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate" class="date-range-input" 
+                               max="<?php echo date('Y-m-d'); ?>">
+                    </div>
+                    
+                    <div class="date-range-presets">
+                        <h4>Quick Presets</h4>
+                        <div class="preset-buttons">
+                            <button class="preset-btn" data-days="7">Last 7 Days</button>
+                            <button class="preset-btn" data-days="30">Last 30 Days</button>
+                            <button class="preset-btn" data-days="90">Last 90 Days</button>
+                            <button class="preset-btn" data-months="3">Last Quarter</button>
+                            <button class="preset-btn" data-months="6">Last 6 Months</button>
+                            <button class="preset-btn" data-months="12">Last Year</button>
+                        </div>
+                    </div>
+                    
+                    <div class="date-range-summary" id="dateRangeSummary">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="date-range-modal-footer">
+                <button type="button" class="date-range-btn cancel-btn" onclick="closeDateRangeModal()">
+                    Cancel
+                </button>
+                <button type="button" class="date-range-btn apply-btn" onclick="applyCustomDateRange()">
+                    <i class="fas fa-check"></i>
+                    Apply Range
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Dashboard -->
+    <div class="analytics-container">
+        <!-- Analytics Navigation -->
+        <div class="analytics-nav">
+            <div class="nav-left">
+                <div class="nav-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Analytics Intelligence
+                </div>
+                <div class="time-filter-container">
+                    <div class="time-filter">
+                        <button class="time-btn active" data-time="today">Today</button>
+                        <button class="time-btn" data-time="week">Week</button>
+                        <button class="time-btn" data-time="month">Month</button>
+                        <button class="time-btn" data-time="quarter">Quarter</button>
+                        <button class="time-btn" data-time="year">Year</button>
+                        <button class="time-btn custom-range-btn" onclick="openDateRangeModal()">
+                            <i class="fas fa-calendar-alt"></i> Custom
+                        </button>
+                    </div>
+                </div>
+                <!-- Custom range info will be inserted here by JavaScript -->
+                <div id="customRangeInfo"></div>
+            </div>
+            <div class="nav-actions">
+                <button class="action-btn refresh-btn" id="refreshBtn" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <a href="/" class="action-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Predictor
+                </a>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon accuracy">
+                    <i class="fas fa-bullseye"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-accuracy">--%</div>
+                    <div class="kpi-label">Model Accuracy</div>
+                    <div class="kpi-trend positive" id="kpi-accuracy-trend">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>--%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-icon error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-error">--</div>
+                    <div class="kpi-label">Avg. Error (bikes)</div>
+                    <div class="kpi-trend negative" id="kpi-error-trend">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>--%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-icon predictions">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-predictions">0</div>
+                    <div class="kpi-label">Total Predictions</div>
+                    <div class="kpi-trend positive" id="kpi-predictions-trend">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-icon features">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-value" id="kpi-features">14</div>
+                    <div class="kpi-label">Features Used</div>
+                    <div class="kpi-trend">
+                        <span>--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="analytics-grid">
+            <!-- Feature Importance Chart -->
+            <div class="chart-card half-width">
+                <div class="chart-header">
+                    <h3><i class="fas fa-trophy"></i> Feature Importance</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" onclick="exportChart('featureImportance')">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="featureImportanceChart"></canvas>
+                </div>
+                <div class="chart-insight" id="featureInsight">
+                    <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> Loading feature importance data...</p>
+                </div>
+            </div>
+
+            <!-- Performance Radar Chart -->
+            <div class="chart-card half-width">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-radar"></i> Model Performance</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" onclick="exportChart('performanceRadar')">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performanceRadarChart"></canvas>
+                </div>
+                <div class="chart-insight" id="performanceInsight">
+                    <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> Loading performance data...</p>
+                </div>
+            </div>
+
+            <!-- Hourly Pattern Chart -->
+            <div class="chart-card full-width">
+                <div class="chart-header">
+                    <h3><i class="fas fa-clock"></i> Hourly Demand Pattern</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" onclick="toggleChartType('hourlyPattern')">
+                            <i class="fas fa-exchange-alt"></i> Toggle View
+                        </button>
+                        <button class="chart-action-btn" onclick="exportChart('hourlyPattern')">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="hourlyPatternChart"></canvas>
+                </div>
+                <div class="chart-insight" id="hourlyInsight">
+                    <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> Loading hourly patterns...</p>
+                </div>
+            </div>
+
+            <!-- Prediction History -->
+            <div class="history-card">
+                <div class="history-header">
+                    <div>
+                        <h3><i class="fas fa-history"></i> Recent Predictions</h3>
+                        <small id="filterCount" style="color: var(--gray-500); font-size: 0.85rem; display: block; margin-top: 4px;"></small>
+                    </div>
+                    <div class="history-filters">
+                        <button class="history-filter active" data-filter="all">All</button>
+                        <button class="history-filter" data-filter="today">Today</button>
+                        <button class="history-filter" data-filter="week">Week</button>
+                        <button class="history-filter" data-filter="month">Month</button>
+                    </div>
+                </div>
+                <div class="history-list" id="predictionHistory">
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading prediction history...</p>
+                    </div>
+                </div>
+                <div class="history-footer">
+                    <button class="action-btn" onclick="loadMorePredictions()" id="loadMoreBtn" style="width: 100%; margin-top: 16px;">
+                        <i class="fas fa-plus"></i> Load More Predictions
+                    </button>
+                </div>
+            </div>
+
+            <!-- Model Insights -->
+            <div class="insights-card">
+                <div class="insights-header">
+                    <h3><i class="fas fa-brain"></i> Model Insights</h3>
+                </div>
+                <div class="insights-list" id="insightsContainer">
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading insights...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <div class="export-header">
+                <h3><i class="fas fa-download"></i> Data Export & Reports</h3>
+                <p>Export comprehensive analytics, model reports, and prediction data for external analysis, presentations, and regulatory compliance.</p>
+            </div>
+            
+            <div class="export-grid">
+                <!-- Prediction Data Export -->
+                <div class="export-card">
+                    <h4><i class="fas fa-database"></i> Prediction Data</h4>
+                    <p>Export all historical prediction data with complete metadata for external analysis in Excel, BI tools, or custom applications.</p>
+                    <div class="export-actions">
+                        <button class="export-btn csv" onclick="exportPredictions('csv')">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </button>
+                        <button class="export-btn json" onclick="exportPredictions('json')">
+                            <i class="fas fa-code"></i> JSON
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Model Reports -->
+                <div class="export-card">
+                    <h4><i class="fas fa-chart-pie"></i> Model Reports</h4>
+                    <p>Generate comprehensive model performance reports with visualizations, metrics, and recommendations for stakeholders.</p>
+                    <div class="export-actions">
+                        <button class="export-btn html" onclick="exportModelReport('html')">
+                            <i class="fas fa-file-code"></i> HTML
+                        </button>
+                        <button class="export-btn pdf" onclick="exportModelReport('pdf')">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </button>
+                        <button class="export-btn email-export-btn" onclick="openEmailModal()" style="background: #7209b7; color: white;">
+                            <i class="fas fa-envelope"></i> Email
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Analytics Export -->
+                <div class="export-card">
+                    <h4><i class="fas fa-chart-bar"></i> Analytics Export</h4>
+                    <p>Download complete analytics dashboard data including charts, KPIs, and insights for offline analysis or presentation.</p>
+                    <div class="export-actions">
+                        <button class="export-btn" onclick="exportAllData()" style="background: white; color: #333;">
+                            <i class="fas fa-file-archive"></i> Full Export
+                        </button>
+                        <button class="export-btn" onclick="exportCharts()" style="background: #4cc9f0; color: white;">
+                            <i class="fas fa-image"></i> Charts Only
+                        </button>
+                        <button class="export-btn email-export-btn" onclick="openEmailModal('charts')" style="background: #3a0ca3; color: white;">
+                            <i class="fas fa-paper-plane"></i> Email
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="batch-export">
+                <h4><i class="fas fa-cogs"></i> Batch Operations</h4>
+                <div class="batch-buttons">
+                    <button class="batch-btn" onclick="exportAllData()">
+                        <i class="fas fa-box"></i> Export Everything
+                    </button>
+                    <button class="batch-btn" onclick="exportLastWeek()">
+                        <i class="fas fa-calendar-week"></i> Last Week's Data
+                    </button>
+                    <button class="batch-btn" onclick="openEmailModal('scheduled')">
+                        <i class="fas fa-clock"></i> Schedule Email Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <div class="footer-brand">
+                    <i class="fas fa-bicycle"></i>
+                    <span>UrbanFlow Analytics</span>
+                </div>
+                <p class="footer-description">
+                    Advanced predictive analytics platform for urban mobility intelligence
+                </p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-links">
+                    <a href="/status"><i class="fas fa-server"></i> API Status</a>
+                    <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                </div>
+                <div class="footer-meta">
+                    <span class="version">v2.1.4</span>
+                    <span class="status-indicator active"></span>
+                    <span class="status-text">Analytics Active</span>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 UrbanFlow Predictive Systems. Advanced Bike Demand Analytics Platform.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='analytics.js') }}"></script>
+    <script>
+        // Email Modal Functions
+        function openEmailModal(context = 'full') {
+            const modal = document.getElementById('emailModal');
+            
+            // Set subject based on context
+            const subject = document.getElementById('emailSubject');
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            
+            switch(context) {
+                case 'charts':
+                    subject.value = `UrbanFlow Charts Report - ${dateStr}`;
+                    document.getElementById('includePDF').checked = false;
+                    document.getElementById('includeCSV').checked = false;
+                    document.getElementById('includeCharts').checked = true;
+                    break;
+                case 'scheduled':
+                    subject.value = `UrbanFlow Weekly Analytics Report`;
+                    document.getElementById('includePDF').checked = true;
+                    document.getElementById('includeCSV').checked = true;
+                    document.getElementById('includeCharts').checked = true;
+                    document.getElementById('scheduleReport').checked = true;
+                    break;
+                default:
+                    subject.value = `UrbanFlow Analytics Report - ${dateStr}`;
+                    document.getElementById('includePDF').checked = true;
+                    document.getElementById('includeCSV').checked = true;
+                    document.getElementById('includeCharts').checked = false;
+                    document.getElementById('scheduleReport').checked = false;
+            }
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEmailModal() {
+            const modal = document.getElementById('emailModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            
+            // Reset form
+            document.getElementById('recipientsError').style.display = 'none';
+        }
+
+        // Email validation
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function validateEmails(emailString) {
+            const emails = emailString.split(',').map(email => email.trim()).filter(email => email);
+            if (emails.length === 0) return false;
+            return emails.every(email => validateEmail(email));
+        }
+
+        // Send email function
+        async function sendAnalyticsEmail() {
+            const recipients = document.getElementById('emailRecipients').value;
+            const subject = document.getElementById('emailSubject').value;
+            const message = document.getElementById('emailMessage').value;
+            const includePDF = document.getElementById('includePDF').checked;
+            const includeCSV = document.getElementById('includeCSV').checked;
+            const includeCharts = document.getElementById('includeCharts').checked;
+            const scheduleReport = document.getElementById('scheduleReport').checked;
+            
+            // Validate emails
+            if (!validateEmails(recipients)) {
+                document.getElementById('recipientsError').style.display = 'block';
+                return;
+            }
+            
+            // Clear error
+            document.getElementById('recipientsError').style.display = 'none';
+            
+            // Show sending state
+            const sendBtn = document.querySelector('.email-btn-send');
+            const originalText = sendBtn.innerHTML;
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            
+            try {
+                // Call the dashboard email method
+                if (window.dashboard && window.dashboard.sendAnalyticsEmail) {
+                    const emailData = {
+                        recipients: recipients.split(',').map(email => email.trim()),
+                        subject: subject,
+                        message: message,
+                        includePDF: includePDF,
+                        includeCSV: includeCSV,
+                        includeCharts: includeCharts,
+                        schedule: scheduleReport ? 'weekly' : 'once'
+                    };
+                    
+                    await window.dashboard.sendAnalyticsEmail(emailData);
+                    showNotification('Analytics report email sent successfully!', 'success');
+                    closeEmailModal();
+                } else {
+                    // Fallback for demo
+                    setTimeout(() => {
+                        showNotification('Email sent successfully! (Demo mode)', 'success');
+                        closeEmailModal();
+                    }, 1500);
+                }
+                
+            } catch (error) {
+                showNotification('Failed to send email: ' + error.message, 'error');
+            } finally {
+                // Reset button
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalText;
+            }
+        }
+
+        // Date Range Picker Functions
+        function openDateRangeModal() {
+            const modal = document.getElementById('dateRangeModal');
+            const today = new Date().toISOString().split('T')[0];
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            
+            // Set default dates (last 7 days)
+            document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today;
+            document.getElementById('endDate').max = today;
+            document.getElementById('startDate').max = today;
+            
+            // Update summary
+            updateDateRangeSummary();
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDateRangeModal() {
+            const modal = document.getElementById('dateRangeModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function updateDateRangeSummary() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const summary = document.getElementById('dateRangeSummary');
+            
+            if (!startDate || !endDate) return;
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            
+            summary.innerHTML = `
+                <h4>Selected Range</h4>
+                <p><strong>From:</strong> ${formatDate(start)}</p>
+                <p><strong>To:</strong> ${formatDate(end)}</p>
+                <p><strong>Duration:</strong> ${daysDiff} day${daysDiff !== 1 ? 's' : ''}</p>
+                <p><i class="fas fa-info-circle"></i> Will analyze all predictions within this date range.</p>
+            `;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function applyPresetRange(days = null, months = null) {
+            const endDate = new Date();
+            const startDate = new Date();
+            
+            if (days) {
+                startDate.setDate(startDate.getDate() - days);
+            } else if (months) {
+                startDate.setMonth(startDate.getMonth() - months);
+            }
+            
+            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            
+            updateDateRangeSummary();
+        }
+
+        async function applyCustomDateRange() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                showNotification('Please select both start and end dates', 'error');
+                return;
+            }
+            
+            // Validate dates
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const today = new Date();
+            
+            if (start > end) {
+                showNotification('Start date must be before end date', 'error');
+                return;
+            }
+            
+            if (start > today || end > today) {
+                showNotification('Dates cannot be in the future', 'error');
+                return;
+            }
+            
+            // Calculate days difference
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            if (daysDiff > 365) {
+                showNotification('Date range cannot exceed 365 days', 'error');
+                return;
+            }
+            
+            closeDateRangeModal();
+            
+            if (window.dashboard) {
+                // Update time filter buttons
+                document.querySelectorAll('.time-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.classList.contains('custom-range-btn')) {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                // Show custom range info
+                const customRangeInfo = document.getElementById('customRangeInfo');
+                customRangeInfo.innerHTML = `
+                    <div class="custom-range-info">
+                        <i class="fas fa-calendar-check"></i>
+                        ${startDate} to ${endDate} (${daysDiff} days)
+                        <button class="btn-clear-range" onclick="clearCustomDateRange()" style="margin-left: auto; background: none; border: none; color: var(--gray-500); cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Apply custom filter
+                await window.dashboard.applyCustomDateRange(start, end);
+                
+                showNotification(`Applied custom date range: ${startDate} to ${endDate}`, 'success');
+            }
+        }
+
+        function clearCustomDateRange() {
+            const customRangeInfo = document.getElementById('customRangeInfo');
+            customRangeInfo.innerHTML = '';
+            
+            // Reset to today filter
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-time') === 'today') {
+                    btn.classList.add('active');
+                }
+            });
+            
+            if (window.dashboard) {
+                window.dashboard.applyTimeFilter('today');
+            }
+        }
+
+        // Chart export functionality
+        function exportChart(chartId) {
+            if (window.dashboard && window.dashboard.charts[chartId]) {
+                const chart = window.dashboard.charts[chartId];
+                const link = document.createElement('a');
+                link.download = `${chartId}_${new Date().toISOString().slice(0, 10)}.png`;
+                link.href = chart.toBase64Image();
+                link.click();
+                showNotification(`Chart exported successfully!`, 'success');
+            }
+        }
+
+        function exportCharts() {
+            if (window.dashboard) {
+                showNotification('Preparing all charts for export...', 'info');
+                setTimeout(() => {
+                    showNotification('Chart export feature requires additional setup', 'warning');
+                }, 1000);
+            }
+        }
+
+        function toggleChartType(chartId) {
+            if (window.dashboard && window.dashboard.charts[chartId]) {
+                const chart = window.dashboard.charts[chartId];
+                const newType = chart.config.type === 'line' ? 'bar' : 'line';
+                chart.config.type = newType;
+                chart.update();
+                showNotification(`Switched to ${newType} view`, 'success');
+            }
+        }
+
+        // Global functions for HTML onclick handlers
+        async function exportPredictions(format) {
+            if (window.dashboard) {
+                await window.dashboard.exportPredictions(format);
+            }
+        }
+
+        async function exportModelReport(format) {
+            if (window.dashboard) {
+                await window.dashboard.exportModelReport(format);
+            }
+        }
+
+        async function exportAllData() {
+            if (window.dashboard) {
+                await window.dashboard.exportAllData();
+            }
+        }
+
+        async function exportLastWeek() {
+            if (window.dashboard) {
+                if (window.dashboard.showNotification) {
+                    window.dashboard.showNotification('Exporting last week\'s data...', 'info');
+                }
+                await exportAllData();
+            }
+        }
+
+        function refreshDashboard() {
+            console.log('Refresh button clicked');
+            if (window.dashboard) {
+                console.log('Dashboard instance found, calling refreshDashboard()');
+                window.dashboard.refreshDashboard();
+            } else {
+                console.log('No dashboard instance, reloading page');
+                location.reload();
+            }
+        }
+
+        function loadMorePredictions() {
+            if (window.dashboard) {
+                window.dashboard.loadMorePredictions();
+            }
+        }
+
+        // Apply time filter globally
+        function applyTimeFilter(timeRange) {
+            if (window.dashboard) {
+                window.dashboard.applyTimeFilter(timeRange);
+            }
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            if (type === 'success') notification.style.borderLeftColor = '#06d6a0';
+            if (type === 'error') notification.style.borderLeftColor = '#ef476f';
+            if (type === 'warning') notification.style.borderLeftColor = '#ffd166';
+            if (type === 'info') notification.style.borderLeftColor = '#4cc9f0';
+            
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Analytics page loaded');
+            
+            // Date range input change listeners
+            document.getElementById('startDate')?.addEventListener('change', updateDateRangeSummary);
+            document.getElementById('endDate')?.addEventListener('change', updateDateRangeSummary);
+            
+            // Preset button listeners
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const days = this.getAttribute('data-days');
+                    const months = this.getAttribute('data-months');
+                    applyPresetRange(days ? parseInt(days) : null, months ? parseInt(months) : null);
+                });
+            });
+            
+            // Time filter buttons
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                if (!btn.classList.contains('custom-range-btn')) {
+                    btn.addEventListener('click', function() {
+                        const timeRange = this.getAttribute('data-time');
+                        console.log('Time filter clicked:', timeRange);
+                        applyTimeFilter(timeRange);
+                    });
+                }
+            });
+
+            // History filter buttons
+            document.querySelectorAll('.history-filter').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.history-filter').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const filter = this.getAttribute('data-filter');
+                    console.log('History filter clicked:', filter);
+                    
+                    if (window.dashboard) {
+                        window.dashboard.applyHistoryFilter(filter);
+                    }
+                });
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (document.getElementById('emailModal').classList.contains('active')) {
+                        closeEmailModal();
+                    }
+                    if (document.getElementById('dateRangeModal').classList.contains('active')) {
+                        closeDateRangeModal();
+                    }
+                }
+            });
+            
+            // Close modal when clicking outside
+            document.getElementById('emailModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeEmailModal();
+                }
+            });
+            
+            document.getElementById('dateRangeModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeDateRangeModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

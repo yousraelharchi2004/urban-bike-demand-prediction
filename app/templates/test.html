@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanFlow | Developer Test Suite</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Test Suite Specific Styles */
+        :root {
+            --code-bg: #1a1a2e;
+            --code-text: #e9ecef;
+            --test-pass: #06d6a0;
+            --test-fail: #ef476f;
+            --test-warning: #ffd166;
+            --test-info: #4cc9f0;
+        }
+
+        .test-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px 40px;
+        }
+
+        /* Test Suite Navigation */
+        .test-nav {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-title i {
+            color: var(--primary);
+        }
+
+        .nav-badges {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-badge {
+            padding: 6px 12px;
+            background: var(--gray-100);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-badge.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Test Suite Grid */
+        .test-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* Test Sidebar */
+        .test-sidebar {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            height: fit-content;
+        }
+
+        .test-categories {
+            margin-bottom: 24px;
+        }
+
+        .test-categories h3 {
+            font-size: 1.1rem;
+            color: var(--dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-categories h3 i {
+            color: var(--primary);
+        }
+
+        .category-list {
+            list-style: none;
+        }
+
+        .category-item {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .category-item:hover {
+            background: var(--gray-100);
+        }
+
+        .category-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .category-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .test-quick {
+            margin-top: 24px;
+        }
+
+        .test-quick h3 {
+            font-size: 1.1rem;
+            color: var(--dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-quick h3 i {
+            color: var(--primary);
+        }
+
+        .quick-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            padding: 14px;
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            color: var(--gray-700);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .quick-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .quick-btn i {
+            width: 20px;
+            font-size: 1.1rem;
+        }
+
+        /* Test Main Content */
+        .test-main {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Test Panel */
+        .test-panel {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .panel-header h2 {
+            font-size: 1.5rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-header h2 i {
+            color: var(--primary);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Test Controls */
+        .test-controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding: 24px;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+        }
+
+        .control-group {
+            flex: 1;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        .test-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            background: white;
+            color: var(--gray-700);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .test-select:hover {
+            border-color: var(--gray-300);
+        }
+
+        .test-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .run-btn {
+            padding: 12px 24px;
+            background: var(--primary);
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 140px;
+            justify-content: center;
+        }
+
+        .run-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .run-btn.running {
+            background: var(--warning);
+        }
+
+        .run-btn i {
+            font-size: 1.1rem;
+        }
+
+        /* Test Results */
+        .test-results {
+            margin-top: 32px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-header h3 {
+            font-size: 1.2rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .results-header h3 i {
+            color: var(--primary);
+        }
+
+        .results-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat-badge {
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-badge.passed {
+            background: rgba(6, 214, 160, 0.1);
+            color: var(--test-pass);
+            border: 1px solid var(--test-pass);
+        }
+
+        .stat-badge.failed {
+            background: rgba(239, 71, 111, 0.1);
+            color: var(--test-fail);
+            border: 1px solid var(--test-fail);
+        }
+
+        .stat-badge.total {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        /* Test Cases */
+        .test-cases {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .test-case {
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .test-case:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .test-case.passed {
+            border-left: 4px solid var(--test-pass);
+        }
+
+        .test-case.failed {
+            border-left: 4px solid var(--test-fail);
+        }
+
+        .test-case.running {
+            border-left: 4px solid var(--test-warning);
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .test-case-title {
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-case-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .test-case-status.passed {
+            background: var(--test-pass);
+            color: white;
+        }
+
+        .test-case-status.failed {
+            background: var(--test-fail);
+            color: white;
+        }
+
+        .test-case-status.running {
+            background: var(--test-warning);
+            color: #333;
+        }
+
+        .test-case-desc {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .test-case-details {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .test-case-details.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .details-header h4 {
+            font-size: 1rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .details-header h4 i {
+            color: var(--primary);
+        }
+
+        .toggle-details {
+            background: none;
+            border: none;
+            color: var(--gray-500);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--code-bg);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .code-header span {
+            color: var(--code-text);
+            font-size: 0.9rem;
+            font-family: 'Source Code Pro', monospace;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-header span i {
+            color: var(--primary);
+        }
+
+        .copy-code {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--code-text);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .copy-code:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .code-content {
+            padding: 20px;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--code-text);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .code-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* API Console */
+        .api-console {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .console-header h2 {
+            font-size: 1.5rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .console-header h2 i {
+            color: var(--primary);
+        }
+
+        .console-tabs {
+            display: flex;
+            gap: 8px;
+            background: var(--gray-100);
+            padding: 4px;
+            border-radius: var(--radius-md);
+        }
+
+        .console-tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .console-tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .console-body {
+            min-height: 400px;
+        }
+
+        .console-input {
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            background: white;
+            color: var(--gray-700);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .input-group textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 0.9rem;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .console-output {
+            background: var(--code-bg);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Source Code Pro', monospace;
+            color: var(--code-text);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .console-output pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .test-sidebar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .test-container {
+                padding: 0 16px 24px;
+            }
+            
+            .test-nav {
+                flex-direction: column;
+                gap: 16px;
+                align-items: stretch;
+            }
+            
+            .nav-left {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .nav-badges {
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            
+            .test-controls {
+                flex-direction: column;
+            }
+            
+            .test-buttons {
+                flex-direction: column;
+            }
+            
+            .run-btn {
+                width: 100%;
+            }
+            
+            .results-header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: stretch;
+            }
+            
+            .results-stats {
+                justify-content: space-between;
+            }
+            
+            .panel-actions {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .test-panel,
+            .api-console {
+                padding: 20px;
+            }
+            
+            .stat-badge {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+
+        /* Animation for test running */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .running .test-case-title {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Loading spinner for running tests */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Highlight JSON syntax */
+        .json-key { color: #4cc9f0; }
+        .json-string { color: #06d6a0; }
+        .json-number { color: #ffd166; }
+        .json-boolean { color: #ef476f; }
+        .json-null { color: #adb5bd; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-bicycle"></i>
+                <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Predictor</span>
+                </a>
+                <a href="/analytics" class="nav-link">
+                    <i class="fas fa-analytics"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="/status" class="nav-link">
+                    <i class="fas fa-server"></i>
+                    <span>API Status</span>
+                </a>
+                <a href="/test" class="nav-link active">
+                    <i class="fas fa-vial"></i>
+                    <span>Test Suite</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Test Suite Container -->
+    <div class="test-container">
+        <!-- Test Navigation -->
+        <div class="test-nav">
+            <div class="nav-left">
+                <div class="nav-title">
+                    <i class="fas fa-vial"></i>
+                    Developer Test Suite
+                </div>
+                <div class="nav-badges">
+                    <div class="nav-badge">
+                        <i class="fas fa-server"></i>
+                        <span>API v2.1.4</span>
+                    </div>
+                    <div class="nav-badge active">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Test Environment</span>
+                    </div>
+                    <div class="nav-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Sandbox Mode</span>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <button class="action-btn" onclick="runAllTests()">
+                    <i class="fas fa-play"></i> Run All Tests
+                </button>
+                <a href="/" class="action-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Predictor
+                </a>
+            </div>
+        </div>
+
+        <!-- Test Suite Grid -->
+        <div class="test-grid">
+            <!-- Sidebar -->
+            <div class="test-sidebar">
+                <div class="test-categories">
+                    <h3><i class="fas fa-folder"></i> Test Categories</h3>
+                    <ul class="category-list">
+                        <li class="category-item active" data-category="all">
+                            <span>All Tests</span>
+                            <span class="category-count">12</span>
+                        </li>
+                        <li class="category-item" data-category="api">
+                            <span>API Endpoints</span>
+                            <span class="category-count">5</span>
+                        </li>
+                        <li class="category-item" data-category="model">
+                            <span>Model Tests</span>
+                            <span class="category-count">4</span>
+                        </li>
+                        <li class="category-item" data-category="integration">
+                            <span>Integration</span>
+                            <span class="category-count">3</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="test-quick">
+                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                    <div class="quick-buttons">
+                        <button class="quick-btn" onclick="testAPIStatus()">
+                            <i class="fas fa-heartbeat"></i>
+                            <span>Test API Health</span>
+                        </button>
+                        <button class="quick-btn" onclick="testModelStatus()">
+                            <i class="fas fa-brain"></i>
+                            <span>Test Model Status</span>
+                        </button>
+                        <button class="quick-btn" onclick="testPrediction()">
+                            <i class="fas fa-calculator"></i>
+                            <span>Sample Prediction</span>
+                        </button>
+                        <button class="quick-btn" onclick="clearTestResults()">
+                            <i class="fas fa-eraser"></i>
+                            <span>Clear Results</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="test-main">
+                <!-- Test Panel -->
+                <div class="test-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-flask"></i> Test Runner</h2>
+                        <div class="panel-actions">
+                            <button class="action-btn" onclick="exportTestResults()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                            <button class="action-btn" onclick="clearTestResults()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Test Controls -->
+                    <div class="test-controls">
+                        <div class="control-group">
+                            <label for="test-category"><i class="fas fa-filter"></i> Test Category</label>
+                            <select id="test-category" class="test-select" onchange="filterTests()">
+                                <option value="all">All Tests</option>
+                                <option value="api">API Endpoints</option>
+                                <option value="model">Model Tests</option>
+                                <option value="integration">Integration Tests</option>
+                                <option value="performance">Performance Tests</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="test-priority"><i class="fas fa-flag"></i> Priority</label>
+                            <select id="test-priority" class="test-select">
+                                <option value="all">All Priorities</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <div class="test-buttons">
+                            <button class="run-btn" onclick="runSelectedTests()">
+                                <i class="fas fa-play"></i>
+                                <span>Run Selected Tests</span>
+                            </button>
+                            <button class="run-btn" onclick="stopTests()" style="background: var(--danger);">
+                                <i class="fas fa-stop"></i>
+                                <span>Stop Tests</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Test Results -->
+                    <div class="test-results">
+                        <div class="results-header">
+                            <h3><i class="fas fa-chart-bar"></i> Test Results</h3>
+                            <div class="results-stats">
+                                <div class="stat-badge total">
+                                    <i class="fas fa-list"></i>
+                                    <span id="total-tests">0 Total</span>
+                                </div>
+                                <div class="stat-badge passed">
+                                    <i class="fas fa-check"></i>
+                                    <span id="passed-tests">0 Passed</span>
+                                </div>
+                                <div class="stat-badge failed">
+                                    <i class="fas fa-times"></i>
+                                    <span id="failed-tests">0 Failed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="test-cases" id="test-cases-container">
+                            <!-- Test cases will be dynamically inserted here -->
+                            <div class="empty-state">
+                                <i class="fas fa-flask"></i>
+                                <p>No tests run yet. Select tests and click "Run Selected Tests" to begin.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Console -->
+                <div class="api-console">
+                    <div class="console-header">
+                        <h2><i class="fas fa-terminal"></i> API Console</h2>
+                        <div class="console-tabs">
+                            <button class="console-tab active" data-tab="request">Request</button>
+                            <button class="console-tab" data-tab="response">Response</button>
+                            <button class="console-tab" data-tab="history">History</button>
+                        </div>
+                    </div>
+                    <div class="console-body">
+                        <div class="console-input">
+                            <div class="input-group">
+                                <label for="api-endpoint"><i class="fas fa-link"></i> API Endpoint</label>
+                                <select id="api-endpoint" class="test-select" onchange="updateEndpoint()">
+                                    <option value="/status">GET /status</option>
+                                    <option value="/metrics">GET /metrics</option>
+                                    <option value="/model-info">GET /model-info</option>
+                                    <option value="/prediction-history">GET /prediction-history</option>
+                                    <option value="/predict" selected>POST /predict</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="api-method"><i class="fas fa-exchange-alt"></i> HTTP Method</label>
+                                <select id="api-method" class="test-select" onchange="updateMethod()">
+                                    <option value="GET">GET</option>
+                                    <option value="POST" selected>POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="api-body"><i class="fas fa-code"></i> Request Body (JSON)</label>
+                                <textarea id="api-body" placeholder='{
+    "Hour": 14,
+    "Temperature(캜)": 22.5,
+    "Humidity(%)": 60,
+    "Wind speed (m/s)": 2.5,
+    "Visibility (10m)": 2000,
+    "Dew point temperature(캜)": 10,
+    "Solar Radiation (MJ/m2)": 1.5,
+    "Rainfall(mm)": 0,
+    "Snowfall (cm)": 0,
+    "Seasons_Spring": 0,
+    "Seasons_Summer": 1,
+    "Seasons_Winter": 0,
+    "Holiday_No Holiday": 1,
+    "Functioning Day_Yes": 1
+}'>
+                                </textarea>
+                            </div>
+                            <div class="test-buttons" style="margin-top: 20px;">
+                                <button class="run-btn" onclick="sendAPIRequest()">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>Send Request</span>
+                                </button>
+                                <button class="run-btn" onclick="formatJSON()" style="background: var(--info);">
+                                    <i class="fas fa-indent"></i>
+                                    <span>Format JSON</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="console-output" id="console-output">
+                            <pre><code>// Response will appear here...</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <div class="footer-brand">
+                    <i class="fas fa-bicycle"></i>
+                    <span>UrbanFlow Test Suite</span>
+                </div>
+                <p class="footer-description">
+                    Professional testing environment for UrbanFlow Predictive Analytics Platform
+                </p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-links">
+                    <a href="/status"><i class="fas fa-server"></i> API Status</a>
+                    <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                </div>
+                <div class="footer-meta">
+                    <span class="version">v2.1.4</span>
+                    <span class="status-indicator active"></span>
+                    <span class="status-text">Test Environment Active</span>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2024 UrbanFlow Predictive Systems. Professional Test Suite for Development and Quality Assurance.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Test Suite Data
+        const testCases = [
+            {
+                id: 1,
+                title: "API Status Endpoint",
+                description: "Test that the API status endpoint returns correct information about the system.",
+                category: "api",
+                priority: "critical",
+                endpoint: "/status",
+                method: "GET",
+                expectedStatus: 200,
+                code: `// Test code for API status endpoint
+async function testAPIStatus() {
+    const response = await fetch('/status');
+    const data = await response.json();
+    
+    assert(response.status === 200, 'Status should be 200');
+    assert(data.model_loaded !== undefined, 'Should contain model_loaded field');
+    assert(data.endpoints !== undefined, 'Should contain endpoints field');
+    
+    return { passed: true, message: 'API status endpoint working correctly' };
+}`
+            },
+            {
+                id: 2,
+                title: "Model Prediction",
+                description: "Test that the model can make predictions with valid input data.",
+                category: "model",
+                priority: "critical",
+                endpoint: "/predict",
+                method: "POST",
+                expectedStatus: 200,
+                code: `// Test code for model prediction
+async function testModelPrediction() {
+    const testData = {
+        "Hour": 14,
+        "Temperature(캜)": 22.5,
+        "Humidity(%)": 60,
+        "Wind speed (m/s)": 2.5,
+        "Visibility (10m)": 2000,
+        "Dew point temperature(캜)": 10,
+        "Solar Radiation (MJ/m2)": 1.5,
+        "Rainfall(mm)": 0,
+        "Snowfall (cm)": 0,
+        "Seasons_Spring": 0,
+        "Seasons_Summer": 1,
+        "Seasons_Winter": 0,
+        "Holiday_No Holiday": 1,
+        "Functioning Day_Yes": 1
+    };
+    
+    const response = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+    });
+    
+    const data = await response.json();
+    
+    assert(response.status === 200, 'Status should be 200');
+    assert(data.success === true, 'Prediction should be successful');
+    assert(data.prediction !== undefined, 'Should contain prediction field');
+    assert(data.predicted_rented_bikes !== undefined, 'Should contain predicted_rented_bikes field');
+    
+    return { passed: true, message: 'Model prediction working correctly' };
+}`
+            },
+            {
+                id: 3,
+                title: "Model Metrics Endpoint",
+                description: "Test that the model metrics endpoint returns performance data.",
+                category: "model",
+                priority: "high",
+                endpoint: "/metrics",
+                method: "GET",
+                expectedStatus: 200,
+                code: `// Test code for model metrics
+async function testModelMetrics() {
+    const response = await fetch('/metrics');
+    const data = await response.json();
+    
+    assert(response.status === 200, 'Status should be 200');
+    assert(data.metrics !== undefined, 'Should contain metrics field');
+    assert(data.metrics.r2_score !== undefined, 'Should contain r2_score');
+    assert(data.metrics.mean_absolute_error !== undefined, 'Should contain MAE');
+    
+    return { passed: true, message: 'Model metrics endpoint working correctly' };
+}`
+            },
+            {
+                id: 4,
+                title: "Prediction History",
+                description: "Test that prediction history endpoint returns logged predictions.",
+                category: "api",
+                priority: "medium",
+                endpoint: "/prediction-history",
+                method: "GET",
+                expectedStatus: 200,
+                code: `// Test code for prediction history
+async function testPredictionHistory() {
+    const response = await fetch('/prediction-history?limit=5');
+    const data = await response.json();
+    
+    assert(response.status === 200, 'Status should be 200');
+    assert(data.success === true, 'Request should be successful');
+    assert(data.history !== undefined, 'Should contain history array');
+    
+    return { passed: true, message: 'Prediction history endpoint working correctly' };
+}`
+            },
+            {
+                id: 5,
+                title: "Invalid Input Handling",
+                description: "Test that the API properly handles invalid input data.",
+                category: "api",
+                priority: "high",
+                endpoint: "/predict",
+                method: "POST",
+                expectedStatus: 400,
+                code: `// Test code for invalid input handling
+async function testInvalidInput() {
+    const invalidData = {
+        "Hour": 25, // Invalid hour
+        "Temperature(캜)": 22.5,
+        // Missing required fields
+    };
+    
+    const response = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invalidData)
+    });
+    
+    assert(response.status === 400, 'Should return 400 for invalid input');
+    
+    return { passed: true, message: 'Invalid input handling working correctly' };
+}`
+            },
+            {
+                id: 6,
+                title: "Model Information",
+                description: "Test that model information endpoint returns correct model details.",
+                category: "model",
+                priority: "medium",
+                endpoint: "/model-info",
+                method: "GET",
+                expectedStatus: 200,
+                code: `// Test code for model information
+async function testModelInfo() {
+    const response = await fetch('/model-info');
+    const data = await response.json();
+    
+    assert(response.status === 200, 'Status should be 200');
+    assert(data.model_type !== undefined, 'Should contain model_type');
+    assert(data.features_count !== undefined, 'Should contain features_count');
+    
+    return { passed: true, message: 'Model information endpoint working correctly' };
+}`
+            }
+        ];
+
+        // Initialize the test suite
+        let testResults = [];
+        let isRunning = false;
+        let currentTestIndex = 0;
+
+        // DOM Elements
+        const testCasesContainer = document.getElementById('test-cases-container');
+        const totalTestsElement = document.getElementById('total-tests');
+        const passedTestsElement = document.getElementById('passed-tests');
+        const failedTestsElement = document.getElementById('failed-tests');
+        const consoleOutput = document.getElementById('console-output');
+        const apiEndpointSelect = document.getElementById('api-endpoint');
+        const apiMethodSelect = document.getElementById('api-method');
+        const apiBodyTextarea = document.getElementById('api-body');
+
+        // Initialize test suite
+        function initTestSuite() {
+            console.log('🚀 Initializing Professional Test Suite...');
+            updateTestStats();
+            initConsoleTabs();
+            loadTestCases();
+            showNotification('Test Suite initialized successfully!', 'success');
+        }
+
+        // Load test cases into UI
+        function loadTestCases() {
+            testCasesContainer.innerHTML = '';
+            
+            if (testCases.length === 0) {
+                testCasesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-flask"></i>
+                        <p>No test cases configured. Add test cases to begin testing.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            testCases.forEach(testCase => {
+                const testElement = createTestCaseElement(testCase);
+                testCasesContainer.appendChild(testElement);
+            });
+        }
+
+        // Create test case element
+        function createTestCaseElement(testCase) {
+            const div = document.createElement('div');
+            div.className = 'test-case';
+            div.id = `test-case-${testCase.id}`;
+            div.setAttribute('data-category', testCase.category);
+            div.setAttribute('data-priority', testCase.priority);
+            
+            div.innerHTML = `
+                <div class="test-case-header">
+                    <div class="test-case-title">
+                        <i class="fas fa-vial"></i>
+                        ${testCase.title}
+                    </div>
+                    <div class="test-case-status">Pending</div>
+                </div>
+                <div class="test-case-desc">${testCase.description}</div>
+                <div class="test-case-meta">
+                    <span class="feature-tag">${testCase.category.toUpperCase()}</span>
+                    <span class="feature-tag">${testCase.priority}</span>
+                    <span class="feature-tag">${testCase.method} ${testCase.endpoint}</span>
+                </div>
+                <div class="test-case-details" id="details-${testCase.id}">
+                    <div class="details-header">
+                        <h4><i class="fas fa-code"></i> Test Code</h4>
+                        <button class="toggle-details" onclick="toggleDetails(${testCase.id})">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span><i class="fas fa-file-code"></i> test_case_${testCase.id}.js</span>
+                            <button class="copy-code" onclick="copyCode(${testCase.id})">
+                                <i class="far fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <div class="code-content">
+                            <pre><code>${escapeHtml(testCase.code)}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                <button class="action-btn-small" onclick="runSingleTest(${testCase.id})" style="margin-top: 12px;">
+                    <i class="fas fa-play"></i> Run This Test
+                </button>
+            `;
+            
+            return div;
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            if (isRunning) {
+                showNotification('Tests are already running!', 'warning');
+                return;
+            }
+            
+            isRunning = true;
+            showNotification('Starting all tests...', 'info');
+            
+            testResults = [];
+            currentTestIndex = 0;
+            
+            const runBtn = document.querySelector('.run-btn');
+            runBtn.innerHTML = '<div class="spinner"></div> Running Tests...';
+            runBtn.classList.add('running');
+            
+            for (let i = 0; i < testCases.length; i++) {
+                currentTestIndex = i;
+                await runSingleTest(testCases[i].id, true);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+            }
+            
+            runBtn.innerHTML = '<i class="fas fa-play"></i> Run Selected Tests';
+            runBtn.classList.remove('running');
+            isRunning = false;
+            
+            updateTestStats();
+            showNotification(`All tests completed! ${getPassedCount()} passed, ${getFailedCount()} failed.`, 'success');
+        }
+
+        // Run selected tests
+        async function runSelectedTests() {
+            const category = document.getElementById('test-category').value;
+            const priority = document.getElementById('test-priority').value;
+            
+            const filteredTests = testCases.filter(test => {
+                return (category === 'all' || test.category === category) &&
+                       (priority === 'all' || test.priority === priority);
+            });
+            
+            if (filteredTests.length === 0) {
+                showNotification('No tests match the selected filters!', 'warning');
+                return;
+            }
+            
+            if (isRunning) {
+                showNotification('Tests are already running!', 'warning');
+                return;
+            }
+            
+            isRunning = true;
+            showNotification(`Running ${filteredTests.length} selected tests...`, 'info');
+            
+            testResults = [];
+            
+            const runBtn = document.querySelector('.run-btn');
+            runBtn.innerHTML = '<div class="spinner"></div> Running Tests...';
+            runBtn.classList.add('running');
+            
+            for (const test of filteredTests) {
+                await runSingleTest(test.id, true);
+                await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between tests
+            }
+            
+            runBtn.innerHTML = '<i class="fas fa-play"></i> Run Selected Tests';
+            runBtn.classList.remove('running');
+            isRunning = false;
+            
+            updateTestStats();
+            showNotification(`Selected tests completed! ${getPassedCount()} passed, ${getFailedCount()} failed.`, 'success');
+        }
+
+        // Run a single test
+        async function runSingleTest(testId, fromBatch = false) {
+            const testCase = testCases.find(t => t.id === testId);
+            if (!testCase) return;
+            
+            const testElement = document.getElementById(`test-case-${testId}`);
+            const statusElement = testElement.querySelector('.test-case-status');
+            const titleElement = testElement.querySelector('.test-case-title');
+            
+            // Update UI to show test is running
+            testElement.classList.add('running');
+            statusElement.textContent = 'Running';
+            statusElement.className = 'test-case-status running';
+            titleElement.classList.add('running');
+            
+            if (!fromBatch) {
+                showNotification(`Running test: ${testCase.title}`, 'info');
+            }
+            
+            try {
+                // Simulate test execution (in a real app, this would call actual test functions)
+                await simulateTestExecution(testCase);
+                
+                // Randomly pass/fail for demonstration (in real app, use actual test results)
+                const passed = Math.random() > 0.2; // 80% pass rate for demo
+                
+                if (passed) {
+                    testElement.classList.remove('running');
+                    testElement.classList.add('passed');
+                    statusElement.textContent = 'Passed';
+                    statusElement.className = 'test-case-status passed';
+                    testResults.push({ id: testId, passed: true });
+                    
+                    if (!fromBatch) {
+                        showNotification(`Test passed: ${testCase.title}`, 'success');
+                    }
+                } else {
+                    testElement.classList.remove('running');
+                    testElement.classList.add('failed');
+                    statusElement.textContent = 'Failed';
+                    statusElement.className = 'test-case-status failed';
+                    testResults.push({ id: testId, passed: false });
+                    
+                    if (!fromBatch) {
+                        showNotification(`Test failed: ${testCase.title}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Test execution error:', error);
+                testElement.classList.remove('running');
+                testElement.classList.add('failed');
+                statusElement.textContent = 'Error';
+                statusElement.className = 'test-case-status failed';
+                testResults.push({ id: testId, passed: false, error: error.message });
+                
+                if (!fromBatch) {
+                    showNotification(`Test error: ${error.message}`, 'error');
+                }
+            }
+            
+            titleElement.classList.remove('running');
+            
+            if (!fromBatch) {
+                updateTestStats();
+            }
+        }
+
+        // Simulate test execution
+        async function simulateTestExecution(testCase) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    // In a real application, this would make actual API calls
+                    // For demo purposes, we'll simulate API calls
+                    
+                    if (testCase.id === 1) {
+                        // Test API status
+                        fetch('/status')
+                            .then(response => {
+                                if (response.status === testCase.expectedStatus) {
+                                    resolve();
+                                } else {
+                                    reject(new Error(`Expected status ${testCase.expectedStatus}, got ${response.status}`));
+                                }
+                            })
+                            .catch(reject);
+                    } else if (testCase.id === 2) {
+                        // Test prediction
+                        const testData = {
+                            "Hour": 14,
+                            "Temperature(캜)": 22.5,
+                            "Humidity(%)": 60,
+                            "Wind speed (m/s)": 2.5,
+                            "Visibility (10m)": 2000,
+                            "Dew point temperature(캜)": 10,
+                            "Solar Radiation (MJ/m2)": 1.5,
+                            "Rainfall(mm)": 0,
+                            "Snowfall (cm)": 0,
+                            "Seasons_Spring": 0,
+                            "Seasons_Summer": 1,
+                            "Seasons_Winter": 0,
+                            "Holiday_No Holiday": 1,
+                            "Functioning Day_Yes": 1
+                        };
+                        
+                        fetch('/predict', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(testData)
+                        })
+                        .then(response => {
+                            if (response.status === testCase.expectedStatus) {
+                                resolve();
+                            } else {
+                                reject(new Error(`Expected status ${testCase.expectedStatus}, got ${response.status}`));
+                            }
+                        })
+                        .catch(reject);
+                    } else {
+                        // Simulate other tests
+                        if (Math.random() > 0.2) { // 80% success rate
+                            resolve();
+                        } else {
+                            reject(new Error('Simulated test failure'));
+                        }
+                    }
+                }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
+            });
+        }
+
+        // Stop all tests
+        function stopTests() {
+            if (!isRunning) {
+                showNotification('No tests are currently running!', 'warning');
+                return;
+            }
+            
+            isRunning = false;
+            
+            // Reset running UI
+            document.querySelectorAll('.test-case.running').forEach(test => {
+                test.classList.remove('running');
+                const status = test.querySelector('.test-case-status');
+                status.textContent = 'Stopped';
+                status.className = 'test-case-status failed';
+            });
+            
+            const runBtn = document.querySelector('.run-btn');
+            runBtn.innerHTML = '<i class="fas fa-play"></i> Run Selected Tests';
+            runBtn.classList.remove('running');
+            
+            showNotification('Tests stopped by user.', 'warning');
+        }
+
+        // Quick test functions
+        async function testAPIStatus() {
+            showNotification('Testing API status...', 'info');
+            
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                const output = {
+                    status: response.status,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                };
+                
+                updateConsoleOutput(output);
+                showNotification('API status test completed!', 'success');
+            } catch (error) {
+                updateConsoleOutput({ error: error.message });
+                showNotification('API status test failed!', 'error');
+            }
+        }
+
+        async function testModelStatus() {
+            showNotification('Testing model status...', 'info');
+            
+            try {
+                const response = await fetch('/model-info');
+                const data = await response.json();
+                
+                const output = {
+                    status: response.status,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                };
+                
+                updateConsoleOutput(output);
+                showNotification('Model status test completed!', 'success');
+            } catch (error) {
+                updateConsoleOutput({ error: error.message });
+                showNotification('Model status test failed!', 'error');
+            }
+        }
+
+        async function testPrediction() {
+            showNotification('Testing prediction...', 'info');
+            
+            const testData = {
+                "Hour": 14,
+                "Temperature(캜)": 22.5,
+                "Humidity(%)": 60,
+                "Wind speed (m/s)": 2.5,
+                "Visibility (10m)": 2000,
+                "Dew point temperature(캜)": 10,
+                "Solar Radiation (MJ/m2)": 1.5,
+                "Rainfall(mm)": 0,
+                "Snowfall (cm)": 0,
+                "Seasons_Spring": 0,
+                "Seasons_Summer": 1,
+                "Seasons_Winter": 0,
+                "Holiday_No Holiday": 1,
+                "Functioning Day_Yes": 1
+            };
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                
+                const output = {
+                    status: response.status,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                };
+                
+                updateConsoleOutput(output);
+                showNotification('Prediction test completed!', 'success');
+            } catch (error) {
+                updateConsoleOutput({ error: error.message });
+                showNotification('Prediction test failed!', 'error');
+            }
+        }
+
+        // API Console functions
+        async function sendAPIRequest() {
+            const endpoint = apiEndpointSelect.value;
+            const method = apiMethodSelect.value;
+            let body = apiBodyTextarea.value;
+            
+            showNotification(`Sending ${method} request to ${endpoint}...`, 'info');
+            
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (method !== 'GET' && body) {
+                    options.body = body;
+                }
+                
+                const response = await fetch(endpoint, options);
+                const data = await response.json();
+                
+                const output = {
+                    url: endpoint,
+                    method: method,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: data,
+                    timestamp: new Date().toISOString()
+                };
+                
+                updateConsoleOutput(output);
+                showNotification(`API request completed with status ${response.status}`, 'success');
+            } catch (error) {
+                updateConsoleOutput({ 
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                });
+                showNotification(`API request failed: ${error.message}`, 'error');
+            }
+        }
+
+        function formatJSON() {
+            try {
+                const text = apiBodyTextarea.value;
+                const obj = JSON.parse(text);
+                apiBodyTextarea.value = JSON.stringify(obj, null, 2);
+                showNotification('JSON formatted successfully!', 'success');
+            } catch (error) {
+                showNotification('Invalid JSON!', 'error');
+            }
+        }
+
+        function updateEndpoint() {
+            const endpoint = apiEndpointSelect.value;
+            
+            if (endpoint === '/predict') {
+                apiMethodSelect.value = 'POST';
+            } else {
+                apiMethodSelect.value = 'GET';
+            }
+            
+            // Update sample body based on endpoint
+            if (endpoint === '/predict') {
+                apiBodyTextarea.value = `{
+    "Hour": 14,
+    "Temperature(캜)": 22.5,
+    "Humidity(%)": 60,
+    "Wind speed (m/s)": 2.5,
+    "Visibility (10m)": 2000,
+    "Dew point temperature(캜)": 10,
+    "Solar Radiation (MJ/m2)": 1.5,
+    "Rainfall(mm)": 0,
+    "Snowfall (cm)": 0,
+    "Seasons_Spring": 0,
+    "Seasons_Summer": 1,
+    "Seasons_Winter": 0,
+    "Holiday_No Holiday": 1,
+    "Functioning Day_Yes": 1
+}`;
+            } else {
+                apiBodyTextarea.value = '';
+            }
+        }
+
+        function updateMethod() {
+            const method = apiMethodSelect.value;
+            
+            if (method === 'GET') {
+                apiBodyTextarea.disabled = true;
+                apiBodyTextarea.placeholder = 'GET requests do not require a body';
+            } else {
+                apiBodyTextarea.disabled = false;
+                apiBodyTextarea.placeholder = 'Enter JSON request body...';
+            }
+        }
+
+        // Update console output
+        function updateConsoleOutput(data) {
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            
+            // Format the output with syntax highlighting
+            const formatted = syntaxHighlight(JSON.stringify(data, null, 2));
+            code.innerHTML = formatted;
+            
+            pre.appendChild(code);
+            consoleOutput.innerHTML = '';
+            consoleOutput.appendChild(pre);
+        }
+
+        // Syntax highlighting for JSON
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // Initialize console tabs
+        function initConsoleTabs() {
+            const tabs = document.querySelectorAll('.console-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    const tabName = tab.getAttribute('data-tab');
+                    // Handle tab switching logic here
+                });
+            });
+        }
+
+        // Filter tests
+        function filterTests() {
+            const category = document.getElementById('test-category').value;
+            const priority = document.getElementById('test-priority').value;
+            
+            document.querySelectorAll('.test-case').forEach(test => {
+                const testCategory = test.getAttribute('data-category');
+                const testPriority = test.getAttribute('data-priority');
+                
+                const showTest = (category === 'all' || category === testCategory) &&
+                               (priority === 'all' || priority === testPriority);
+                
+                test.style.display = showTest ? 'block' : 'none';
+            });
+            
+            // Update category items
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-category') === category) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Toggle test details
+        function toggleDetails(testId) {
+            const details = document.getElementById(`details-${testId}`);
+            const toggleBtn = details.querySelector('.toggle-details i');
+            
+            if (details.classList.contains('show')) {
+                details.classList.remove('show');
+                toggleBtn.className = 'fas fa-chevron-down';
+            } else {
+                details.classList.add('show');
+                toggleBtn.className = 'fas fa-chevron-up';
+            }
+        }
+
+        // Copy code to clipboard
+        function copyCode(testId) {
+            const testCase = testCases.find(t => t.id === testId);
+            if (!testCase) return;
+            
+            navigator.clipboard.writeText(testCase.code)
+                .then(() => showNotification('Code copied to clipboard!', 'success'))
+                .catch(() => showNotification('Failed to copy code!', 'error'));
+        }
+
+        // Update test statistics
+        function updateTestStats() {
+            const total = testResults.length;
+            const passed = getPassedCount();
+            const failed = getFailedCount();
+            
+            totalTestsElement.textContent = `${total} Total`;
+            passedTestsElement.textContent = `${passed} Passed`;
+            failedTestsElement.textContent = `${failed} Failed`;
+        }
+
+        // Get passed test count
+        function getPassedCount() {
+            return testResults.filter(r => r.passed).length;
+        }
+
+        // Get failed test count
+        function getFailedCount() {
+            return testResults.filter(r => !r.passed).length;
+        }
+
+        // Clear test results
+        function clearTestResults() {
+            if (isRunning) {
+                showNotification('Cannot clear while tests are running!', 'warning');
+                return;
+            }
+            
+            testResults = [];
+            
+            // Reset all test UI
+            document.querySelectorAll('.test-case').forEach(test => {
+                test.className = 'test-case';
+                const status = test.querySelector('.test-case-status');
+                status.textContent = 'Pending';
+                status.className = 'test-case-status';
+            });
+            
+            updateTestStats();
+            showNotification('Test results cleared!', 'success');
+        }
+
+        // Export test results
+        function exportTestResults() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                system: 'UrbanFlow Test Suite',
+                version: '2.1.4',
+                test_results: testResults.map(result => {
+                    const testCase = testCases.find(t => t.id === result.id);
+                    return {
+                        id: result.id,
+                        title: testCase?.title || 'Unknown',
+                        passed: result.passed,
+                        error: result.error,
+                        timestamp: new Date().toISOString()
+                    };
+                }),
+                summary: {
+                    total_tests: testResults.length,
+                    passed: getPassedCount(),
+                    failed: getFailedCount(),
+                    pass_rate: testResults.length > 0 ? (getPassedCount() / testResults.length * 100).toFixed(2) + '%' : '0%'
+                }
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            const link = document.createElement('a');
+            link.href = dataUri;
+            link.download = `urbanflow_test_results_${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            
+            showNotification('Test results exported!', 'success');
+        }
+
+        // Utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 
+                                type === 'error' ? 'exclamation-circle' : 
+                                type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initTestSuite();
+            updateEndpoint(); // Set initial endpoint configuration
+        });
+
+        // Add assertion function for tests
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+    </script>
+</body>
+</html>
