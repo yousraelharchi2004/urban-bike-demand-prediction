@@ -262,6 +262,14 @@ def prepare_input_with_engineered_features(input_data):
     else:
         df = input_data
     
+    # FIX: Handle both temperature field formats
+    if 'Temperature(캜)' in df.columns and 'Temperature(°C)' not in df.columns:
+        df['Temperature(°C)'] = df['Temperature(캜)']
+    
+    # FIX: Handle both dew point field formats
+    if 'Dew point temperature(캜)' in df.columns and 'Dew point temperature(°C)' not in df.columns:
+        df['Dew point temperature(°C)'] = df['Dew point temperature(캜)']
+    
     # Convert day_of_week to integer (fix for string input from form)
     if 'day_of_week' in df.columns:
         try:
@@ -302,7 +310,7 @@ def prepare_input_with_engineered_features(input_data):
     
     df['rush_hour_intensity'] = df['Hour'].apply(rush_hour_intensity)
     
-    # Interaction terms
+    # Interaction terms - USE Temperature(°C) which we now have
     df['temp_hour_interaction'] = df['Temperature(°C)'] * df['Hour']
     df['temp_humidity_interaction'] = df['Temperature(°C)'] * df['Humidity(%)']
     
@@ -373,7 +381,7 @@ def prepare_input_with_engineered_features(input_data):
     return df
 
 def preprocess_with_engineered_features(input_data, model=None):
-    """Preprocess with all engineered features (35+ features) for improved model"""
+    """Preprocess with all engineered features (38 features) for improved model"""
     # First apply feature engineering
     engineered_df = prepare_input_with_engineered_features(input_data)
     
@@ -381,22 +389,39 @@ def preprocess_with_engineered_features(input_data, model=None):
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
         print(f"📋 Using model.feature_names_in_ for improved model: {len(expected_features)} features")
+        print(f"📋 Feature order from model: {expected_features}")
     else:
         expected_features = get_engineered_feature_list()
         print(f"📋 Using default feature list for improved model: {len(expected_features)} features")
     
     print(f"📋 Improved model expects {len(expected_features)} features")
     
-    # Create a new DataFrame with exactly the expected features
-    processed_df = pd.DataFrame()
+    # Debug: Check which features are missing
+    missing_features = [f for f in expected_features if f not in engineered_df.columns]
+    if missing_features:
+        print(f"⚠️ Missing features that will be added with defaults: {missing_features}")
+    
+    # Create a new DataFrame with exactly the expected features in the EXACT order
+    processed_df = pd.DataFrame(index=engineered_df.index)
     
     for feature in expected_features:
         if feature in engineered_df.columns:
             processed_df[feature] = engineered_df[feature]
         else:
-            # Add missing column with default value 0
-            processed_df[feature] = 0
-            print(f"⚠️ Missing column '{feature}' - added with value 0")
+            # Add missing column with appropriate default value
+            if feature in ['demand_lag_24', 'demand_lag_168', 'demand_rolling_3h', 'demand_rolling_24h']:
+                processed_df[feature] = 500  # Default demand value
+            elif feature in ['heat_index', 'wind_chill']:
+                # Use temperature from engineered_df if available
+                if 'Temperature(°C)' in engineered_df.columns:
+                    processed_df[feature] = engineered_df['Temperature(°C)']
+                else:
+                    processed_df[feature] = 20
+            elif feature in ['temp_deviation_from_season']:
+                processed_df[feature] = 0  # Default deviation
+            else:
+                processed_df[feature] = 0
+            print(f"➕ Added missing column '{feature}' with default value")
     
     # Ensure correct data types
     for col in processed_df.columns:
@@ -405,19 +430,30 @@ def preprocess_with_engineered_features(input_data, model=None):
     # Fill any NaN values with 0
     processed_df = processed_df.fillna(0)
     
-    # Ensure columns are in the exact order expected by the model
-    if model is not None and hasattr(model, 'feature_names_in_'):
-        processed_df = processed_df[list(model.feature_names_in_)]
-    
+    # The DataFrame is already in the correct order because we built it sequentially
     print(f"✅ Processed data shape: {processed_df.shape}")
-    print(f"✅ Processed columns: {list(processed_df.columns)}")
+    print(f"✅ Processed columns (in exact order): {list(processed_df.columns)}")
     print(f"✅ Total engineered features: {len(processed_df.columns)}")
     
     return processed_df
 
 def preprocess_input_improved(input_data):
     """Alias for preprocess_with_engineered_features for compatibility"""
-    return preprocess_with_engineered_features(input_data)
+    # First, handle field name mapping
+    if isinstance(input_data, dict):
+        df = pd.DataFrame([input_data])
+    else:
+        df = input_data
+    
+    # Map Korean temperature to degree symbol if needed
+    if 'Temperature(캜)' in df.columns and 'Temperature(°C)' not in df.columns:
+        df['Temperature(°C)'] = df['Temperature(캜)']
+    
+    # Map Korean dew point to degree symbol if needed
+    if 'Dew point temperature(캜)' in df.columns and 'Dew point temperature(°C)' not in df.columns:
+        df['Dew point temperature(°C)'] = df['Dew point temperature(캜)']
+    
+    return preprocess_with_engineered_features(df)
 
 def prepare_input_with_advanced_features(input_data):
     """
@@ -729,7 +765,7 @@ def preprocess_with_advanced_features(input_data, model=None):
     return processed_df
 
 def get_engineered_feature_list():
-    """Return the list of features expected by the improved model"""
+    """Return the list of ALL 38 features expected by the improved model in EXACT ORDER"""
     expected_features = [
         'Hour',
         'Temperature(°C)',
@@ -740,11 +776,6 @@ def get_engineered_feature_list():
         'Solar Radiation (MJ/m2)',
         'Rainfall(mm)',
         'Snowfall (cm)',
-        'Seasons_Spring',
-        'Seasons_Summer',
-        'Seasons_Winter',
-        'Holiday_No Holiday',
-        'Functioning Day_Yes',
         'hour_squared',
         'hour_cubed',
         'is_peak_hour',
@@ -754,17 +785,29 @@ def get_engineered_feature_list():
         'temp_hour_interaction',
         'temp_humidity_interaction',
         'wind_chill',
+        'heat_index',
         'weather_severity_score',
         'comfort_index',
+        'demand_lag_24',
+        'demand_lag_168',
+        'demand_rolling_3h',
+        'demand_rolling_24h',
+        'temp_deviation_from_season',
+        'is_daylight',
+        'workday_hour_interaction',
         'hour_category_evening',
         'hour_category_morning',
         'hour_category_night',
         'weather_category_good',
         'weather_category_perfect',
         'weather_category_poor',
-        'weather_category_severe'
+        'weather_category_severe',
+        'Seasons_Spring',
+        'Seasons_Summer',
+        'Seasons_Winter'
     ]
     
+    print(f"📋 Improved model expects {len(expected_features)} features in specific order")
     return expected_features
 
 def get_advanced_feature_list():
@@ -845,10 +888,66 @@ def validate_input(data, model_type='original'):
     """
     errors = []
     
+    # Check for required fields with field name mapping
+    required_fields = []
+    
+    if model_type == 'original':
+        required_fields = [
+            'Hour',
+            'Temperature(캜)',  # Original model uses Korean character
+            'Humidity(%)',
+            'Wind speed (m/s)',
+            'Visibility (10m)',
+            'Dew point temperature(캜)',  # Original model uses Korean character
+            'Solar Radiation (MJ/m2)',
+            'Rainfall(mm)',
+            'Snowfall (cm)'
+        ]
+    elif model_type == 'improved':
+        # Accept EITHER format for improved model
+        required_fields = [
+            'Hour',
+            'Humidity(%)',
+            'Wind speed (m/s)',
+            'Visibility (10m)',
+            'Solar Radiation (MJ/m2)',
+            'Rainfall(mm)',
+            'Snowfall (cm)',
+            'day_of_week'  # Additional required for improved model
+        ]
+        # Temperature can be in either format
+        if 'Temperature(°C)' not in data and 'Temperature(캜)' not in data:
+            errors.append('Temperature is required (use Temperature(°C) or Temperature(캜))')
+        
+        # Dew point can be in either format
+        if 'Dew point temperature(°C)' not in data and 'Dew point temperature(캜)' not in data:
+            errors.append('Dew point temperature is required (use Dew point temperature(°C) or Dew point temperature(캜))')
+    elif model_type == 'advanced' or model_type == 'xgboost':
+        required_fields = [
+            'Hour',
+            'Humidity(%)',
+            'Wind speed (m/s)',
+            'Visibility (10m)',
+            'Solar Radiation (MJ/m2)',
+            'Rainfall(mm)',
+            'Snowfall (cm)',
+            'day_of_week'
+        ]
+        # Advanced models accept either temperature format
+        if 'Temperature(°C)' not in data and 'Temperature(캜)' not in data:
+            errors.append('Temperature is required (use Temperature(°C) or Temperature(캜))')
+        
+        # Advanced models accept either dew point format
+        if 'Dew point temperature(°C)' not in data and 'Dew point temperature(캜)' not in data:
+            errors.append('Dew point temperature is required (use Dew point temperature(°C) or Dew point temperature(캜))')
+    
+    # Check other required fields
+    for field in required_fields:
+        if field not in data:
+            errors.append(f'{field} is required')
+    
     # Common validations for all models
-    if 'Hour' not in data:
-        errors.append('Hour is required')
-    else:
+    if 'Hour' in data:
         try:
             hour = float(data.get('Hour', -1))
             if not (0 <= hour <= 23):
@@ -856,13 +955,16 @@ def validate_input(data, model_type='original'):
         except (ValueError, TypeError):
             errors.append('Hour must be a number')
     
-    # Check for Temperature - accept either format
-    if 'Temperature(°C)' not in data and 'Temperature(캜)' not in data:
-        errors.append('Temperature is required (use Temperature(°C) or Temperature(캜))')
+    # Check temperature (accept any format)
+    if 'Temperature(°C)' in data or 'Temperature(캜)' in data:
+        try:
+            temp = float(data.get('Temperature(°C)', data.get('Temperature(캜)', -100)))
+            if not (-20 <= temp <= 50):
+                errors.append('Temperature must be between -20°C and 50°C')
+        except (ValueError, TypeError):
+            errors.append('Temperature must be a number')
     
-    if 'Humidity(%)' not in data:
-        errors.append('Humidity is required')
-    else:
+    if 'Humidity(%)' in data:
         try:
             humidity = float(data.get('Humidity(%)', -1))
             if not (0 <= humidity <= 100):
@@ -870,18 +972,16 @@ def validate_input(data, model_type='original'):
         except (ValueError, TypeError):
             errors.append('Humidity must be a number')
     
-    # FIXED: Validation rules must match model feature requirements
-    # Original model doesn't need day_of_week
-    if model_type in ['improved', 'advanced', 'xgboost']:
-        if 'day_of_week' not in data:
-            errors.append('day_of_week is required for feature-engineered models')
-        else:
-            try:
-                day = int(float(data.get('day_of_week', -1)))
-                if not (0 <= day <= 6):
-                    errors.append('day_of_week must be between 0 (Monday) and 6 (Sunday)')
-            except (TypeError, ValueError):
-                errors.append('day_of_week must be an integer between 0 and 6')
+    # Validate day_of_week for models that need it
+    if model_type in ['improved', 'advanced', 'xgboost'] and 'day_of_week' in data:
+        try:
+            # Handle string input from form
+            day_str = str(data.get('day_of_week', '0'))
+            day = int(float(day_str))  # Convert string like "0" or float like 0.0 to int
+            if not (0 <= day <= 6):
+                errors.append('day_of_week must be between 0 (Monday) and 6 (Sunday)')
+        except (TypeError, ValueError):
+            errors.append('day_of_week must be an integer between 0 and 6')
     
     return errors
 

@@ -8,11 +8,9 @@ const confidenceBadge = document.getElementById('confidence-badge');
 const responseTimeElement = document.getElementById('response-time');
 const btnLoader = document.getElementById('btn-loader');
 const predictBtn = document.getElementById('predict-btn');
-const modelSelector = document.getElementById('model-selector');
-const compareBtn = document.getElementById('compare-btn');
 
 // Global variables
-let selectedModel = 'original'; // Changed from 'random_forest' to 'original'
+let selectedModel = 'original';
 let availableModels = {};
 let currentPredictionData = null;
 
@@ -76,14 +74,12 @@ function showNotification(message, type = 'info') {
 // Format model name for display
 function formatModelName(modelName) {
     const names = {
-        'original': 'Random Forest (Original)',
-        'improved': 'Enhanced Random Forest',
-        'random_forest': 'Random Forest',
-        'xgboost': 'XGBoost',
-        'lightgbm': 'LightGBM',
-        'gradient_boosting': 'Gradient Boosting'
+        'original': 'Standard Model',
+        'improved': 'Feature-Engineered',
+        'advanced': 'Advanced RF',
+        'xgboost': 'XGBoost'
     };
-    return names[modelName] || modelName.replace('_', ' ').toUpperCase();
+    return names[modelName] || modelName;
 }
 
 // Get season encoding for form submission
@@ -108,8 +104,8 @@ function validateForm(formData) {
         errors.push('Hour must be between 0 and 23');
     }
     
-    // Validate temperature - FIXED: Use Korean character field name
-    const temp = parseFloat(formData['Temperature(캜)']);
+    // Validate temperature
+    const temp = parseFloat(formData['Temperature(캜)'] || formData['Temperature']);
     if (isNaN(temp) || temp < -20 || temp > 40) {
         errors.push('Temperature must be between -20°C and 40°C');
     }
@@ -134,7 +130,7 @@ function updatePredictionResults(data, responseTime) {
     }
     
     // Update prediction count
-    const prediction = data.predicted_rented_bikes || data.rounded || Math.round(data.prediction);
+    const prediction = data.predicted_rented_bikes || data.rounded || Math.round(data.prediction || 0);
     if (predictionCount) {
         predictionCount.textContent = prediction;
         
@@ -147,7 +143,7 @@ function updatePredictionResults(data, responseTime) {
         document.getElementById('detail-model').textContent = formatModelName(data.model_type);
     }
     if (document.getElementById('detail-features')) {
-        document.getElementById('detail-features').textContent = data.model_info?.features_used || '14';
+        document.getElementById('detail-features').textContent = data.input_summary?.features_used || '14';
     }
     if (responseTimeElement) {
         responseTimeElement.textContent = `${responseTime}s`;
@@ -174,16 +170,19 @@ function updatePredictionResults(data, responseTime) {
     const modelTypeBadge = document.getElementById('model-type-badge');
     if (modelTypeBadge) {
         modelTypeBadge.textContent = formatModelName(data.model_type);
-        modelTypeBadge.className = `model-badge ${data.model_type.replace('_', '-')}`;
-    }
-    
-    // Update model metrics if available
-    if (data.model_metrics) {
-        updateModelMetrics(data.model_metrics);
+        modelTypeBadge.className = `model-badge ${data.model_type || 'original'}`;
     }
     
     // Store current prediction data
     currentPredictionData = data;
+    
+    // Update model performance metrics if available in response
+    if (data.model_metrics) {
+        updateModelPerformanceMetrics(data.model_metrics);
+    } else {
+        // Otherwise fetch fresh metrics
+        fetchModelPerformanceMetrics();
+    }
 }
 
 // Animate counter
@@ -201,47 +200,29 @@ function animateCounter(element, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-// Update model metrics display
-function updateModelMetrics(metrics) {
-    const metricElements = {
-        'metric-r2': document.getElementById('metric-r2'),
-        'metric-rmse': document.getElementById('metric-rmse'),
-        'metric-mae': document.getElementById('metric-mae'),
-        'metric-gap': document.getElementById('metric-gap')
-    };
-    
-    for (const [id, element] of Object.entries(metricElements)) {
-        if (element && metrics[id.replace('metric-', '')]) {
-            const value = metrics[id.replace('metric-', '')];
-            element.textContent = typeof value === 'number' ? value.toFixed(2) : value;
-        }
-    }
-}
-
 // Select model function
 function selectModel(modelName) {
     selectedModel = modelName;
-    
-    // Update model selector dropdown
-    if (modelSelector) {
-        modelSelector.value = modelName;
-    }
     
     // Update model option indicators
     document.querySelectorAll('.model-option').forEach(option => {
         const indicator = option.querySelector('.selection-indicator');
         if (option.getAttribute('data-model') === modelName) {
             indicator.classList.add('active');
+            option.classList.add('active');
         } else {
             indicator.classList.remove('active');
+            option.classList.remove('active');
         }
     });
     
     // Update UI
     updateModelUI();
     
-    // Show notification
-    showNotification(`Selected model: ${formatModelName(modelName)}`, 'success');
+    // Refresh metrics to show the selected model's performance
+    fetchModelPerformanceMetrics();
+    
+    showNotification(`${formatModelName(modelName)} selected`, 'info');
 }
 
 // Update UI based on selected model
@@ -252,10 +233,8 @@ function updateModelUI() {
     const colors = {
         'original': 'linear-gradient(135deg, #4361ee, #3a56d4)',
         'improved': 'linear-gradient(135deg, #7209b7, #3a0ca3)',
-        'random_forest': 'linear-gradient(135deg, #4361ee, #3a56d4)',
-        'xgboost': 'linear-gradient(135deg, #f72585, #b5179e)',
-        'lightgbm': 'linear-gradient(135deg, #4cc9f0, #4895ef)',
-        'gradient_boosting': 'linear-gradient(135deg, #2a9d8f, #1d7873)'
+        'advanced': 'linear-gradient(135deg, #06d6a0, #1b9e5c)',
+        'xgboost': 'linear-gradient(135deg, #f72585, #b5179e)'
     };
     
     if (predictBtn) {
@@ -266,94 +245,167 @@ function updateModelUI() {
     const modelIndicator = document.getElementById('model-indicator');
     if (modelIndicator) {
         modelIndicator.textContent = modelName;
-        modelIndicator.className = `model-indicator ${selectedModel.replace('_', '-')}`;
-    }
-    
-    // Update insight
-    const insightModel = document.getElementById('insight-model');
-    if (insightModel) {
-        insightModel.textContent = modelName;
+        modelIndicator.className = `model-indicator ${selectedModel}`;
     }
     
     // Update model badge in results
     const modelTypeBadge = document.getElementById('model-type-badge');
     if (modelTypeBadge) {
         modelTypeBadge.textContent = modelName;
-        modelTypeBadge.className = `model-badge ${selectedModel.replace('_', '-')}`;
-    }
-    
-    // Load model metrics if available
-    if (availableModels[selectedModel]) {
-        updateModelMetrics(availableModels[selectedModel]);
+        modelTypeBadge.className = `model-badge ${selectedModel}`;
     }
 }
 
-// Load available models from API
-async function loadAvailableModels() {
-    try {
-        const response = await fetch('/api/models');
-        const data = await response.json();
+// Update model performance metrics
+function updateModelPerformanceMetrics(metrics) {
+    console.log('📊 ========== METRICS UPDATE START ==========');
+    console.log('📊 Raw metrics received:', metrics);
+    console.log('📊 Selected model:', selectedModel);
+    
+    // Check if metrics exists
+    if (!metrics) {
+        console.log('❌ No metrics data available');
+        return;
+    }
+    
+    // Log all available keys in metrics
+    console.log('📊 Available keys in metrics:', Object.keys(metrics));
+    
+    // Determine which model's metrics to show based on selected model
+    let r2Value = null;
+    let rmseValue = null;
+    let maeValue = null;
+    
+    if (selectedModel === 'advanced' && metrics.advanced_model_metrics && Object.keys(metrics.advanced_model_metrics).length > 0) {
+        // Show advanced model metrics
+        r2Value = metrics.advanced_model_metrics.test_r2;
+        rmseValue = metrics.advanced_model_metrics.test_rmse;
+        maeValue = metrics.advanced_model_metrics.test_mae;
+        console.log('📊 Using advanced model metrics:', {r2Value, rmseValue, maeValue});
+    } else if (selectedModel === 'xgboost' && metrics.xgboost_model_metrics && Object.keys(metrics.xgboost_model_metrics).length > 0) {
+        // Show XGBoost metrics if available
+        r2Value = metrics.xgboost_model_metrics.test_r2;
+        rmseValue = metrics.xgboost_model_metrics.test_rmse;
+        maeValue = metrics.xgboost_model_metrics.test_mae;
+        console.log('📊 Using XGBoost model metrics:', {r2Value, rmseValue, maeValue});
+    } else if (selectedModel === 'improved' && metrics.improved_model_metrics) {
+        // Show improved model metrics
+        r2Value = metrics.improved_model_metrics.r2 || 0.899;
+        rmseValue = metrics.improved_model_metrics.rmse || 194.59;
+        maeValue = metrics.improved_model_metrics.mae || 150.2;
+        console.log('📊 Using improved model metrics:', {r2Value, rmseValue, maeValue});
+    } else {
+        // Show base/original model metrics
+        r2Value = metrics.r2_score;
+        rmseValue = metrics.root_mean_squared_error;
+        maeValue = metrics.mean_absolute_error;
         
-        if (data.success && data.models) {
-            availableModels = data.models;
-            
-            // Update models available count
-            const availableCount = Object.values(availableModels).filter(m => m.available).length;
-            const modelsAvailableElement = document.getElementById('models-available');
-            if (modelsAvailableElement) {
-                modelsAvailableElement.textContent = availableCount;
-            }
-            
-            // Update current model metrics
-            if (availableModels[selectedModel]) {
-                updateModelMetrics(availableModels[selectedModel]);
-                
-                // Update sidebar
-                const currentModelName = document.getElementById('current-model-name');
-                const currentModelR2 = document.getElementById('current-model-r2');
-                
-                if (currentModelName) {
-                    currentModelName.textContent = formatModelName(selectedModel);
-                }
-                if (currentModelR2) {
-                    currentModelR2.textContent = availableModels[selectedModel].r2?.toFixed(3) || 'N/A';
-                }
-            }
-            
-            // Update model status
-            updateModelStatus();
-            
-            return true;
-        }
-    } catch (error) {
-        console.error('Error loading models:', error);
+        console.log('📊 Using base model metrics from API:', {r2Value, rmseValue, maeValue});
     }
-    return false;
-}
-
-// Update model status
-function updateModelStatus() {
-    const statusText = document.getElementById('model-status-text');
-    const statusIndicator = document.querySelector('.model-status-badge .status-indicator');
     
-    if (availableModels[selectedModel]?.available) {
-        if (statusText) {
-            statusText.textContent = 'Model Loaded';
-        }
-        if (statusIndicator) {
-            statusIndicator.className = 'status-indicator active';
+    // Get DOM elements
+    const r2Element = document.getElementById('metric-r2');
+    const rmseElement = document.getElementById('metric-rmse');
+    const maeElement = document.getElementById('metric-mae');
+    const gapElement = document.getElementById('metric-gap');
+    
+    console.log('📊 DOM Elements found:', {
+        r2: !!r2Element,
+        rmse: !!rmseElement,
+        mae: !!maeElement,
+        gap: !!gapElement
+    });
+    
+    // Update R² Score
+    if (r2Element) {
+        const oldValue = r2Element.textContent;
+        if (r2Value !== null && r2Value !== undefined) {
+            r2Element.textContent = typeof r2Value === 'number' ? r2Value.toFixed(3) : r2Value;
+            console.log(`✅ R² updated from "${oldValue}" to "${r2Element.textContent}"`);
+        } else {
+            console.warn('⚠️ R² value is null/undefined, keeping existing value:', oldValue);
         }
     } else {
-        if (statusText) {
-            statusText.textContent = 'Model Not Available';
-        }
-        if (statusIndicator) {
-            statusIndicator.className = 'status-indicator';
-        }
+        console.error('❌ R² element not found! ID: metric-r2');
     }
+    
+    // Update RMSE
+    if (rmseElement) {
+        const oldValue = rmseElement.textContent;
+        if (rmseValue !== null && rmseValue !== undefined) {
+            rmseElement.textContent = typeof rmseValue === 'number' ? rmseValue.toFixed(1) : rmseValue;
+            console.log(`✅ RMSE updated from "${oldValue}" to "${rmseElement.textContent}"`);
+        } else {
+            console.warn('⚠️ RMSE value is null/undefined, keeping existing value:', oldValue);
+        }
+    } else {
+        console.error('❌ RMSE element not found! ID: metric-rmse');
+    }
+    
+    // Update MAE
+    if (maeElement) {
+        const oldValue = maeElement.textContent;
+        if (maeValue !== null && maeValue !== undefined) {
+            maeElement.textContent = typeof maeValue === 'number' ? maeValue.toFixed(1) : maeValue;
+            console.log(`✅ MAE updated from "${oldValue}" to "${maeElement.textContent}"`);
+        } else {
+            console.warn('⚠️ MAE value is null/undefined, keeping existing value:', oldValue);
+        }
+    } else {
+        console.error('❌ MAE element not found! ID: metric-mae');
+    }
+    
+    // Update Accuracy Gap (1 - R²)
+    if (gapElement) {
+        const oldValue = gapElement.textContent;
+        if (r2Value !== null && r2Value !== undefined) {
+            const gap = ((1 - r2Value) * 100).toFixed(1) + '%';
+            gapElement.textContent = gap;
+            console.log(`✅ Accuracy Gap updated from "${oldValue}" to "${gap}"`);
+        } else {
+            console.warn('⚠️ Cannot calculate gap - R² is null/undefined, keeping existing value:', oldValue);
+        }
+    } else {
+        console.error('❌ Gap element not found! ID: metric-gap');
+    }
+    
+    console.log('📊 ========== METRICS UPDATE END ==========');
 }
 
-// Form submission handler - FIXED: Added debug logging
+// Fetch model performance metrics from API
+async function fetchModelPerformanceMetrics() {
+    console.log('📡 ========== FETCHING METRICS ==========');
+    
+    try {
+        console.log('📡 Making request to /metrics...');
+        const response = await fetch('/metrics');
+        console.log('📡 Response status:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('📡 RAW API RESPONSE:', data);
+            
+            if (data.metrics) {
+                console.log('📡 Metrics object found');
+                updateModelPerformanceMetrics(data.metrics);
+                return data.metrics;
+            } else if (data.success && data.metrics) {
+                console.log('📡 Metrics in success wrapper');
+                updateModelPerformanceMetrics(data.metrics);
+                return data.metrics;
+            } else {
+                console.warn('📡 No metrics found in response');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error fetching model performance metrics:', error);
+    }
+    
+    console.log('📡 ========== FETCH COMPLETE ==========');
+    return null;
+}
+
+// Form submission handler
 if (form) {
     console.log('✅ Form found, adding event listener');
     
@@ -367,33 +419,35 @@ if (form) {
         showLoading();
         
         try {
-            // Collect form data
+            // Collect form data with CORRECT field names matching the backend
             const formData = {};
-            const formElements = this.elements;
             
-            // Collect all form data
-            for (let element of formElements) {
-                if (element.name && element.value !== undefined && element.value !== '') {
-                    // Handle number inputs
-                    if (element.type === 'number') {
-                        formData[element.name] = parseFloat(element.value);
-                    } 
-                    // Handle checkbox toggles
-                    else if (element.type === 'checkbox') {
-                        // For checkboxes, use 1 for checked, 0 for unchecked
-                        formData[element.name] = element.checked ? 1 : 0;
-                    }
-                    // Handle all other inputs
-                    else {
-                        formData[element.name] = element.value;
-                    }
-                }
-            }
+            // Get values from the form with the correct field names from HTML
+            formData['Hour'] = parseInt(document.getElementById('Hour')?.value || 14);
+            formData['Temperature(캜)'] = parseFloat(document.getElementById('Temperature(캜)')?.value || 22.5);
+            formData['Humidity(%)'] = parseFloat(document.getElementById('Humidity(%)')?.value || 60);
+            formData['Wind speed (m/s)'] = parseFloat(document.getElementById('Wind speed (m/s)')?.value || 2.5);
+            formData['Visibility (10m)'] = parseInt(document.getElementById('Visibility (10m)')?.value || 2000);
+            formData['Rainfall(mm)'] = parseFloat(document.getElementById('Rainfall(mm)')?.value || 0);
+            formData['Snowfall (cm)'] = parseFloat(document.getElementById('Snowfall (cm)')?.value || 0);
+            formData['Solar Radiation (MJ/m2)'] = parseFloat(document.getElementById('Solar Radiation (MJ/m2)')?.value || 1.5);
+            formData['Dew point temperature(캜)'] = parseFloat(document.getElementById('Dew point temperature(캜)')?.value || 10);
             
-            // Add season encoding
-            const season = document.getElementById('seasons')?.value || 'Summer';
-            const seasonEncoding = getSeasonEncoding(season);
+            // Get season from active season option
+            const activeSeason = document.querySelector('.season-option.active')?.getAttribute('data-value') || 'Summer';
+            const seasonEncoding = getSeasonEncoding(activeSeason);
             Object.assign(formData, seasonEncoding);
+            
+            // Get holiday and functioning day values from hidden inputs
+            formData['Holiday_No Holiday'] = parseInt(document.getElementById('Holiday_No Holiday')?.value || 1);
+            formData['Holiday_Holiday'] = parseInt(document.getElementById('Holiday_Holiday')?.value || 0);
+            formData['Functioning Day_Yes'] = parseInt(document.getElementById('Functioning Day_Yes')?.value || 1);
+            formData['Functioning Day_No'] = parseInt(document.getElementById('Functioning Day_No')?.value || 0);
+            
+            // Add day of week if available
+            if (document.getElementById('day_of_week')) {
+                formData['day_of_week'] = parseInt(document.getElementById('day_of_week')?.value || 0);
+            }
             
             console.log('📤 Form data to send:', formData);
             
@@ -406,7 +460,13 @@ if (form) {
             }
             
             // Make prediction request with selected model
-            const url = `/predict?model_type=${selectedModel}`;
+            let url = `/predict?model_type=${selectedModel}`;
+            if (selectedModel === 'advanced' || selectedModel === 'xgboost') {
+                url += '&calculate_features=true';
+                console.log(`🧮 Auto-calculation enabled for ${selectedModel} model`);
+            }else if (selectedModel === 'improved') {
+                console.log(`📊 Improved model will calculate all 38 features on backend`);
+            }
             console.log(`📡 Making request to: ${url}`);
             
             const response = await fetch(url, {
@@ -429,7 +489,7 @@ if (form) {
                 updatePredictionResults(data, responseTime);
                 
                 // Update predictions today count
-                updatePredictionsCount();
+                updateDashboardMetrics();
                 
                 showNotification('Prediction generated successfully!', 'success');
             } else {
@@ -447,282 +507,169 @@ if (form) {
     console.error('❌ Form not found! Check if element with id="prediction-form" exists');
 }
 
-// Update predictions count
-async function updatePredictionsCount() {
+// Update dashboard metrics
+async function updateDashboardMetrics() {
+    console.log('📊 updateDashboardMetrics called');
+    
     try {
-        const response = await fetch('/metrics');
-        const data = await response.json();
+        // Get elements by their specific IDs
+        const modelAccuracyEl = document.getElementById('model-accuracy');
+        const predictionsTodayEl = document.getElementById('predictions-today');
+        const avgErrorEl = document.getElementById('avg-error');
+        const modelsAvailableEl = document.getElementById('models-available');
         
-        if (data.success) {
-            const predictionsTodayElement = document.getElementById('predictions-today');
-            if (predictionsTodayElement) {
-                predictionsTodayElement.textContent = data.metrics.predictions_today || 0;
-            }
-        }
-    } catch (error) {
-        console.error('Error updating predictions count:', error);
-    }
-}
-
-// Compare all models - FIXED: Use correct endpoint
-async function compareAllModels() {
-    try {
-        const response = await fetch('/predict/compare', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                Hour: 14,
-                Temperature: 22.5,
-                Humidity: 60
-            })
+        console.log('Found elements:', {
+            modelAccuracy: !!modelAccuracyEl,
+            predictionsToday: !!predictionsTodayEl,
+            avgError: !!avgErrorEl,
+            modelsAvailable: !!modelsAvailableEl
         });
-        const data = await response.json();
         
-        if (data.success && data.results) {
-            // Update comparison table
-            if (data.results.comparison) {
-                showNotification(`Models compared: Original vs Improved`, 'info');
-            }
-        } else {
-            showNotification('Could not compare models', 'error');
+        // Show loading states
+        document.querySelectorAll('.metric-loading').forEach(el => {
+            el.style.display = 'inline';
+        });
+        document.querySelectorAll('.metric-value').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        console.log('📡 Fetching from /api/dashboard-metrics...');
+        const response = await fetch('/api/dashboard-metrics');
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    } catch (error) {
-        console.error('Error comparing models:', error);
-        showNotification('Could not compare models', 'error');
-    }
-}
-
-// Quick compare function
-async function compareModels() {
-    if (!form || !form.checkValidity()) {
-        showNotification('Please fill all required fields first', 'warning');
-        return;
-    }
-    
-    showLoading();
-    
-    try {
-        // Collect form data
-        const formData = {};
-        const formElements = form.elements;
         
-        for (let element of formElements) {
-            if (element.name && element.value !== undefined && element.value !== '') {
-                if (element.type === 'number') {
-                    formData[element.name] = parseFloat(element.value);
-                } else {
-                    formData[element.name] = element.value;
+        const data = await response.json();
+        console.log('Dashboard metrics data received:', data);
+        
+        if (data.success && data.metrics) {
+            console.log('✅ Updating metrics with:', data.metrics);
+            
+            // Update Model Accuracy
+            if (modelAccuracyEl) {
+                const loadingEl = modelAccuracyEl.querySelector('.metric-loading');
+                const valueEl = modelAccuracyEl.querySelector('.metric-value');
+                if (loadingEl && valueEl) {
+                    loadingEl.style.display = 'none';
+                    valueEl.style.display = 'inline';
+                    valueEl.textContent = data.metrics.model_accuracy + '%';
+                    console.log('✅ Updated model accuracy to:', data.metrics.model_accuracy + '%');
                 }
             }
+            
+            // Update Predictions Today
+            if (predictionsTodayEl) {
+                const loadingEl = predictionsTodayEl.querySelector('.metric-loading');
+                const valueEl = predictionsTodayEl.querySelector('.metric-value');
+                if (loadingEl && valueEl) {
+                    loadingEl.style.display = 'none';
+                    valueEl.style.display = 'inline';
+                    valueEl.textContent = data.metrics.predictions_today;
+                    console.log('✅ Updated predictions today to:', data.metrics.predictions_today);
+                }
+            }
+            
+            // Update Avg Error
+            if (avgErrorEl) {
+                const loadingEl = avgErrorEl.querySelector('.metric-loading');
+                const valueEl = avgErrorEl.querySelector('.metric-value');
+                if (loadingEl && valueEl) {
+                    loadingEl.style.display = 'none';
+                    valueEl.style.display = 'inline';
+                    valueEl.textContent = '±' + data.metrics.avg_error + ' bikes';
+                    console.log('✅ Updated avg error to:', '±' + data.metrics.avg_error + ' bikes');
+                }
+            }
+            
+            // Update Models Available
+            if (modelsAvailableEl) {
+                const loadingEl = modelsAvailableEl.querySelector('.metric-loading');
+                const valueEl = modelsAvailableEl.querySelector('.metric-value');
+                if (loadingEl && valueEl) {
+                    loadingEl.style.display = 'none';
+                    valueEl.style.display = 'inline';
+                    valueEl.textContent = data.metrics.models_available;
+                    console.log('✅ Updated models available to:', data.metrics.models_available);
+                }
+            }
+        } else {
+            console.warn('⚠️ Dashboard metrics API returned unsuccessful response');
         }
-        
-        // Add season encoding
-        const season = document.getElementById('seasons')?.value || 'Summer';
-        const seasonEncoding = getSeasonEncoding(season);
-        Object.assign(formData, seasonEncoding);
-        
-        const response = await fetch('/predict/compare', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData)
+    } catch (error) {
+        console.error('❌ Error updating dashboard metrics:', error);
+        // Show fallback values
+        document.querySelectorAll('.metric-loading').forEach(el => {
+            el.style.display = 'none';
         });
-        
+        document.querySelectorAll('.metric-value').forEach(el => {
+            el.style.display = 'inline';
+        });
+    }
+}
+
+// Load available models from API
+async function loadAvailableModels() {
+    try {
+        const response = await fetch('/api/models');
         const data = await response.json();
         
-        hideLoading();
-        
-        if (data.success && data.results) {
-            showComparisonResults(data.results);
-        } else {
-            showNotification('Comparison failed', 'error');
+        if (data.success && data.models) {
+            availableModels = data.models;
+            
+            // Update models available count
+            const availableCount = Object.values(availableModels).filter(m => m.available).length;
+            const modelsAvailableElement = document.getElementById('models-available');
+            if (modelsAvailableElement) {
+                const valueEl = modelsAvailableElement.querySelector('.metric-value');
+                if (valueEl) {
+                    valueEl.textContent = availableCount;
+                }
+            }
+            
+            return true;
         }
-        
     } catch (error) {
-        hideLoading();
-        showNotification(`Network error: ${error.message}`, 'error');
+        console.error('Error loading models:', error);
     }
+    return false;
 }
 
-// Show comparison results modal
-function showComparisonResults(results) {
-    const modal = document.createElement('div');
-    modal.className = 'comparison-modal';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    `;
+// Initialize page
+async function initPage() {
+    console.log('🚀 Initializing page...');
     
-    let html = `
-        <div class="comparison-content" style="
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 800px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        ">
-            <div class="comparison-header" style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-            ">
-                <h2 style="margin: 0; color: #2c3e50;">
-                    <i class="fas fa-balance-scale"></i> Model Comparison Results
-                </h2>
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
-                    background: none;
-                    border: none;
-                    font-size: 24px;
-                    cursor: pointer;
-                    color: #666;
-                ">&times;</button>
-            </div>
-            <div class="comparison-table">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #f8f9fa;">
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Model</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Prediction</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Confidence</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
+    // Set default model selection
+    selectModel('original');
     
-    // Show original model result
-    if (results.original) {
-        const isCurrent = 'original' === selectedModel;
-        html += `
-            <tr style="${isCurrent ? 'background: #e8f4fd;' : ''}">
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    <strong>${formatModelName('original')}</strong>
-                    ${isCurrent ? '<span style="color: #4361ee; font-size: 12px; margin-left: 8px;">(Current)</span>' : ''}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    ${results.original.prediction ? Math.round(results.original.prediction) : '--'} bikes
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    ${results.original.confidence ? results.original.confidence + '%' : '--'}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    <span style="
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        font-size: 12px;
-                        background: #d4edda;
-                        color: #155724;
-                    ">
-                        Available
-                    </span>
-                </td>
-            </tr>
-        `;
-    }
+    // Load available models
+    await loadAvailableModels();
     
-    // Show improved model result
-    if (results.improved) {
-        const isCurrent = 'improved' === selectedModel;
-        const status = results.improved.error ? 'Error' : 'Available';
-        html += `
-            <tr style="${isCurrent ? 'background: #e8f4fd;' : ''}">
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    <strong>${formatModelName('improved')}</strong>
-                    ${isCurrent ? '<span style="color: #4361ee; font-size: 12px; margin-left: 8px;">(Current)</span>' : ''}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    ${results.improved.prediction ? Math.round(results.improved.prediction) : '--'} bikes
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    ${results.improved.confidence ? results.improved.confidence + '%' : '--'}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">
-                    <span style="
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        font-size: 12px;
-                        background: ${status === 'Available' ? '#d4edda' : '#f8d7da'};
-                        color: ${status === 'Available' ? '#155724' : '#721c24'};
-                    ">
-                        ${status}
-                    </span>
-                </td>
-            </tr>
-        `;
-    }
+    // Fetch model performance metrics
+    await fetchModelPerformanceMetrics();
     
-    if (results.comparison) {
-        html += `
-            <tr style="background: #f8f9fa;">
-                <td colspan="4" style="padding: 15px; border-top: 2px solid #dee2e6;">
-                    <strong>Comparison:</strong> 
-                    Difference: ${results.comparison.difference.toFixed(0)} bikes 
-                    (${results.comparison.difference_percent.toFixed(1)}%)
-                </td>
-            </tr>
-        `;
-    }
+    // Update dashboard metrics
+    console.log('📊 Calling updateDashboardMetrics...');
+    await updateDashboardMetrics();
     
-    html += `
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-top: 20px; text-align: center;">
-                <button onclick="selectModel('improved')" style="
-                    background: #7209b7;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    margin-right: 10px;
-                ">
-                    <i class="fas fa-rocket"></i> Switch to Improved Model
-                </button>
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
-                    background: #6c757d;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-weight: 600;
-                ">
-                    Close
-                </button>
-            </div>
-        </div>
-    `;
+    // Set up periodic refresh (every 60 seconds)
+    setInterval(updateDashboardMetrics, 60000);
+    setInterval(fetchModelPerformanceMetrics, 60000);
     
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
-    
-    // Close modal when clicking outside
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
+    console.log('✅ Page initialization complete');
+}
+
+// Initialize when DOM is fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM Content Loaded, initializing...');
+    initPage().catch(error => {
+        console.error('Error during initialization:', error);
     });
-}
+});
 
-// Model Manager functions - SIMPLIFIED for your setup
+// Model Manager function
 function openModelManager() {
-    // Create a simple model manager modal
     const modal = document.createElement('div');
     modal.id = 'simple-model-manager';
     modal.style.cssText = `
@@ -745,29 +692,63 @@ function openModelManager() {
             border-radius: 15px;
             max-width: 600px;
             width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
         ">
             <h2 style="margin-top: 0; color: #2c3e50;">
                 <i class="fas fa-cogs"></i> Available Models
             </h2>
             <div style="margin: 20px 0;">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                    <h3 style="margin-top: 0;">Original Model</h3>
-                    <p><strong>Features:</strong> 14</p>
+                <!-- Standard Model -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #4361ee;">
+                    <h3 style="margin-top: 0; color: #4361ee;">Standard Model</h3>
+                    <p><strong>Features:</strong> 14 basic features</p>
                     <p><strong>R² Score:</strong> 0.820</p>
+                    <p><strong>RMSE:</strong> 112.5</p>
+                    <p><strong>Use Case:</strong> Quick predictions with basic weather data</p>
                     <button onclick="selectModel('original'); document.getElementById('simple-model-manager').remove()" 
                             style="background: #4361ee; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
                         ${selectedModel === 'original' ? '✓ Current' : 'Use This Model'}
                     </button>
                 </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                    <h3 style="margin-top: 0;">Improved Model</h3>
-                    <p><strong>Features:</strong> 35+</p>
-                    <p><strong>Status:</strong> ${availableModels.improved?.available ? 'Available' : 'Not trained'}
-                    </p>
+                
+                <!-- Improved Model -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #7209b7;">
+                    <h3 style="margin-top: 0; color: #7209b7;">Improved Model</h3>
+                    <p><strong>Features:</strong> 38 engineered features</p>
+                    <p><strong>R² Score:</strong> 0.899</p>
+                    <p><strong>RMSE:</strong> 194.59</p>
+                    <p><strong>Key Features:</strong> hour², peak hours, weather severity, comfort index</p>
                     <button onclick="selectModel('improved'); document.getElementById('simple-model-manager').remove()" 
-                            ${!availableModels.improved?.available ? 'disabled' : ''}
-                            style="background: #7209b7; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; ${!availableModels.improved?.available ? 'opacity: 0.5;' : ''}">
+                            style="background: #7209b7; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
                         ${selectedModel === 'improved' ? '✓ Current' : 'Use This Model'}
+                    </button>
+                </div>
+                
+                <!-- Advanced Model -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #06d6a0;">
+                    <h3 style="margin-top: 0; color: #06d6a0;">Advanced Model</h3>
+                    <p><strong>Features:</strong> 100+ advanced features</p>
+                    <p><strong>R² Score:</strong> 0.92</p>
+                    <p><strong>RMSE:</strong> ≤ 80</p>
+                    <p><strong>Key Features:</strong> hour_sin/cos, weather categories, interactions</p>
+                    <button onclick="selectModel('advanced'); document.getElementById('simple-model-manager').remove()" 
+                            style="background: #06d6a0; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        ${selectedModel === 'advanced' ? '✓ Current' : 'Use This Model'}
+                    </button>
+                </div>
+                
+                <!-- XGBoost Model -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid #f72585;">
+                    <h3 style="margin-top: 0; color: #f72585;">XGBoost Model</h3>
+                    <p><strong>Features:</strong> 100+ advanced features</p>
+                    <p><strong>R² Score:</strong> 0.94</p>
+                    <p><strong>RMSE:</strong> 153</p>
+                    <p><strong>MAE:</strong> 91</p>
+                    <p><strong>Algorithm:</strong> Gradient Boosting</p>
+                    <button onclick="selectModel('xgboost'); document.getElementById('simple-model-manager').remove()" 
+                            style="background: #f72585; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        ${selectedModel === 'xgboost' ? '✓ Current' : 'Use This Model'}
                     </button>
                 </div>
             </div>
@@ -782,7 +763,6 @@ function openModelManager() {
     
     document.body.appendChild(modal);
     
-    // Close modal when clicking outside
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
             modal.remove();
@@ -790,6 +770,7 @@ function openModelManager() {
     });
 }
 
+// Close modal
 function closeModelManager() {
     const modal = document.getElementById('simple-model-manager');
     if (modal) {
@@ -797,177 +778,12 @@ function closeModelManager() {
     }
 }
 
-// Switch model function - SIMPLIFIED
-async function switchModel(modelName) {
-    if (!availableModels[modelName]?.available) {
-        showNotification(`Model ${formatModelName(modelName)} is not available`, 'error');
-        return;
-    }
-    
-    selectedModel = modelName;
-    selectModel(modelName);
-    showNotification(`Switched to ${formatModelName(modelName)} model`, 'success');
-    
-    // Update current model info
-    await loadAvailableModels();
-    
-    // Close modal if open
-    closeModelManager();
-}
-
-// Show current model info
-function showCurrentModelInfo() {
-    const modelInfo = availableModels[selectedModel];
-    if (modelInfo) {
-        let infoText = `Model: ${formatModelName(selectedModel)}\n`;
-        infoText += `Status: ${modelInfo.available ? 'Available' : 'Not Available'}\n`;
-        if (modelInfo.r2) infoText += `R² Score: ${modelInfo.r2.toFixed(3)}\n`;
-        if (modelInfo.rmse) infoText += `RMSE: ${modelInfo.rmse}\n`;
-        if (modelInfo.features) infoText += `Features: ${modelInfo.features}`;
-        
-        alert(infoText);
-    } else {
-        showNotification('Model information not available', 'error');
-    }
-}
-
-// Show training info
-function showTrainingInfo() {
-    alert('To train the improved model, run:\n\npython train_model_fixed.py\n\nThis will train the enhanced Random Forest model with additional features.');
-}
-
-// Refresh models
-async function refreshModels() {
-    const success = await loadAvailableModels();
-    if (success) {
-        showNotification('Models refreshed successfully', 'success');
-    } else {
-        showNotification('Failed to refresh models', 'error');
-    }
-}
-
-// Initialize page - FIXED: Added debug logging
-async function initPage() {
-    console.log('🚀 Initializing page...');
-    
-    // Add debug button click listener as backup
-    if (predictBtn) {
-        console.log('✅ Predict button found, adding click listener');
-        predictBtn.addEventListener('click', function(e) {
-            console.log('🎯 Predict button clicked (direct listener)');
-            if (form) {
-                form.dispatchEvent(new Event('submit'));
-            }
-        });
-    } else {
-        console.error('❌ Predict button not found! Check HTML for id="predict-btn"');
-    }
-    
-    // Initialize tabs if they exist
-    document.querySelectorAll('.tab-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            const tabName = button.getAttribute('data-tab');
-            
-            // Update active tab button
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Show corresponding tab content
-            document.querySelectorAll('.form-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            const tabElement = document.getElementById(`${tabName}-tab`);
-            if (tabElement) {
-                tabElement.classList.add('active');
-            }
-        });
-    });
-    
-    // Initialize season selector
-    document.querySelectorAll('.season-option').forEach(option => {
-        option.addEventListener('click', () => {
-            document.querySelectorAll('.season-option').forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-            const seasonsInput = document.getElementById('seasons');
-            if (seasonsInput) {
-                seasonsInput.value = option.getAttribute('data-value');
-            }
-        });
-    });
-    
-    // Initialize hour slider sync
-    const hourInput = document.getElementById('hour');
-    const hourSlider = document.getElementById('hour-slider');
-    
-    if (hourInput && hourSlider) {
-        hourInput.addEventListener('input', () => {
-            hourSlider.value = hourInput.value;
-        });
-        
-        hourSlider.addEventListener('input', () => {
-            hourInput.value = hourSlider.value;
-        });
-    }
-    
-    // Initialize temperature slider sync
-    const tempInput = document.getElementById('temperature');
-    const tempSlider = document.getElementById('temp-slider');
-    
-    if (tempInput && tempSlider) {
-        tempInput.addEventListener('input', () => {
-            tempSlider.value = tempInput.value;
-        });
-        
-        tempSlider.addEventListener('input', () => {
-            tempInput.value = tempSlider.value;
-        });
-    }
-    
-    // Initialize humidity indicator
-    const humidityInput = document.getElementById('humidity');
-    if (humidityInput) {
-        humidityInput.addEventListener('input', () => {
-            const humidityBar = document.querySelector('.humidity-fill');
-            if (humidityBar) {
-                humidityBar.style.width = `${humidityInput.value}%`;
-            }
-        });
-    }
-    
-    // Initialize model selector
-    if (modelSelector) {
-        modelSelector.addEventListener('change', function() {
-            selectModel(this.value);
-        });
-    }
-    
-    // Set default model selection
-    selectModel('original');
-    
-    // Load available models
-    await loadAvailableModels();
-    
-    // Update predictions count
-    await updatePredictionsCount();
-    
-    // Test API connection
-    try {
-        const response = await fetch('/api/status');
-        const data = await response.json();
-        console.log('API Status:', data);
-    } catch (error) {
-        console.warn('Could not connect to API:', error);
-    }
-    
-    console.log('✅ Page initialization complete');
-}
-
-// Load sample data - FIXED: Use correct field names
+// Load sample data - ENHANCED VERSION
 function loadSampleData() {
     const samples = [
         { 
-            hour: 8, 
-            'Temperature(캜)': 18.5, // FIXED: Korean characters
+            Hour: 8, 
+            'Temperature(캜)': 18.5,
             'Humidity(%)': 70, 
             'Wind speed (m/s)': 1.5, 
             'Visibility (10m)': 1800, 
@@ -975,10 +791,14 @@ function loadSampleData() {
             'Snowfall (cm)': 0.0,
             'Solar Radiation (MJ/m2)': 0.8, 
             'Dew point temperature(캜)': 12.0,
-            season: 'Spring'
+            season: 'Spring',
+            holiday: false,
+            functioning: true,
+            day_of_week: 1,
+            description: 'Morning commute - Spring conditions'
         },
         { 
-            hour: 14, 
+            Hour: 14, 
             'Temperature(캜)': 22.5, 
             'Humidity(%)': 60, 
             'Wind speed (m/s)': 2.5, 
@@ -987,89 +807,393 @@ function loadSampleData() {
             'Snowfall (cm)': 0.0,
             'Solar Radiation (MJ/m2)': 1.5, 
             'Dew point temperature(캜)': 15.0,
-            season: 'Summer'
+            season: 'Summer',
+            holiday: false,
+            functioning: true,
+            day_of_week: 3,
+            description: 'Afternoon - Optimal summer conditions'
+        },
+        { 
+            Hour: 17, 
+            'Temperature(캜)': 20.0, 
+            'Humidity(%)': 65, 
+            'Wind speed (m/s)': 3.0, 
+            'Visibility (10m)': 1900, 
+            'Rainfall(mm)': 0.0, 
+            'Snowfall (cm)': 0.0,
+            'Solar Radiation (MJ/m2)': 0.5, 
+            'Dew point temperature(캜)': 14.0,
+            season: 'Autumn',
+            holiday: false,
+            functioning: true,
+            day_of_week: 4,
+            description: 'Evening commute - Autumn conditions'
+        },
+        { 
+            Hour: 12, 
+            'Temperature(캜)': 5.0, 
+            'Humidity(%)': 45, 
+            'Wind speed (m/s)': 5.5, 
+            'Visibility (10m)': 1500, 
+            'Rainfall(mm)': 0.0, 
+            'Snowfall (cm)': 2.5,
+            'Solar Radiation (MJ/m2)': 0.3, 
+            'Dew point temperature(캜)': -1.0,
+            season: 'Winter',
+            holiday: true,
+            functioning: true,
+            day_of_week: 6,
+            description: 'Snowy winter day - Holiday'
+        },
+        { 
+            Hour: 9, 
+            'Temperature(캜)': 15.0, 
+            'Humidity(%)': 85, 
+            'Wind speed (m/s)': 2.0, 
+            'Visibility (10m)': 800, 
+            'Rainfall(mm)': 5.5, 
+            'Snowfall (cm)': 0.0,
+            'Solar Radiation (MJ/m2)': 0.2, 
+            'Dew point temperature(캜)': 12.5,
+            season: 'Spring',
+            holiday: false,
+            functioning: true,
+            day_of_week: 0,
+            description: 'Rainy morning - Reduced visibility'
         }
     ];
     
     const sample = samples[Math.floor(Math.random() * samples.length)];
+    console.log('📋 Loading sample data:', sample);
     
-    // Update form fields with correct IDs
-    document.getElementById('hour').value = sample.hour;
-    if (document.getElementById('hour-slider')) {
-        document.getElementById('hour-slider').value = sample.hour;
+    try {
+        // Update numeric fields with validation
+        updateFieldWithValidation('Hour', sample.Hour, 0, 23);
+        updateFieldWithValidation('Temperature(캜)', sample['Temperature(캜)'], -20, 40);
+        updateFieldWithValidation('Humidity(%)', sample['Humidity(%)'], 0, 100);
+        updateFieldWithValidation('Wind speed (m/s)', sample['Wind speed (m/s)'], 0, 20);
+        updateFieldWithValidation('Visibility (10m)', sample['Visibility (10m)'], 0, 5000);
+        updateFieldWithValidation('Rainfall(mm)', sample['Rainfall(mm)'], 0, 100);
+        updateFieldWithValidation('Snowfall (cm)', sample['Snowfall (cm)'], 0, 50);
+        updateFieldWithValidation('Solar Radiation (MJ/m2)', sample['Solar Radiation (MJ/m2)'], 0, 5);
+        updateFieldWithValidation('Dew point temperature(캜)', sample['Dew point temperature(캜)'], -30, 30);
+        
+        // Sync sliders
+        syncSlider('hour-slider', 'Hour', sample.Hour);
+        syncSlider('temp-slider', 'Temperature(캜)', sample['Temperature(캜)']);
+        
+        // Update season selector
+        updateSeasonSelector(sample.season);
+        
+        // Update holiday and functioning day toggles
+        updateToggleSwitches(sample.holiday, sample.functioning);
+        
+        // Update humidity bar
+        updateHumidityBar(sample['Humidity(%)']);
+        
+        // Update hour description
+        if (typeof updateHourDescription === 'function') {
+            updateHourDescription(sample.Hour);
+        } else {
+            window.updateHourDescription(sample.Hour);
+        }
+        
+        // Update weather insight
+        if (typeof updateWeatherInsight === 'function') {
+            updateWeatherInsight(sample['Temperature(캜)']);
+        } else {
+            window.updateWeatherInsight(sample['Temperature(캜)']);
+        }
+        
+        // Update day of week dropdown
+        const dayOfWeekSelect = document.getElementById('day_of_week');
+        if (dayOfWeekSelect) {
+            dayOfWeekSelect.value = sample.day_of_week;
+        }
+        
+        // Show success notification with sample description
+        showNotification(`Sample data loaded: ${sample.description}`, 'success');
+        
+        // Auto-predict after loading sample (optional - uncomment to enable)
+        // setTimeout(() => document.getElementById('predict-btn').click(), 500);
+        
+    } catch (error) {
+        console.error('❌ Error loading sample data:', error);
+        showNotification('Failed to load sample data', 'error');
     }
-    
-    document.getElementById('temperature').value = sample['Temperature(캜)'];
-    if (document.getElementById('temp-slider')) {
-        document.getElementById('temp-slider').value = sample['Temperature(캜)'];
+}
+
+// Helper function to update field with validation
+function updateFieldWithValidation(fieldId, value, min, max) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        // Ensure value is within bounds
+        let validatedValue = value;
+        if (min !== undefined && value < min) validatedValue = min;
+        if (max !== undefined && value > max) validatedValue = max;
+        
+        field.value = validatedValue;
+        
+        // Trigger input event for any listeners
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+        console.warn(`⚠️ Field not found: ${fieldId}`);
     }
+}
+
+// Helper function to sync slider with input
+function syncSlider(sliderId, fieldId, value) {
+    const slider = document.getElementById(sliderId);
+    if (slider) {
+        slider.value = value;
+        // Trigger input event
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+// Helper function to update season selector
+function updateSeasonSelector(season) {
+    const seasonOptions = document.querySelectorAll('.season-option');
+    let found = false;
     
-    document.getElementById('humidity').value = sample['Humidity(%)'];
-    document.getElementById('windspeed').value = sample['Wind speed (m/s)'];
-    document.getElementById('visibility').value = sample['Visibility (10m)'];
-    document.getElementById('rainfall').value = sample['Rainfall(mm)'];
-    document.getElementById('snowfall').value = sample['Snowfall (cm)'];
-    document.getElementById('solar').value = sample['Solar Radiation (MJ/m2)'];
-    document.getElementById('dewpoint').value = sample['Dew point temperature(캜)'];
-    
-    // Update season
-    document.querySelectorAll('.season-option').forEach(opt => {
-        opt.classList.remove('active');
-        if (opt.getAttribute('data-value') === sample.season) {
+    seasonOptions.forEach(opt => {
+        if (opt.getAttribute('data-value') === season) {
             opt.classList.add('active');
-            const seasonsInput = document.getElementById('seasons');
-            if (seasonsInput) {
-                seasonsInput.value = sample.season;
-            }
+            found = true;
+        } else {
+            opt.classList.remove('active');
         }
     });
     
-    // Update humidity bar
-    const humidityBar = document.querySelector('.humidity-fill');
-    if (humidityBar) {
-        humidityBar.style.width = `${sample['Humidity(%)']}%`;
-    }
-    
-    showNotification('Sample data loaded successfully', 'success');
-}
-
-// Clear form
-function clearForm() {
-    if (form) {
-        form.reset();
-        document.getElementById('hour').value = 14;
-        if (document.getElementById('hour-slider')) {
-            document.getElementById('hour-slider').value = 14;
-        }
-        document.getElementById('temperature').value = 22.5;
-        if (document.getElementById('temp-slider')) {
-            document.getElementById('temp-slider').value = 22.5;
-        }
-        document.getElementById('humidity').value = 60;
-        document.getElementById('windspeed').value = 2.5;
-        document.getElementById('visibility').value = 2000;
-        document.getElementById('rainfall').value = 0.0;
-        document.getElementById('snowfall').value = 0.0;
-        document.getElementById('solar').value = 1.5;
-        document.getElementById('dewpoint').value = 10.0;
-        
-        const humidityBar = document.querySelector('.humidity-fill');
-        if (humidityBar) {
-            humidityBar.style.width = '60%';
-        }
-        
-        document.querySelectorAll('.season-option').forEach(opt => {
-            opt.classList.remove('active');
+    if (!found) {
+        console.warn(`⚠️ Season "${season}" not found, defaulting to Summer`);
+        // Default to Summer if season not found
+        seasonOptions.forEach(opt => {
             if (opt.getAttribute('data-value') === 'Summer') {
                 opt.classList.add('active');
-                const seasonsInput = document.getElementById('seasons');
-                if (seasonsInput) {
-                    seasonsInput.value = 'Summer';
-                }
             }
         });
+    }
+}
+
+// Helper function to update toggle switches
+function updateToggleSwitches(holiday, functioning) {
+    // Holiday toggle
+    const holidayToggle = document.getElementById('holiday-toggle');
+    const holidayNo = document.getElementById('Holiday_No Holiday');
+    const holidayYes = document.getElementById('Holiday_Holiday');
+    
+    if (holidayToggle && holidayNo && holidayYes) {
+        holidayToggle.checked = holiday;
+        holidayNo.value = holiday ? 0 : 1;
+        holidayYes.value = holiday ? 1 : 0;
         
-        showNotification('Form cleared', 'info');
+        // Trigger change event
+        holidayToggle.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    // Functioning day toggle
+    const functioningToggle = document.getElementById('functioning-toggle');
+    const functioningYes = document.getElementById('Functioning Day_Yes');
+    const functioningNo = document.getElementById('Functioning Day_No');
+    
+    if (functioningToggle && functioningYes && functioningNo) {
+        functioningToggle.checked = functioning;
+        functioningYes.value = functioning ? 1 : 0;
+        functioningNo.value = functioning ? 0 : 1;
+        
+        // Trigger change event
+        functioningToggle.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+// Helper function to update humidity bar
+function updateHumidityBar(humidity) {
+    const humidityBar = document.querySelector('.humidity-fill');
+    if (humidityBar) {
+        humidityBar.style.width = `${humidity}%`;
+    }
+}
+
+// Quick sample function - loads a specific scenario
+function loadSpecificSample(sampleType) {
+    const samples = {
+        'morning': {
+            Hour: 8, 'Temperature(캜)': 18.5, 'Humidity(%)': 70, 
+            'Wind speed (m/s)': 1.5, 'Visibility (10m)': 1800, 
+            'Rainfall(mm)': 0.0, 'Snowfall (cm)': 0.0,
+            'Solar Radiation (MJ/m2)': 0.8, 'Dew point temperature(캜)': 12.0,
+            season: 'Spring', holiday: false, functioning: true,
+            day_of_week: 1
+        },
+        'afternoon': {
+            Hour: 14, 'Temperature(캜)': 22.5, 'Humidity(%)': 60, 
+            'Wind speed (m/s)': 2.5, 'Visibility (10m)': 2000, 
+            'Rainfall(mm)': 0.0, 'Snowfall (cm)': 0.0,
+            'Solar Radiation (MJ/m2)': 1.5, 'Dew point temperature(캜)': 15.0,
+            season: 'Summer', holiday: false, functioning: true,
+            day_of_week: 3
+        },
+        'evening': {
+            Hour: 17, 'Temperature(캜)': 20.0, 'Humidity(%)': 65, 
+            'Wind speed (m/s)': 3.0, 'Visibility (10m)': 1900, 
+            'Rainfall(mm)': 0.0, 'Snowfall (cm)': 0.0,
+            'Solar Radiation (MJ/m2)': 0.5, 'Dew point temperature(캜)': 14.0,
+            season: 'Autumn', holiday: false, functioning: true,
+            day_of_week: 4
+        },
+        'winter': {
+            Hour: 12, 'Temperature(캜)': 5.0, 'Humidity(%)': 45, 
+            'Wind speed (m/s)': 5.5, 'Visibility (10m)': 1500, 
+            'Rainfall(mm)': 0.0, 'Snowfall (cm)': 2.5,
+            'Solar Radiation (MJ/m2)': 0.3, 'Dew point temperature(캜)': -1.0,
+            season: 'Winter', holiday: true, functioning: true,
+            day_of_week: 6
+        },
+        'rainy': {
+            Hour: 9, 'Temperature(캜)': 15.0, 'Humidity(%)': 85, 
+            'Wind speed (m/s)': 2.0, 'Visibility (10m)': 800, 
+            'Rainfall(mm)': 5.5, 'Snowfall (cm)': 0.0,
+            'Solar Radiation (MJ/m2)': 0.2, 'Dew point temperature(캜)': 12.5,
+            season: 'Spring', holiday: false, functioning: true,
+            day_of_week: 0
+        }
+    };
+    
+    const sample = samples[sampleType];
+    if (sample) {
+        // Update all fields with the specific sample
+        updateFieldWithValidation('Hour', sample.Hour, 0, 23);
+        updateFieldWithValidation('Temperature(캜)', sample['Temperature(캜)'], -20, 40);
+        updateFieldWithValidation('Humidity(%)', sample['Humidity(%)'], 0, 100);
+        updateFieldWithValidation('Wind speed (m/s)', sample['Wind speed (m/s)'], 0, 20);
+        updateFieldWithValidation('Visibility (10m)', sample['Visibility (10m)'], 0, 5000);
+        updateFieldWithValidation('Rainfall(mm)', sample['Rainfall(mm)'], 0, 100);
+        updateFieldWithValidation('Snowfall (cm)', sample['Snowfall (cm)'], 0, 50);
+        updateFieldWithValidation('Solar Radiation (MJ/m2)', sample['Solar Radiation (MJ/m2)'], 0, 5);
+        updateFieldWithValidation('Dew point temperature(캜)', sample['Dew point temperature(캜)'], -30, 30);
+        
+        updateSeasonSelector(sample.season);
+        updateToggleSwitches(sample.holiday, sample.functioning);
+        updateHumidityBar(sample['Humidity(%)']);
+        
+        // Update day of week
+        const dayOfWeekSelect = document.getElementById('day_of_week');
+        if (dayOfWeekSelect) {
+            dayOfWeekSelect.value = sample.day_of_week;
+        }
+        
+        // Update descriptions
+        updateHourDescription(sample.Hour);
+        updateWeatherInsight(sample['Temperature(캜)']);
+        
+        showNotification(`Loaded ${sampleType} scenario`, 'success');
+    }
+}
+
+// Clear form 
+function clearForm() {
+    // Reset to default values
+    document.getElementById('Hour').value = 14;
+    if (document.getElementById('hour-slider')) {
+        document.getElementById('hour-slider').value = 14;
+    }
+    
+    document.getElementById('Temperature(캜)').value = 22.5;
+    if (document.getElementById('temp-slider')) {
+        document.getElementById('temp-slider').value = 22.5;
+    }
+    
+    document.getElementById('Humidity(%)').value = 60;
+    document.getElementById('Wind speed (m/s)').value = 2.5;
+    document.getElementById('Visibility (10m)').value = 2000;
+    document.getElementById('Rainfall(mm)').value = 0.0;
+    document.getElementById('Snowfall (cm)').value = 0.0;
+    document.getElementById('Solar Radiation (MJ/m2)').value = 1.5;
+    document.getElementById('Dew point temperature(캜)').value = 10.0;
+    
+    // Reset toggle switches
+    document.getElementById('holiday-toggle').checked = false;
+    document.getElementById('Holiday_No Holiday').value = 1;
+    document.getElementById('Holiday_Holiday').value = 0;
+    
+    document.getElementById('functioning-toggle').checked = true;
+    document.getElementById('Functioning Day_Yes').value = 1;
+    document.getElementById('Functioning Day_No').value = 0;
+    
+    // Reset day of week
+    const dayOfWeekSelect = document.getElementById('day_of_week');
+    if (dayOfWeekSelect) {
+        dayOfWeekSelect.value = 3; // Thursday
+    }
+    
+    // Reset season to Summer
+    document.querySelectorAll('.season-option').forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.getAttribute('data-value') === 'Summer') {
+            opt.classList.add('active');
+        }
+    });
+    
+    // Reset humidity bar
+    const humidityBar = document.querySelector('.humidity-fill');
+    if (humidityBar) {
+        humidityBar.style.width = '60%';
+    }
+    
+    // Reset hour description
+    updateHourDescription(14);
+    
+    // Reset weather insight
+    updateWeatherInsight(22.5);
+    
+    showNotification('Form cleared', 'info');
+}
+
+// Helper function to update hour description
+function updateHourDescription(hour) {
+    const hourNum = parseInt(hour);
+    let description = "Moderate demand expected";
+    
+    if (hourNum >= 0 && hourNum <= 5) {
+        description = "Late Night - Very low demand expected";
+    } else if (hourNum >= 6 && hourNum <= 9) {
+        description = "Morning Peak - High demand expected";
+    } else if (hourNum >= 10 && hourNum <= 15) {
+        description = "Daytime - Moderate demand expected";
+    } else if (hourNum >= 16 && hourNum <= 19) {
+        description = "Evening Peak - Very high demand expected";
+    } else if (hourNum >= 20 && hourNum <= 23) {
+        description = "Evening - Low to moderate demand expected";
+    }
+    
+    const hourDesc = document.getElementById('hour-description');
+    if (hourDesc) {
+        hourDesc.textContent = description;
+    }
+}
+
+// Helper function to update weather insight
+function updateWeatherInsight(temp) {
+    const tempNum = parseFloat(temp);
+    let insight = "Current conditions suggest ";
+    
+    if (tempNum < 5) {
+        insight += "<strong>low biking suitability</strong> due to cold temperatures.";
+    } else if (tempNum < 15) {
+        insight += "<strong>moderate biking suitability</strong> with cooler conditions.";
+    } else if (tempNum < 25) {
+        insight += "<strong>high biking suitability</strong> with optimal temperature.";
+    } else {
+        insight += "<strong>reduced biking suitability</strong> due to heat.";
+    }
+    
+    const weatherInsight = document.getElementById('weather-insight');
+    if (weatherInsight) {
+        const pElement = weatherInsight.querySelector('p');
+        if (pElement) {
+            pElement.innerHTML = insight;
+        }
     }
 }
 
@@ -1078,7 +1202,7 @@ function copyPrediction() {
     if (currentPredictionData) {
         const prediction = currentPredictionData.predicted_rented_bikes || 
                          currentPredictionData.rounded || 
-                         Math.round(currentPredictionData.prediction);
+                         Math.round(currentPredictionData.prediction || 0);
         const model = formatModelName(currentPredictionData.model_type);
         const text = `Predicted bike demand: ${prediction} bikes (using ${model} model)`;
         
@@ -1093,43 +1217,248 @@ function copyPrediction() {
 }
 
 // Export prediction
-function exportPrediction() {
-    showNotification('Export available in Analytics dashboard', 'info');
-    setTimeout(() => {
-        window.location.href = '/analytics';
-    }, 1500);
-}
+function exportPrediction(format = 'json') {
+    console.log('📤 Export function called');
+    
+    // Check if there's a prediction to export
+    if (!currentPredictionData) {
+        // Try to get data from the UI if currentPredictionData is not set
+        const resultContent = document.getElementById('result-content');
+        const predictionCount = document.getElementById('prediction-count');
+        
+        if (!resultContent || resultContent.style.display === 'none' || !predictionCount || predictionCount.textContent === '0') {
+            showNotification('No prediction to export. Generate a prediction first.', 'warning');
+            return;
+        }
+        
+        // Create a minimal data object from UI
+        currentPredictionData = {
+            predicted_rented_bikes: parseInt(predictionCount.textContent) || 0,
+            model_type: document.getElementById('detail-model')?.textContent.toLowerCase().replace(' ', '-') || 'original',
+            input_summary: {
+                features_used: document.getElementById('detail-features')?.textContent || '14'
+            },
+            prediction_id: document.getElementById('prediction-id')?.textContent || 'N/A',
+            timestamp: new Date().toISOString(),
+            confidence: parseInt(confidenceBadge?.textContent) || 80
+        };
+    }
+    
+    try {
+        // Gather complete prediction data
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            prediction: {
+                bikesRequired: currentPredictionData.predicted_rented_bikes || 
+                              currentPredictionData.rounded || 
+                              Math.round(currentPredictionData.prediction || 0),
+                modelUsed: formatModelName(currentPredictionData.model_type),
+                modelType: currentPredictionData.model_type,
+                features: currentPredictionData.input_summary?.features_used || '14',
+                responseTime: document.getElementById('response-time')?.textContent || '0.00s',
+                predictionId: currentPredictionData.prediction_id || document.getElementById('prediction-id')?.textContent || 'N/A',
+                timestamp: currentPredictionData.timestamp || new Date().toISOString(),
+                confidence: currentPredictionData.confidence || 80
+            },
+            modelMetrics: {
+                r2: document.getElementById('metric-r2')?.textContent || 'N/A',
+                rmse: document.getElementById('metric-rmse')?.textContent || 'N/A',
+                mae: document.getElementById('metric-mae')?.textContent || 'N/A',
+                gap: document.getElementById('metric-gap')?.textContent || 'N/A'
+            }
+        };
+        
+        // Get input parameters from the form
+        const form = document.getElementById('prediction-form');
+        if (form) {
+            exportData.inputParameters = {};
+            const formInputs = form.querySelectorAll('input, select');
+            formInputs.forEach(input => {
+                if (input.name && input.type !== 'hidden') {
+                    exportData.inputParameters[input.name] = input.value;
+                }
+            });
+            
+            // Add season
+            const activeSeason = document.querySelector('.season-option.active')?.getAttribute('data-value') || 'Summer';
+            exportData.inputParameters.season = activeSeason;
+        }
+        
+        // Format based on export type
+        let content, filename, mimeType;
+        
+        if (format === 'json' || format === 'detailed') {
+            // JSON format with pretty printing
+            content = JSON.stringify(exportData, null, 2);
+            filename = `bike_prediction_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+            mimeType = 'application/json';
+        } else if (format === 'csv') {
+            // Simple CSV format
+            const rows = [];
+            
+            // Add prediction details
+            rows.push(['Field', 'Value']);
+            rows.push(['Export Date', exportData.exportDate]);
+            rows.push(['Prediction ID', exportData.prediction.predictionId]);
+            rows.push(['Bikes Required', exportData.prediction.bikesRequired]);
+            rows.push(['Model Used', exportData.prediction.modelUsed]);
+            rows.push(['Features Count', exportData.prediction.features]);
+            rows.push(['Response Time', exportData.prediction.responseTime]);
+            rows.push(['Confidence', exportData.prediction.confidence + '%']);
+            rows.push(['R² Score', exportData.modelMetrics.r2]);
+            rows.push(['RMSE', exportData.modelMetrics.rmse]);
+            rows.push(['MAE', exportData.modelMetrics.mae]);
+            rows.push(['Accuracy Gap', exportData.modelMetrics.gap]);
+            rows.push('', ''); // Empty row for separation
+            rows.push(['Input Parameters', 'Value']);
+            
+            // Add input parameters
+            if (exportData.inputParameters) {
+                Object.entries(exportData.inputParameters).forEach(([key, value]) => {
+                    rows.push([key, value]);
+                });
+            }
+            
+            const csvContent = rows.map(row => {
+                // Escape quotes and wrap in quotes if contains comma
+                return row.map(cell => {
+                    if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"'))) {
+                        return `"${cell.replace(/"/g, '""')}"`;
+                    }
+                    return cell;
+                }).join(',');
+            }).join('\n');
+            
+            content = csvContent;
+            filename = `bike_prediction_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`;
+            mimeType = 'text/csv';
+        } else {
+            // Simple text format
+            content = `BIKE DEMAND PREDICTION
+===============================
+Date: ${new Date().toLocaleString()}
+Prediction ID: ${exportData.prediction.predictionId}
 
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('simple-model-manager');
-    if (modal && event.target === modal) {
-        closeModelManager();
+RESULT:
+Bikes Required: ${exportData.prediction.bikesRequired}
+Model Used: ${exportData.prediction.modelUsed}
+Confidence: ${exportData.prediction.confidence}%
+
+MODEL METRICS:
+R² Score: ${exportData.modelMetrics.r2}
+RMSE: ${exportData.modelMetrics.rmse}
+MAE: ${exportData.modelMetrics.mae}
+
+INPUT PARAMETERS:
+${Object.entries(exportData.inputParameters || {}).map(([k, v]) => `${k}: ${v}`).join('\n')}
+
+===============================
+Generated by UrbanFlow Intelligence`;
+            
+            filename = `bike_prediction_${new Date().toISOString().slice(0,10)}.txt`;
+            mimeType = 'text/plain';
+        }
+        
+        // Create download link
+        const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showNotification(`Prediction exported as ${filename.split('.').pop().toUpperCase()} file`, 'success');
+        
+        // Log export for debugging
+        console.log(`✅ Export successful: ${filename}`);
+        console.log('📊 Exported data:', exportData);
+        
+    } catch (error) {
+        console.error('❌ Export failed:', error);
+        showNotification('Failed to export prediction. Please try again.', 'error');
     }
 }
 
-// Initialize when page loads
-window.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM Content Loaded, initializing...');
-    initPage().catch(error => {
-        console.error('Error during initialization:', error);
+// Enhanced export function with format selection
+function exportPredictionWithFormat() {
+    // Create format selector modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 25px; border-radius: 12px; width: 300px; text-align: center;">
+            <h3 style="margin-top: 0; color: #2c3e50;">Export Format</h3>
+            <p style="color: #6c757d; margin-bottom: 20px;">Choose export format:</p>
+            
+            <button onclick="exportPrediction('json'); this.closest('div').closest('div').remove()" 
+                    style="display: block; width: 100%; padding: 12px; margin: 8px 0; 
+                           background: #4361ee; color: white; border: none; 
+                           border-radius: 8px; cursor: pointer; font-size: 16px;">
+                <i class="fas fa-code"></i> JSON (Detailed)
+            </button>
+            
+            <button onclick="exportPrediction('csv'); this.closest('div').closest('div').remove()" 
+                    style="display: block; width: 100%; padding: 12px; margin: 8px 0; 
+                           background: #2ecc71; color: white; border: none; 
+                           border-radius: 8px; cursor: pointer; font-size: 16px;">
+                <i class="fas fa-table"></i> CSV (Spreadsheet)
+            </button>
+            
+            <button onclick="exportPrediction('text'); this.closest('div').closest('div').remove()" 
+                    style="display: block; width: 100%; padding: 12px; margin: 8px 0; 
+                           background: #f39c12; color: white; border: none; 
+                           border-radius: 8px; cursor: pointer; font-size: 16px;">
+                <i class="fas fa-file-alt"></i> Text (Simple)
+            </button>
+            
+            <button onclick="this.closest('div').closest('div').remove()" 
+                    style="display: block; width: 100%; padding: 10px; margin-top: 15px; 
+                           background: #6c757d; color: white; border: none; 
+                           border-radius: 8px; cursor: pointer;">
+                Cancel
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close when clicking outside
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
     });
-});
+}
 
 // Export functions for global access
 window.loadSampleData = loadSampleData;
+window.loadSpecificSample = loadSpecificSample;
 window.clearForm = clearForm;
 window.copyPrediction = copyPrediction;
 window.exportPrediction = exportPrediction;
-window.compareModels = compareModels;
-window.compareAllModels = compareAllModels;
+window.exportPredictionWithFormat = exportPredictionWithFormat;
 window.openModelManager = openModelManager;
 window.closeModelManager = closeModelManager;
-window.switchModel = switchModel;
-window.refreshModels = refreshModels;
-window.showCurrentModelInfo = showCurrentModelInfo;
-window.showTrainingInfo = showTrainingInfo;
 window.selectModel = selectModel;
 window.showNotification = showNotification;
+window.updateHourDescription = updateHourDescription;
+window.updateWeatherInsight = updateWeatherInsight;
 
 console.log('✅ script.js loaded successfully');

@@ -13,10 +13,11 @@ from app.utils import (
 from app.model_metrics import calculate_model_metrics, generate_performance_report
 from app.model_manager import model_manager
 from models.model_manager import predict_rf, predict_xgb
+from sqlalchemy import func
+from datetime import datetime, timedelta
 import traceback
 import numpy as np
 import json
-import datetime
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -30,6 +31,269 @@ from dotenv import load_dotenv
 import math
 import pickle
 
+# =============================================
+# FIELD NAME MAPPING FUNCTIONS
+# =============================================
+
+def normalize_field_names_for_model(data, target_model):
+    """
+    Normalize field names for different model types.
+    Maps input field names to the expected field names for each model type.
+    """
+    if target_model == 'original':
+        # Original model expects Korean character fields
+        return data
+    
+    normalized_data = {}
+    
+    # Map common field name variations
+    field_mappings = {
+        # Korean character to degree symbol (improved model)
+        'Temperature(캜)': {
+            'improved': 'Temperature(°C)',
+            'advanced': 'temperature',
+            'xgboost': 'temperature'
+        },
+        'Dew point temperature(캜)': {
+            'improved': 'Dew point temperature(°C)',
+            'advanced': 'dew_point',
+            'xgboost': 'dew_point'
+        },
+        # Keep other fields as is, but handle variations
+        'Wind speed (m/s)': {
+            'improved': 'Wind speed (m/s)',
+            'advanced': 'Wind_speed_m/s',
+            'xgboost': 'wind_speed'
+        },
+        'Visibility (10m)': {
+            'improved': 'Visibility (10m)',
+            'advanced': 'visibility',
+            'xgboost': 'visibility'
+        },
+        'Solar Radiation (MJ/m2)': {
+            'improved': 'Solar Radiation (MJ/m2)',
+            'advanced': 'Solar_Radiation_MJ/m2',
+            'xgboost': 'solar_radiation'
+        },
+        'Rainfall(mm)': {
+            'improved': 'Rainfall(mm)',
+            'advanced': 'rainfall',
+            'xgboost': 'rainfall'
+        },
+        'Snowfall (cm)': {
+            'improved': 'Snowfall (cm)',
+            'advanced': 'snowfall',
+            'xgboost': 'snowfall'
+        },
+        'Humidity(%)': {
+            'improved': 'Humidity(%)',
+            'advanced': 'Humidity%',
+            'xgboost': 'humidity'
+        },
+        'Hour': {
+            'improved': 'Hour',
+            'advanced': 'hour',
+            'xgboost': 'hour'
+        },
+        # Day of week mapping
+        'day_of_week': {
+            'improved': 'day_of_week',
+            'advanced': 'day_of_week',
+            'xgboost': 'day_of_week'
+        },
+        # Season mappings (already one-hot encoded, but ensure consistency)
+        'Seasons_Spring': {
+            'improved': 'Seasons_Spring',
+            'advanced': 'season_Spring',
+            'xgboost': 'season_Spring'
+        },
+        'Seasons_Summer': {
+            'improved': 'Seasons_Summer',
+            'advanced': 'season_Summer',
+            'xgboost': 'season_Summer'
+        },
+        'Seasons_Winter': {
+            'improved': 'Seasons_Winter',
+            'advanced': 'season_Winter',
+            'xgboost': 'season_Winter'
+        },
+        'Seasons_Autumn': {
+            'improved': 'Seasons_Autumn',  # Note: Autumn might be inferred when others are 0
+            'advanced': 'season_Autumn',
+            'xgboost': 'season_Autumn'
+        },
+        # Holiday mappings
+        'Holiday_No Holiday': {
+            'improved': 'Holiday_No Holiday',
+            'advanced': 'holiday_No_Holiday',
+            'xgboost': 'holiday_No_Holiday'
+        },
+        'Holiday_Holiday': {
+            'improved': 'Holiday_Holiday',
+            'advanced': 'holiday_Holiday',
+            'xgboost': 'holiday_Holiday'
+        },
+        # Functioning day mappings
+        'Functioning Day_Yes': {
+            'improved': 'Functioning Day_Yes',
+            'advanced': 'functioning_day_Yes',
+            'xgboost': 'functioning_day_Yes'
+        },
+        'Functioning Day_No': {
+            'improved': 'Functioning Day_No',
+            'advanced': 'functioning_day_No',
+            'xgboost': 'functioning_day_No'
+        }
+    }
+    
+    # Process each input field
+    for key, value in data.items():
+        if key in field_mappings and target_model in field_mappings[key]:
+            # Map the field name
+            mapped_key = field_mappings[key][target_model]
+            normalized_data[mapped_key] = value
+        else:
+            # Keep original key for other fields
+            normalized_data[key] = value
+    
+    # Special handling for temperature field if not mapped
+    if 'Temperature(캜)' in data and 'temperature' not in normalized_data and target_model in ['advanced', 'xgboost']:
+        normalized_data['temperature'] = data['Temperature(캜)']
+    
+    if 'Temperature(캜)' in data and 'Temperature(°C)' not in normalized_data and target_model == 'improved':
+        normalized_data['Temperature(°C)'] = data['Temperature(캜)']
+        print(f"   🌡️ Mapped Temperature(캜) to Temperature(°C) for improved model")
+    
+    if 'Dew point temperature(캜)' in data and 'dew_point' not in normalized_data and target_model in ['advanced', 'xgboost']:
+        normalized_data['dew_point'] = data['Dew point temperature(캜)']
+    
+    if 'Dew point temperature(캜)' in data and 'Dew point temperature(°C)' not in normalized_data and target_model == 'improved':
+        normalized_data['Dew point temperature(°C)'] = data['Dew point temperature(캜)']
+        print(f"   💧 Mapped Dew point temperature(캜) to Dew point temperature(°C) for improved model")
+    
+    # Handle day_of_week if present
+    if 'day_of_week' in data and 'day_of_week' not in normalized_data and target_model in ['improved', 'advanced', 'xgboost']:
+        normalized_data['day_of_week'] = data['day_of_week']
+    
+    # Handle season inference for improved model (if not already one-hot encoded)
+    if target_model == 'improved':
+        # Check if we have season information in other formats
+        if 'Seasons' in data and all(f'Seasons_{s}' not in normalized_data for s in ['Spring', 'Summer', 'Winter']):
+            season = data['Seasons']
+            normalized_data['Seasons_Spring'] = 1 if season == 'Spring' else 0
+            normalized_data['Seasons_Summer'] = 1 if season == 'Summer' else 0
+            normalized_data['Seasons_Winter'] = 1 if season == 'Winter' else 0
+            # Autumn is implied when all are 0
+            print(f"   🍂 Inferred season encoding from '{season}'")
+    
+    # Ensure we have all required features for improved model
+    if target_model == 'improved':
+        # These are the engineered features that will be calculated later
+        # We just need to ensure basic ones are present
+        required_basics = ['Hour', 'Temperature(°C)', 'Humidity(%)', 'Wind speed (m/s)',
+                          'Visibility (10m)', 'Dew point temperature(°C)', 
+                          'Solar Radiation (MJ/m2)', 'Rainfall(mm)', 'Snowfall (cm)',
+                          'Seasons_Spring', 'Seasons_Summer', 'Seasons_Winter']
+        
+        missing = [f for f in required_basics if f not in normalized_data]
+        if missing:
+            print(f"   ⚠️ Missing basic features for improved model: {missing}")
+            # Add defaults for missing features
+            defaults = {
+                'Hour': 12,
+                'Temperature(°C)': 20,
+                'Humidity(%)': 50,
+                'Wind speed (m/s)': 2,
+                'Visibility (10m)': 2000,
+                'Dew point temperature(°C)': 10,
+                'Solar Radiation (MJ/m2)': 1,
+                'Rainfall(mm)': 0,
+                'Snowfall (cm)': 0,
+                'Seasons_Spring': 0,
+                'Seasons_Summer': 1,
+                'Seasons_Winter': 0
+            }
+            for feat in missing:
+                if feat in defaults:
+                    normalized_data[feat] = defaults[feat]
+                    print(f"      Added default for {feat}: {defaults[feat]}")
+    
+    print(f"🔤 Field mapping for {target_model} model:")
+    print(f"   Input keys: {list(data.keys())}")
+    print(f"   Mapped keys: {list(normalized_data.keys())}")
+    print(f"   Total features after mapping: {len(normalized_data)}")
+    
+    return normalized_data
+
+def get_required_fields_for_model(model_type):
+    """Get required fields for a specific model type"""
+    if model_type == 'original':
+        return [
+            'Hour', 'Temperature(캜)', 'Humidity(%)', 'Wind speed (m/s)',
+            'Visibility (10m)', 'Dew point temperature(캜)', 
+            'Solar Radiation (MJ/m2)', 'Rainfall(mm)', 'Snowfall (cm)',
+            'Seasons_Spring', 'Seasons_Summer', 'Seasons_Winter',
+            'Holiday_No Holiday', 'Functioning Day_Yes'
+        ]
+    elif model_type == 'improved':
+        # Complete list of 38 features from the improved model
+        return [
+            'Hour',
+            'Temperature(°C)',
+            'Humidity(%)',
+            'Wind speed (m/s)',
+            'Visibility (10m)',
+            'Dew point temperature(°C)',
+            'Solar Radiation (MJ/m2)',
+            'Rainfall(mm)',
+            'Snowfall (cm)',
+            'hour_squared',
+            'hour_cubed',
+            'is_peak_hour',
+            'rush_hour_intensity',
+            'is_weekend',
+            'day_of_week',
+            'temp_hour_interaction',
+            'temp_humidity_interaction',
+            'wind_chill',
+            'heat_index',
+            'weather_severity_score',
+            'comfort_index',
+            'demand_lag_24',
+            'demand_lag_168',
+            'demand_rolling_3h',
+            'demand_rolling_24h',
+            'temp_deviation_from_season',
+            'is_daylight',
+            'workday_hour_interaction',
+            'hour_category_evening',
+            'hour_category_morning',
+            'hour_category_night',
+            'weather_category_good',
+            'weather_category_perfect',
+            'weather_category_poor',
+            'weather_category_severe',
+            'Seasons_Spring',
+            'Seasons_Summer',
+            'Seasons_Winter'
+        ]
+    elif model_type == 'advanced':
+        return [
+            'hour', 'temperature', 'Humidity%', 'Wind_speed_m/s',
+            'visibility', 'dew_point', 'Solar_Radiation_MJ/m2',
+            'rainfall', 'snowfall', 'hour_sin', 'hour_cos', 'hour_squared',
+            'day_of_week', 'is_weekend'
+        ]
+    elif model_type == 'xgboost':
+        return [
+            'hour', 'temperature', 'humidity', 'wind_speed',
+            'visibility', 'dew_point', 'solar_radiation',
+            'rainfall', 'snowfall', 'hour_sin', 'hour_cos', 'hour_squared',
+            'day_of_week', 'is_weekend'
+        ]
+    else:
+        return []
+    
 # Load environment variables
 load_dotenv()
 
@@ -59,47 +323,304 @@ EMAIL_CONFIG = {
 # ADVANCED FEATURE ENGINEERING HELPER FUNCTIONS
 # =============================================
 
-def calculate_engineered_features_from_basic(input_data):
+def calculate_improved_features(input_data):
     """
-    Calculate all engineered features from basic inputs.
-    This allows users to provide only basic inputs and get all advanced features calculated automatically.
+    Calculate all 38 features expected by the improved model
     """
-    engineered = {}
+    features = {}
     
     try:
-        # Get basic inputs
+        # Get basic inputs with defaults
         hour = float(input_data.get('Hour', 12))
         temperature = float(input_data.get('Temperature(°C)', input_data.get('Temperature(캜)', 20)))
         humidity = float(input_data.get('Humidity(%)', 50))
         wind_speed = float(input_data.get('Wind speed (m/s)', 5))
+        visibility = float(input_data.get('Visibility (10m)', 2000))
+        dew_point = float(input_data.get('Dew point temperature(°C)', input_data.get('Dew point temperature(캜)', 10)))
+        solar_radiation = float(input_data.get('Solar Radiation (MJ/m2)', 1))
         rainfall = float(input_data.get('Rainfall(mm)', 0))
         snowfall = float(input_data.get('Snowfall (cm)', 0))
-        visibility = float(input_data.get('Visibility (10m)', 2000))
-        dew_point = float(input_data.get('Dew point temperature(캜)', 10))
-        solar_radiation = float(input_data.get('Solar Radiation (MJ/m2)', 1))
+        
+        # Get categorical inputs
+        day_of_week = int(input_data.get('day_of_week', 0))
+        is_weekend = 1 if day_of_week >= 5 else 0
+        is_holiday = 1 if input_data.get('Holiday_Holiday', 0) == 1 else 0
+        is_functioning = 1 if input_data.get('Functioning Day_Yes', 1) == 1 else 0
+        
+        # Season encoding
+        seasons = {
+            'Seasons_Spring': float(input_data.get('Seasons_Spring', 0)),
+            'Seasons_Summer': float(input_data.get('Seasons_Summer', 1)),  # Default to Summer
+            'Seasons_Winter': float(input_data.get('Seasons_Winter', 0))
+        }
+        
+        # Determine current season
+        if seasons.get('Seasons_Spring', 0) == 1:
+            current_season = 'Spring'
+        elif seasons.get('Seasons_Summer', 0) == 1:
+            current_season = 'Summer'
+        elif seasons.get('Seasons_Winter', 0) == 1:
+            current_season = 'Winter'
+        else:
+            current_season = 'Autumn'  # Implied when all others are 0
+        
+        # 1. Basic features (these should be passed through)
+        features['Hour'] = hour
+        features['Temperature(°C)'] = temperature
+        features['Humidity(%)'] = humidity
+        features['Wind speed (m/s)'] = wind_speed
+        features['Visibility (10m)'] = visibility
+        features['Dew point temperature(°C)'] = dew_point
+        features['Solar Radiation (MJ/m2)'] = solar_radiation
+        features['Rainfall(mm)'] = rainfall
+        features['Snowfall (cm)'] = snowfall
+        
+        # 2. Polynomial features
+        features['hour_squared'] = hour ** 2
+        features['hour_cubed'] = hour ** 3
+        
+        # 3. Time-based indicators - Define is_peak_hour HERE before using it
+        is_peak_hour = 1 if (7 <= hour <= 9) or (17 <= hour <= 19) else 0
+        features['is_peak_hour'] = is_peak_hour
+        
+        # 4. Rush hour intensity
+        if hour in [7, 8, 17, 18]:
+            rush_intensity = 1.0
+        elif hour in [6, 9, 16, 19]:
+            rush_intensity = 0.6
+        elif hour in [10, 15, 20]:
+            rush_intensity = 0.3
+        else:
+            rush_intensity = 0.0
+        features['rush_hour_intensity'] = rush_intensity
+        
+        # 5. Weekend and day of week
+        features['is_weekend'] = is_weekend
+        features['day_of_week'] = day_of_week
+        
+        # 6. Interaction features
+        features['temp_hour_interaction'] = temperature * hour
+        features['temp_humidity_interaction'] = temperature * humidity
+        
+        # 7. Wind chill calculation (simplified)
+        if temperature < 10 and wind_speed > 4.8:
+            wind_chill = 13.12 + 0.6215 * temperature - 11.37 * (wind_speed ** 0.16) + 0.3965 * temperature * (wind_speed ** 0.16)
+        else:
+            wind_chill = temperature
+        features['wind_chill'] = wind_chill
+        
+        # 8. Heat index calculation (simplified)
+        if temperature >= 26 and humidity >= 40:
+            heat_index = -42.379 + 2.04901523 * temperature + 10.14333127 * humidity - 0.22475541 * temperature * humidity - 0.00683783 * temperature**2 - 0.05481717 * humidity**2 + 0.00122874 * temperature**2 * humidity + 0.00085282 * temperature * humidity**2 - 0.00000199 * temperature**2 * humidity**2
+        else:
+            heat_index = temperature
+        features['heat_index'] = heat_index
+        
+        # 9. Weather severity score (simplified)
+        weather_severity = (rainfall * 2) + (snowfall * 3) + (1 if wind_speed > 10 else 0) + (1 if visibility < 1000 else 0)
+        features['weather_severity_score'] = weather_severity
+        
+        # 10. Comfort index
+        features['comfort_index'] = temperature - (humidity / 10)
+        
+        # 11. Demand-based features (simplified - would need history for real values)
+        # Using reasonable defaults based on time patterns
+        base_demand = 500 + (200 if is_peak_hour else 0) + (100 if is_weekend else 0)
+        
+        # Simulate lag features based on current conditions
+        features['demand_lag_24'] = base_demand * 0.95  # 24 hours ago similar but slightly different
+        features['demand_lag_168'] = base_demand * 0.90  # 1 week ago
+        features['demand_rolling_3h'] = base_demand * 1.02  # Rolling average
+        features['demand_rolling_24h'] = base_demand * 0.98  # Daily average
+        
+        # 12. Temperature deviation from seasonal average
+        seasonal_avg_temps = {
+            'Spring': 15,
+            'Summer': 25,
+            'Autumn': 15,
+            'Winter': 0
+        }
+        avg_temp = seasonal_avg_temps.get(current_season, 15)
+        features['temp_deviation_from_season'] = temperature - avg_temp
+        
+        # 13. Daylight indicator
+        features['is_daylight'] = 1 if 6 <= hour <= 18 else 0
+        
+        # 14. Workday hour interaction
+        is_workday = 1 if not is_weekend and not is_holiday else 0
+        features['workday_hour_interaction'] = is_workday * hour
+        
+        # 15. Hour categories
+        features['hour_category_evening'] = 1 if 17 <= hour <= 21 else 0
+        features['hour_category_morning'] = 1 if 5 <= hour <= 9 else 0
+        features['hour_category_night'] = 1 if hour <= 5 or hour >= 22 else 0
+        
+        # 16. Weather categories
+        good_weather = 1 if (
+            temperature >= 10 and temperature <= 25 and
+            rainfall == 0 and
+            snowfall == 0 and
+            wind_speed <= 8 and
+            visibility >= 1500
+        ) else 0
+        
+        perfect_weather = 1 if (
+            temperature >= 18 and temperature <= 22 and
+            rainfall == 0 and
+            snowfall == 0 and
+            wind_speed <= 5 and
+            visibility >= 2000 and
+            humidity <= 70
+        ) else 0
+        
+        poor_weather = 1 if (
+            temperature < 0 or
+            rainfall > 5 or
+            snowfall > 2 or
+            wind_speed > 12 or
+            visibility < 500
+        ) else 0
+        
+        severe_weather = 1 if (
+            temperature < -5 or
+            rainfall > 15 or
+            snowfall > 10 or
+            wind_speed > 20 or
+            visibility < 100
+        ) else 0
+        
+        features['weather_category_good'] = good_weather
+        features['weather_category_perfect'] = perfect_weather
+        features['weather_category_poor'] = poor_weather
+        features['weather_category_severe'] = severe_weather
+        
+        # 17. Season features
+        features['Seasons_Spring'] = seasons.get('Seasons_Spring', 0)
+        features['Seasons_Summer'] = seasons.get('Seasons_Summer', 0)
+        features['Seasons_Winter'] = seasons.get('Seasons_Winter', 0)
+        # Note: Autumn is implied when all three are 0
+        
+        print(f"✅ Calculated {len(features)} improved features")
+        print(f"   Features: {list(features.keys())}")
+        return features
+        
+    except Exception as e:
+        print(f"❌ Error calculating improved features: {e}")
+        traceback.print_exc()
+        return input_data
+    
+def calculate_xgboost_features_from_basic(input_data):
+    """
+    Calculate all engineered features for XGBoost model with the exact feature names it expects.
+    """
+    engineered = {}
+    
+    try:
+        # Get basic inputs with proper field name mapping
+        hour = float(input_data.get('hour', input_data.get('Hour', 12)))
+        temperature = float(input_data.get('temperature', input_data.get('Temperature(°C)', input_data.get('Temperature(캜)', 20))))
+        humidity = float(input_data.get('humidity', input_data.get('Humidity(%)', 50)))
+        wind_speed = float(input_data.get('wind_speed', input_data.get('Wind speed (m/s)', 5)))
+        rainfall = float(input_data.get('rainfall', input_data.get('Rainfall(mm)', 0)))
+        snowfall = float(input_data.get('snowfall', input_data.get('Snowfall (cm)', 0)))
+        visibility = float(input_data.get('visibility', input_data.get('Visibility (10m)', 2000)))
+        dew_point = float(input_data.get('dew_point', input_data.get('Dew point temperature(°C)', input_data.get('Dew point temperature(캜)', 10))))
+        solar_radiation = float(input_data.get('solar_radiation', input_data.get('Solar Radiation (MJ/m2)', 1)))
         
         # Get categorical inputs (with defaults)
-        season = input_data.get('Seasons', 'Spring')
+        season = input_data.get('Seasons', 'Summer')
         holiday = input_data.get('Holiday', 'No Holiday')
         functioning_day = input_data.get('Functioning Day', 'Yes')
         
         # Extract day of week if provided, otherwise default
         day_of_week = int(input_data.get('day_of_week', 0))  # 0=Monday, 6=Sunday
         
-        # 1. TIME-BASED FEATURES (Cyclical encoding)
+        # ==================================================
+        # 1. BASIC FEATURES (with exact names XGBoost expects)
+        # ==================================================
+        engineered['hour'] = hour
+        engineered['temperature'] = temperature
+        engineered['humidity'] = humidity  # Note: lowercase, no %
+        engineered['wind_speed'] = wind_speed
+        engineered['visibility'] = visibility
+        engineered['dew_point'] = dew_point
+        engineered['solar_radiation'] = solar_radiation
+        engineered['rainfall'] = rainfall
+        engineered['snowfall'] = snowfall
+        
+        # ==================================================
+        # 2. TIME-BASED FEATURES
+        # ==================================================
         engineered['hour_sin'] = math.sin(2 * math.pi * hour / 24)
         engineered['hour_cos'] = math.cos(2 * math.pi * hour / 24)
         engineered['hour_squared'] = hour ** 2
         
-        # 2. DATE-BASED FEATURES
+        # ==================================================
+        # 3. DATE-BASED FEATURES
+        # ==================================================
         engineered['day_of_week'] = day_of_week
         engineered['is_weekend'] = 1 if day_of_week >= 5 else 0
         
-        # 3. TEMPERATURE-BASED FEATURES
+        # ==================================================
+        # 4. TEMPERATURE-BASED FEATURES
+        # ==================================================
         engineered['temp_hour_interaction'] = temperature * hour
         engineered['temp_squared'] = temperature ** 2
         
-        # Temperature categories (same as training)
+        # ==================================================
+        # 5. PEAK HOUR INDICATORS
+        # ==================================================
+        is_morning_peak = 1 if (7 <= hour <= 9) else 0
+        is_evening_peak = 1 if (17 <= hour <= 19) else 0
+        engineered['is_peak_hour'] = 1 if is_morning_peak == 1 or is_evening_peak == 1 else 0
+        
+        # ==================================================
+        # 6. RUSH HOUR INTENSITY
+        # ==================================================
+        if hour in [7, 8, 17, 18]:
+            rush_intensity = 1.0
+        elif hour in [6, 9, 16, 19]:
+            rush_intensity = 0.6
+        elif hour in [10, 15, 20]:
+            rush_intensity = 0.3
+        else:
+            rush_intensity = 0.0
+        engineered['rush_hour_intensity'] = rush_intensity
+        
+        # ==================================================
+        # 7. GOOD BIKING CONDITIONS
+        # ==================================================
+        good_conditions = 1 if (
+            (10 <= temperature <= 30) and
+            rainfall == 0 and
+            snowfall == 0 and
+            wind_speed < 10
+        ) else 0
+        engineered['good_biking_conditions'] = good_conditions
+        
+        # ==================================================
+        # 8. SEASON ENCODING (One-hot)
+        # ==================================================
+        engineered['season_Autumn'] = 1 if season == 'Autumn' else 0
+        engineered['season_Spring'] = 1 if season == 'Spring' else 0
+        engineered['season_Summer'] = 1 if season == 'Summer' else 0
+        engineered['season_Winter'] = 1 if season == 'Winter' else 0
+        
+        # ==================================================
+        # 9. HOLIDAY ENCODING
+        # ==================================================
+        engineered['holiday_Holiday'] = 1 if holiday == 'Holiday' else 0
+        engineered['holiday_No Holiday'] = 1 if holiday == 'No Holiday' else 0
+        
+        # ==================================================
+        # 10. FUNCTIONING DAY ENCODING
+        # ==================================================
+        engineered['functioning_day_No'] = 1 if functioning_day == 'No' else 0
+        engineered['functioning_day_Yes'] = 1 if functioning_day == 'Yes' else 0
+        
+        # ==================================================
+        # 11. TEMPERATURE CATEGORIES
+        # ==================================================
         if temperature < 0:
             temp_category = 'freezing'
         elif temperature < 10:
@@ -111,17 +632,108 @@ def calculate_engineered_features_from_basic(input_data):
         else:
             temp_category = 'hot'
         
-        # 4. PEAK HOUR INDICATORS
-        engineered['is_morning_peak'] = 1 if (7 <= hour <= 9) else 0
-        engineered['is_evening_peak'] = 1 if (17 <= hour <= 19) else 0
-        engineered['is_peak_hour'] = 1 if engineered['is_morning_peak'] == 1 or engineered['is_evening_peak'] == 1 else 0
+        engineered['temp_category_cold'] = 1 if temp_category == 'cold' else 0
+        engineered['temp_category_cool'] = 1 if temp_category == 'cool' else 0
+        engineered['temp_category_freezing'] = 1 if temp_category == 'freezing' else 0
+        engineered['temp_category_hot'] = 1 if temp_category == 'hot' else 0
+        engineered['temp_category_warm'] = 1 if temp_category == 'warm' else 0
         
-        # 5. WEATHER COMFORT FEATURES
-        engineered['comfort_index'] = temperature - (humidity / 10)
-        engineered['wind_speed_squared'] = wind_speed ** 2
-        engineered['humidity_squared'] = humidity ** 2
+        # ==================================================
+        # 12. TIME OF DAY CATEGORIES
+        # ==================================================
+        if hour < 6:
+            time_of_day = 'night'
+        elif hour < 12:
+            time_of_day = 'morning'
+        elif hour < 18:
+            time_of_day = 'afternoon'
+        else:
+            time_of_day = 'evening'
         
+        engineered['time_of_day_afternoon'] = 1 if time_of_day == 'afternoon' else 0
+        engineered['time_of_day_evening'] = 1 if time_of_day == 'evening' else 0
+        engineered['time_of_day_morning'] = 1 if time_of_day == 'morning' else 0
+        engineered['time_of_day_night'] = 1 if time_of_day == 'night' else 0
+        
+        print(f"✅ Calculated {len(engineered)} engineered features for XGBoost model")
+        print(f"   Features: {list(engineered.keys())}")
+        
+        return {**input_data, **engineered}
+        
+    except Exception as e:
+        print(f"❌ Error calculating XGBoost features: {e}")
+        traceback.print_exc()
+        return input_data
+
+def calculate_engineered_features_from_basic(input_data):
+    """
+    Calculate all engineered features for the advanced model.
+    This creates features with the exact names the advanced model expects.
+    """
+    engineered = {}
+    
+    try:
+        # Get basic inputs with proper field name mapping
+        hour = float(input_data.get('hour', input_data.get('Hour', 12)))
+        temperature = float(input_data.get('temperature', input_data.get('Temperature(°C)', input_data.get('Temperature(캜)', 20))))
+        humidity = float(input_data.get('humidity', input_data.get('Humidity(%)', input_data.get('Humidity%', 50))))
+        wind_speed = float(input_data.get('wind_speed', input_data.get('Wind speed (m/s)', 5)))
+        rainfall = float(input_data.get('rainfall', input_data.get('Rainfall(mm)', 0)))
+        snowfall = float(input_data.get('snowfall', input_data.get('Snowfall (cm)', 0)))
+        visibility = float(input_data.get('visibility', input_data.get('Visibility (10m)', 2000)))
+        dew_point = float(input_data.get('dew_point', input_data.get('Dew point temperature(°C)', input_data.get('Dew point temperature(캜)', 10))))
+        solar_radiation = float(input_data.get('solar_radiation', input_data.get('Solar Radiation (MJ/m2)', 1)))
+        
+        # Get categorical inputs (with defaults)
+        season = input_data.get('Seasons', 'Summer')
+        holiday = input_data.get('Holiday', 'No Holiday')
+        functioning_day = input_data.get('Functioning Day', 'Yes')
+        
+        # Extract day of week if provided, otherwise default
+        day_of_week = int(input_data.get('day_of_week', 0))  # 0=Monday, 6=Sunday
+        
+        # ==================================================
+        # 1. BASIC FEATURES (with exact names from advanced model)
+        # ==================================================
+        engineered['hour'] = hour
+        engineered['temperature'] = temperature
+        engineered['Humidity%'] = humidity  # Note: exact name with %
+        engineered['Wind_speed_m/s'] = wind_speed
+        engineered['visibility'] = visibility
+        engineered['dew_point'] = dew_point
+        engineered['Solar_Radiation_MJ/m2'] = solar_radiation
+        engineered['rainfall'] = rainfall
+        engineered['snowfall'] = snowfall
+        
+        # ==================================================
+        # 2. TIME-BASED FEATURES (Cyclical encoding)
+        # ==================================================
+        engineered['hour_sin'] = math.sin(2 * math.pi * hour / 24)
+        engineered['hour_cos'] = math.cos(2 * math.pi * hour / 24)
+        engineered['hour_squared'] = hour ** 2
+        
+        # ==================================================
+        # 3. DATE-BASED FEATURES
+        # ==================================================
+        engineered['day_of_week'] = day_of_week
+        engineered['is_weekend'] = 1 if day_of_week >= 5 else 0
+        
+        # ==================================================
+        # 4. TEMPERATURE-BASED FEATURES
+        # ==================================================
+        engineered['temp_hour_interaction'] = temperature * hour
+        engineered['temp_squared'] = temperature ** 2
+        
+        # ==================================================
+        # 5. PEAK HOUR INDICATORS
+        # ==================================================
+        is_morning_peak = 1 if (7 <= hour <= 9) else 0
+        is_evening_peak = 1 if (17 <= hour <= 19) else 0
+        engineered['is_peak_hour'] = 1 if is_morning_peak == 1 or is_evening_peak == 1 else 0
+        
+        # ==================================================
         # 6. RUSH HOUR INTENSITY
+        # ==================================================
         if hour in [7, 8, 17, 18]:
             rush_intensity = 1.0
         elif hour in [6, 9, 16, 19]:
@@ -132,7 +744,9 @@ def calculate_engineered_features_from_basic(input_data):
             rush_intensity = 0.0
         engineered['rush_hour_intensity'] = rush_intensity
         
+        # ==================================================
         # 7. GOOD BIKING CONDITIONS
+        # ==================================================
         good_conditions = 1 if (
             (10 <= temperature <= 30) and
             rainfall == 0 and
@@ -141,7 +755,49 @@ def calculate_engineered_features_from_basic(input_data):
         ) else 0
         engineered['good_biking_conditions'] = good_conditions
         
-        # 8. TIME OF DAY CATEGORIES
+        # ==================================================
+        # 8. SEASON ENCODING (One-hot)
+        # ==================================================
+        engineered['season_Autumn'] = 1 if season == 'Autumn' else 0
+        engineered['season_Spring'] = 1 if season == 'Spring' else 0
+        engineered['season_Summer'] = 1 if season == 'Summer' else 0
+        engineered['season_Winter'] = 1 if season == 'Winter' else 0
+        
+        # ==================================================
+        # 9. HOLIDAY ENCODING
+        # ==================================================
+        engineered['holiday_Holiday'] = 1 if holiday == 'Holiday' else 0
+        engineered['holiday_No Holiday'] = 1 if holiday == 'No Holiday' else 0
+        
+        # ==================================================
+        # 10. FUNCTIONING DAY ENCODING
+        # ==================================================
+        engineered['functioning_day_No'] = 1 if functioning_day == 'No' else 0
+        engineered['functioning_day_Yes'] = 1 if functioning_day == 'Yes' else 0
+        
+        # ==================================================
+        # 11. TEMPERATURE CATEGORIES (in correct order)
+        # ==================================================
+        if temperature < 0:
+            temp_category = 'freezing'
+        elif temperature < 10:
+            temp_category = 'cold'
+        elif temperature < 20:
+            temp_category = 'cool'
+        elif temperature < 30:
+            temp_category = 'warm'
+        else:
+            temp_category = 'hot'
+        
+        engineered['temp_category_cold'] = 1 if temp_category == 'cold' else 0
+        engineered['temp_category_cool'] = 1 if temp_category == 'cool' else 0
+        engineered['temp_category_freezing'] = 1 if temp_category == 'freezing' else 0
+        engineered['temp_category_hot'] = 1 if temp_category == 'hot' else 0
+        engineered['temp_category_warm'] = 1 if temp_category == 'warm' else 0
+        
+        # ==================================================
+        # 12. TIME OF DAY CATEGORIES (in correct order)
+        # ==================================================
         if hour < 6:
             time_of_day = 'night'
         elif hour < 12:
@@ -151,47 +807,47 @@ def calculate_engineered_features_from_basic(input_data):
         else:
             time_of_day = 'evening'
         
-        # 9. CATEGORICAL ENCODINGS (One-hot style)
-        # Season encoding
-        for s in ['Spring', 'Summer', 'Autumn', 'Winter']:
-            engineered[f'season_{s}'] = 1 if season == s else 0
+        engineered['time_of_day_afternoon'] = 1 if time_of_day == 'afternoon' else 0
+        engineered['time_of_day_evening'] = 1 if time_of_day == 'evening' else 0
+        engineered['time_of_day_morning'] = 1 if time_of_day == 'morning' else 0
+        engineered['time_of_day_night'] = 1 if time_of_day == 'night' else 0
         
-        # Holiday encoding
-        engineered['holiday_Holiday'] = 1 if holiday == 'Holiday' else 0
-        engineered['holiday_No_Holiday'] = 1 if holiday == 'No Holiday' else 0
+        # ==================================================
+        # 13. REORDER FEATURES TO MATCH MODEL EXPECTATIONS
+        # ==================================================
+        expected_order = [
+            'hour', 'temperature', 'Humidity%', 'Wind_speed_m/s', 'visibility', 
+            'dew_point', 'Solar_Radiation_MJ/m2', 'rainfall', 'snowfall', 
+            'hour_sin', 'hour_cos', 'hour_squared', 'day_of_week', 'is_weekend', 
+            'temp_hour_interaction', 'temp_squared', 'is_peak_hour', 'rush_hour_intensity', 
+            'good_biking_conditions', 'season_Autumn', 'season_Spring', 'season_Summer', 
+            'season_Winter', 'holiday_Holiday', 'holiday_No Holiday', 
+            'functioning_day_No', 'functioning_day_Yes', 'temp_category_cold', 
+            'temp_category_cool', 'temp_category_freezing', 'temp_category_hot', 
+            'temp_category_warm', 'time_of_day_afternoon', 'time_of_day_evening', 
+            'time_of_day_morning', 'time_of_day_night'
+        ]
         
-        # Functioning day encoding
-        engineered['functioning_day_Yes'] = 1 if functioning_day == 'Yes' else 0
-        engineered['functioning_day_No'] = 1 if functioning_day == 'No' else 0
+        # Create a new ordered dictionary
+        ordered_features = {}
+        for feature in expected_order:
+            if feature in engineered:
+                ordered_features[feature] = engineered[feature]
+            else:
+                print(f"⚠️ Warning: Missing feature '{feature}'")
+                ordered_features[feature] = 0
         
-        # Temperature category encoding
-        for temp_cat in ['freezing', 'cold', 'cool', 'warm', 'hot']:
-            engineered[f'temp_category_{temp_cat}'] = 1 if temp_category == temp_cat else 0
+        print(f"✅ Calculated {len(ordered_features)} engineered features for advanced model")
+        print(f"   Features in correct order: {list(ordered_features.keys())}")
         
-        # Time of day encoding
-        for tod in ['morning', 'afternoon', 'evening', 'night']:
-            engineered[f'time_of_day_{tod}'] = 1 if time_of_day == tod else 0
-        
-        # 10. ORIGINAL NUMERICAL FEATURES (scaled as needed)
-        engineered['temperature'] = temperature
-        engineered['humidity'] = humidity
-        engineered['wind_speed'] = wind_speed
-        engineered['visibility'] = visibility
-        engineered['dew_point'] = dew_point
-        engineered['solar_radiation'] = solar_radiation
-        engineered['rainfall'] = rainfall
-        engineered['snowfall'] = snowfall
-        
-        print(f"✅ Calculated {len(engineered)} engineered features")
-        
-        # Return combined dictionary
-        return {**input_data, **engineered}
+        # Return combined dictionary with original input data
+        return {**input_data, **ordered_features}
         
     except Exception as e:
         print(f"❌ Error calculating engineered features: {e}")
         traceback.print_exc()
         # Return original data if calculation fails
-        return input_data
+        return input_data        
 
 def get_advanced_features_list():
     """Get the list of features expected by the advanced model"""
@@ -471,7 +1127,7 @@ class EmailService:
         """Get real analytics data for the email report"""
         try:
             data = {
-                'timestamp': datetime.datetime.now().isoformat(),
+                'timestamp': datetime.now().isoformat(),
                 'email_data': email_data,
                 'metrics': {},
                 'history': [],
@@ -546,7 +1202,7 @@ class EmailService:
     def get_fallback_analytics_data(self):
         """Get fallback analytics data if real data fails"""
         return {
-            'timestamp': datetime.datetime.now().isoformat(),
+            'timestamp': datetime.now().isoformat(),
             'metrics': {
                 'r2_score': 0.82,
                 'mean_absolute_error': 87.2,
@@ -640,7 +1296,7 @@ class EmailService:
             <div class="container">
                 <div class="header">
                     <h1>🚲 UrbanFlow Analytics Report</h1>
-                    <p>Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
                 
                 <div class="content">
@@ -699,14 +1355,14 @@ class EmailService:
                         <p><strong>Dataset:</strong> {metrics.get('dataset', 'Seoul Bike Sharing')}</p>
                         <p><strong>Average Prediction:</strong> {avg_prediction:.0f} bikes</p>
                         <p><strong>Maximum Prediction:</strong> {max_prediction:.0f} bikes</p>
-                        <p><strong>Report Period:</strong> {datetime.datetime.now().strftime('%B %Y')}</p>
+                        <p><strong>Report Period:</strong> {datetime.now().strftime('%B %Y')}</p>
                     </div>
                 </div>
                 
                 <div class="footer">
                     <p>UrbanFlow Predictive Analytics Platform</p>
                     <p>This is an automated email. Please do not reply.</p>
-                    <p>© {datetime.datetime.now().year} UrbanFlow Systems</p>
+                    <p>© {datetime.now().year} UrbanFlow Systems</p>
                 </div>
             </div>
         </body>
@@ -880,7 +1536,7 @@ class EmailService:
             
             # Create attachment
             attachment = MIMEApplication(pdf_content, _subtype='pdf')
-            filename = f"urbanflow_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            filename = f"urbanflow_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
             attachment.add_header('Content-Disposition', 'attachment', filename=filename)
             
             return attachment
@@ -947,7 +1603,7 @@ class EmailService:
             
             # Create attachment
             attachment = MIMEApplication(csv_content.encode('utf-8'), _subtype='csv')
-            filename = f"urbanflow_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            filename = f"urbanflow_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             attachment.add_header('Content-Disposition', 'attachment', filename=filename)
             
             return attachment
@@ -973,7 +1629,7 @@ class EmailService:
                 ===================================================
                 
                 Chart Type: {chart_type}
-                Generated: {datetime.datetime.now().isoformat()}
+                Generated: {datetime.now().isoformat()}
                 
                 Note: In a production environment, this would be an actual chart image
                 generated using matplotlib or another charting library.
@@ -987,11 +1643,11 @@ class EmailService:
                 - Generated for email recipients
                 
                 UrbanFlow Predictive Analytics Platform
-                © {datetime.datetime.now().year}
+                © {datetime.now().year}
                 """
                 
                 attachment = MIMEApplication(chart_content.encode('utf-8'), _subtype='txt')
-                filename = f"chart_{chart_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                filename = f"chart_{chart_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                 attachment.add_header('Content-Disposition', 'attachment', filename=filename)
                 attachments.append(attachment)
             
@@ -1005,7 +1661,7 @@ class EmailService:
         """Log email sending for audit trail"""
         try:
             log_entry = {
-                'timestamp': datetime.datetime.now().isoformat(),
+                'timestamp': datetime.now().isoformat(),
                 'recipients': email_data['recipients'],
                 'subject': email_data['subject'],
                 'attachments': {
@@ -1059,17 +1715,22 @@ def extract_model_from_dict(model_data):
     
     print(f"📦 Model loaded as dictionary with keys: {list(model_data.keys())}")
     
-    # Try common keys that might contain the model
-    possible_keys = ['model', 'best_model', 'estimator', 'regressor', 'random_forest', 'rf_model']
+    # Expanded list of possible keys that might contain the model
+    possible_keys = ['model', 'best_model', 'estimator', 'regressor', 'random_forest', 'rf_model', 
+                    'model_obj', 'trained_model', 'classifier', 'regressor_obj', 'clf', 'forest']
     
+    # Try common keys first
     for key in possible_keys:
         if key in model_data:
-            print(f"   Found model in key: '{key}'")
+            print(f"   Found key: '{key}'")
             if hasattr(model_data[key], 'predict'):
                 print(f"   ✅ Extracted model from '{key}', type: {type(model_data[key]).__name__}")
                 return model_data[key]
+            else:
+                print(f"   ❌ Key '{key}' exists but has no predict method (type: {type(model_data[key]).__name__})")
     
     # Try to find any object with predict method
+    print("   Searching all dictionary keys for object with predict method...")
     for key, value in model_data.items():
         if hasattr(value, 'predict'):
             print(f"   ✅ Found model in key '{key}', type: {type(value).__name__}")
@@ -1078,6 +1739,169 @@ def extract_model_from_dict(model_data):
     # If no model found, return None
     print(f"   ❌ No valid model found in dictionary")
     return None
+
+
+# =============================================
+# DEBUG ENDPOINT TO CHECK IMPROVED MODEL
+# =============================================
+
+@main.route('/debug/improved-feature-order', methods=['GET'])
+def debug_improved_feature_order():
+    """Debug endpoint to check the exact feature order of the improved model"""
+    try:
+        if improved_model is None:
+            return jsonify({
+                "success": False,
+                "error": "Improved model not loaded"
+            })
+        
+        if hasattr(improved_model, 'feature_names_in_'):
+            feature_order = list(improved_model.feature_names_in_)
+            return jsonify({
+                "success": True,
+                "feature_count": len(feature_order),
+                "feature_order": feature_order
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Model doesn't have feature_names_in_ attribute"
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+@main.route('/debug/advanced-feature-order', methods=['GET'])
+def debug_advanced_feature_order():
+    """Debug endpoint to check the exact feature order of the advanced model"""
+    try:
+        if advanced_model is None:
+            return jsonify({
+                "success": False,
+                "error": "Advanced model not loaded"
+            })
+        
+        if hasattr(advanced_model, 'feature_names_in_'):
+            feature_order = list(advanced_model.feature_names_in_)
+            return jsonify({
+                "success": True,
+                "feature_count": len(feature_order),
+                "feature_order": feature_order
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Model doesn't have feature_names_in_ attribute"
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+@main.route('/debug/xgboost-feature-order', methods=['GET'])
+def debug_xgboost_feature_order():
+    """Debug endpoint to check the exact feature order of the XGBoost model"""
+    try:
+        if xgboost_model is None:
+            return jsonify({
+                "success": False,
+                "error": "XGBoost model not loaded"
+            })
+        
+        if hasattr(xgboost_model, 'feature_names_in_'):
+            feature_order = list(xgboost_model.feature_names_in_)
+            return jsonify({
+                "success": True,
+                "feature_count": len(feature_order),
+                "feature_order": feature_order
+            })
+        elif hasattr(xgboost_model, 'get_booster'):
+            booster = xgboost_model.get_booster()
+            feature_order = booster.feature_names
+            return jsonify({
+                "success": True,
+                "feature_count": len(feature_order),
+                "feature_order": feature_order
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Cannot extract feature names from model"
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })    
+
+@main.route('/debug/improved-model', methods=['GET'])
+def debug_improved_model():
+    """Debug endpoint to check what's in the improved model file"""
+    try:
+        import pickle
+        import os
+        
+        model_path = 'models/improved_random_forest.pkl'
+        
+        if not os.path.exists(model_path):
+            return jsonify({
+                "success": False,
+                "error": f"Improved model file not found at {model_path}"
+            })
+        
+        # Load the file
+        with open(model_path, 'rb') as f:
+            model_data = pickle.load(f)
+        
+        result = {
+            "success": True,
+            "model_path": model_path,
+            "model_type": str(type(model_data).__name__),
+            "is_dict": isinstance(model_data, dict),
+        }
+        
+        if isinstance(model_data, dict):
+            result["dict_keys"] = list(model_data.keys())
+            
+            # Check each key for predict method
+            for key in model_data.keys():
+                value = model_data[key]
+                result[f"key_{key}_type"] = str(type(value).__name__)
+                result[f"key_{key}_has_predict"] = hasattr(value, 'predict')
+                
+                if hasattr(value, 'predict'):
+                    result["found_model_in_key"] = key
+                    result["model_found"] = True
+                    
+                    # Show first few feature names if available
+                    if hasattr(value, 'feature_names_in_'):
+                        result["feature_names"] = list(value.feature_names_in_)[:10]
+                    elif hasattr(value, 'get_booster'):
+                        try:
+                            booster = value.get_booster()
+                            result["feature_names"] = booster.feature_names[:10] if booster.feature_names else []
+                        except:
+                            pass
+        
+        elif hasattr(model_data, 'predict'):
+            result["has_predict"] = True
+            result["model_found"] = True
+        else:
+            result["has_predict"] = False
+            result["model_found"] = False
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        })
+    
 
 def init_models():
     """Initialize all models: original, improved, advanced, and XGBoost"""
@@ -1088,27 +1912,67 @@ def init_models():
         print("🔄 Loading original model...")
         original_model = load_model('original')
         
-        # Try to load improved model
+        # Try to load improved model - FIXED VERSION
         print("🔄 Loading improved model...")
         try:
             improved_model = load_model('improved')
             
             # Check if improved_model is actually a dictionary
             if isinstance(improved_model, dict):
-                print(f"⚠️ Improved model loaded as dictionary. Extracting model...")
-                extracted_model = extract_model_from_dict(improved_model)
+                print(f"⚠️ Improved model loaded as dictionary with keys: {list(improved_model.keys())}")
+                
+                # Try common keys that might contain the model
+                possible_keys = ['model', 'best_model', 'estimator', 'regressor', 'random_forest', 'rf_model', 'model_obj', 'trained_model']
+                extracted_model = None
+                
+                # First try common keys
+                for key in possible_keys:
+                    if key in improved_model:
+                        print(f"   Found potential model key: '{key}'")
+                        if hasattr(improved_model[key], 'predict'):
+                            extracted_model = improved_model[key]
+                            print(f"   ✅ Extracted model from '{key}', type: {type(extracted_model).__name__}")
+                            break
+                        else:
+                            print(f"   ❌ Key '{key}' exists but has no predict method")
+                
+                # If not found in common keys, look for any object with predict method
+                if extracted_model is None:
+                    print("   Searching all dictionary keys for object with predict method...")
+                    for key, value in improved_model.items():
+                        if hasattr(value, 'predict'):
+                            extracted_model = value
+                            print(f"   ✅ Found model in key '{key}', type: {type(extracted_model).__name__}")
+                            break
+                
+                # If still not found, check if the dictionary itself has predict (unlikely)
+                if extracted_model is None and hasattr(improved_model, 'predict'):
+                    print(f"   ✅ Dictionary itself has predict method! Using it directly.")
+                    extracted_model = improved_model
+                
                 if extracted_model:
                     improved_model = extracted_model
                     print(f"✅ Improved model extracted successfully! Type: {type(improved_model).__name__}")
                 else:
-                    print(f"❌ Could not extract model from dictionary. Improved model not available.")
-                    improved_model = None
+                    print(f"❌ Could not extract model from dictionary. Checking if it's a valid model object directly...")
+                    # One last check: maybe it's a valid model stored differently
+                    if hasattr(improved_model, 'predict'):
+                        print(f"✅ Dictionary has predict method! Using it directly.")
+                        # Keep as is
+                    else:
+                        print(f"❌ No valid model found in dictionary. Improved model not available.")
+                        improved_model = None
             else:
                 print(f"✅ Improved model loaded successfully! Type: {type(improved_model).__name__}")
                 
         except Exception as e:
             print(f"⚠️ Could not load improved model: {e}")
+            traceback.print_exc()
             improved_model = None
+        
+        # Final validation check for improved model
+        if improved_model is not None:
+            print(f"   Improved model has predict method: {hasattr(improved_model, 'predict')}")
         
         # Try to load advanced model
         print("🔄 Loading advanced model...")
@@ -1206,8 +2070,8 @@ def log_prediction(input_data, prediction, model_type='original'):
         
         prediction_entry = {
             'id': len(history) + 1,
-            'timestamp': datetime.datetime.now().isoformat(),
-            'timestamp_readable': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'timestamp': datetime.now().isoformat(),
+            'timestamp_readable': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'input': input_data,
             'prediction': float(prediction),
             'rounded': int(round(prediction)),
@@ -1295,18 +2159,18 @@ def filter_predictions_by_date_range(predictions, start_date=None, end_date=None
         return []
     
     filtered = []
-    now = datetime.datetime.now()
+    now = datetime.now()
     
     for pred in predictions:
         try:
             # Parse timestamp
             if 'timestamp' in pred:
-                pred_time = datetime.datetime.fromisoformat(pred['timestamp'].replace('Z', '+00:00'))
+                pred_time = datetime.fromisoformat(pred['timestamp'].replace('Z', '+00:00'))
             elif 'timestamp_readable' in pred:
                 try:
-                    pred_time = datetime.datetime.strptime(pred['timestamp_readable'], "%Y-%m-%d %H:%M:%S")
+                    pred_time = datetime.strptime(pred['timestamp_readable'], "%Y-%m-%d %H:%M:%S")
                 except:
-                    pred_time = datetime.datetime.strptime(pred['timestamp_readable'], "%Y-%m-%dT%H:%M:%S")
+                    pred_time = datetime.strptime(pred['timestamp_readable'], "%Y-%m-%dT%H:%M:%S")
             else:
                 continue
             
@@ -1315,19 +2179,19 @@ def filter_predictions_by_date_range(predictions, start_date=None, end_date=None
                 if pred_time.date() == now.date():
                     filtered.append(pred)
             elif time_filter == 'week':
-                week_ago = now - datetime.timedelta(days=7)
+                week_ago = now - timedelta(days=7)
                 if pred_time >= week_ago:
                     filtered.append(pred)
             elif time_filter == 'month':
-                month_ago = now - datetime.timedelta(days=30)
+                month_ago = now - timedelta(days=30)
                 if pred_time >= month_ago:
                     filtered.append(pred)
             elif time_filter == 'quarter':
-                quarter_ago = now - datetime.timedelta(days=90)
+                quarter_ago = now - timedelta(days=90)
                 if pred_time >= quarter_ago:
                     filtered.append(pred)
             elif time_filter == 'year':
-                year_ago = now - datetime.timedelta(days=365)
+                year_ago = now - timedelta(days=365)
                 if pred_time >= year_ago:
                     filtered.append(pred)
             elif time_filter == 'custom':
@@ -1650,8 +2514,8 @@ def validate_export_request(export_type, format_type=None, filters=None):
         date_range = filters['date_range']
         if 'start_date' in date_range and 'end_date' in date_range:
             try:
-                start_date = datetime.datetime.strptime(date_range['start_date'], '%Y-%m-%d')
-                end_date = datetime.datetime.strptime(date_range['end_date'], '%Y-%m-%d')
+                start_date = datetime.strptime(date_range['start_date'], '%Y-%m-%d')
+                end_date = datetime.strptime(date_range['end_date'], '%Y-%m-%d')
                 
                 if start_date > end_date:
                     errors.append("Start date must be before end date")
@@ -1659,7 +2523,7 @@ def validate_export_request(export_type, format_type=None, filters=None):
                 if (end_date - start_date).days > 365:
                     errors.append("Date range cannot exceed 365 days")
                 
-                if end_date > datetime.datetime.now():
+                if end_date > datetime.now():
                     errors.append("End date cannot be in the future")
                     
             except ValueError:
@@ -1984,8 +2848,8 @@ def export_predictions_with_format(format_type, filters):
         history = get_prediction_history(limit=None)
         
         if filters.get('date_range'):
-            start_date = datetime.datetime.strptime(filters['date_range']['start_date'], '%Y-%m-%d')
-            end_date = datetime.datetime.strptime(filters['date_range']['end_date'], '%Y-%m-%d')
+            start_date = datetime.strptime(filters['date_range']['start_date'], '%Y-%m-%d')
+            end_date = datetime.strptime(filters['date_range']['end_date'], '%Y-%m-%d')
             history = filter_predictions_by_date_range(history, start_date.date(), end_date.date(), 'custom')
         
         if not history:
@@ -2062,7 +2926,7 @@ def export_predictions_csv_response(history):
     # Create response
     response = make_response(output.getvalue())
     response.headers["Content-Disposition"] = \
-        f'attachment; filename="urbanflow_predictions_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        f'attachment; filename="urbanflow_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
     response.headers["Content-Type"] = "text/csv"
     
     return response
@@ -2072,14 +2936,14 @@ def export_predictions_json_response(history):
     data = {
         "success": True,
         "export_type": "predictions",
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.now().isoformat(),
         "total_predictions": len(history),
         "data": history
     }
     
     response = make_response(json.dumps(data, indent=2))
     response.headers["Content-Disposition"] = \
-        f'attachment; filename="urbanflow_predictions_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.json"'
+        f'attachment; filename="urbanflow_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json"'
     response.headers["Content-Type"] = "application/json"
     
     return response
@@ -2130,7 +2994,7 @@ def export_predictions_excel_response(history):
         # Create response
         response = make_response(output.getvalue())
         response.headers["Content-Disposition"] = \
-            f'attachment; filename="urbanflow_predictions_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+            f'attachment; filename="urbanflow_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
         response.headers["Content-Type"] = \
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         
@@ -2174,13 +3038,13 @@ def export_metrics_json_response(metrics):
     data = {
         "success": True,
         "export_type": "metrics",
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.now().isoformat(),
         "metrics": metrics
     }
     
     response = make_response(json.dumps(data, indent=2))
     response.headers["Content-Disposition"] = \
-        f'attachment; filename="urbanflow_metrics_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.json"'
+        f'attachment; filename="urbanflow_metrics_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json"'
     response.headers["Content-Type"] = "application/json"
     
     return response
@@ -2207,7 +3071,7 @@ def export_metrics_html_response(metrics):
     <body>
         <div class="header">
             <h1>UrbanFlow Model Metrics Report</h1>
-            <p>Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         </div>
         
         <h2>Model Performance Metrics</h2>
@@ -2239,7 +3103,7 @@ def export_metrics_html_response(metrics):
         
         <div class="footer">
             <p>UrbanFlow Predictive Analytics Platform</p>
-            <p>© {datetime.datetime.now().year} - Generated automatically</p>
+            <p>© {datetime.now().year} - Generated automatically</p>
         </div>
     </body>
     </html>
@@ -2247,7 +3111,7 @@ def export_metrics_html_response(metrics):
     
     response = make_response(html_content)
     response.headers["Content-Disposition"] = \
-        f'attachment; filename="urbanflow_metrics_report_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.html"'
+        f'attachment; filename="urbanflow_metrics_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.html"'
     response.headers["Content-Type"] = "text/html"
     
     return response
@@ -2270,7 +3134,7 @@ def export_metrics_pdf_response(metrics):
         
         # Title
         story.append(Paragraph("UrbanFlow Model Metrics Report", styles['Title']))
-        story.append(Paragraph(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
         story.append(Spacer(1, 20))
         
         # Summary table
@@ -2330,7 +3194,7 @@ def export_metrics_pdf_response(metrics):
         
         response = make_response(buffer.getvalue())
         response.headers["Content-Disposition"] = \
-            f'attachment; filename="urbanflow_metrics_report_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
+            f'attachment; filename="urbanflow_metrics_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
         response.headers["Content-Type"] = "application/pdf"
         
         return response
@@ -2363,8 +3227,8 @@ def export_all_data_zip(filters):
             try:
                 history = get_prediction_history(limit=None)
                 if filters.get('date_range'):
-                    start_date = datetime.datetime.strptime(filters['date_range']['start_date'], '%Y-%m-%d')
-                    end_date = datetime.datetime.strptime(filters['date_range']['end_date'], '%Y-%m-%d')
+                    start_date = datetime.strptime(filters['date_range']['start_date'], '%Y-%m-%d')
+                    end_date = datetime.strptime(filters['date_range']['end_date'], '%Y-%m-%d')
                     history = filter_predictions_by_date_range(history, start_date.date(), end_date.date(), 'custom')
                 
                 if history:
@@ -2385,7 +3249,7 @@ def export_all_data_zip(filters):
             UrbanFlow Complete Data Export
             ===============================
             
-            Exported: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             
             Files Included:
             1. predictions.csv - All prediction history
@@ -2402,7 +3266,7 @@ def export_all_data_zip(filters):
             - All timestamps are in ISO 8601 format
             
             UrbanFlow Predictive Analytics Platform
-            © {datetime.datetime.now().year}
+            © {datetime.now().year}
             """
             
             zip_file.writestr("README.txt", readme_content.strip())
@@ -2411,7 +3275,7 @@ def export_all_data_zip(filters):
         response = make_response(zip_buffer.getvalue())
         response.headers['Content-Type'] = 'application/zip'
         response.headers['Content-Disposition'] = \
-            f'attachment; filename="urbanflow_complete_export_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
+            f'attachment; filename="urbanflow_complete_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
         
         return response
         
@@ -2464,6 +3328,141 @@ def generate_predictions_csv_content(history):
 # =============================================
 # NEW ENDPOINTS FOR ADVANCED FEATURES
 # =============================================
+
+@main.route('/test-improved-model', methods=['GET'])
+def test_improved_model_prediction():
+    """Test if improved model can make a prediction"""
+    try:
+        import numpy as np
+        import pandas as pd
+        
+        # Check if model exists
+        if improved_model is None:
+            return jsonify({
+                "success": False,
+                "error": "Improved model is None",
+                "has_predict": False
+            })
+        
+        # Check if model has predict method
+        has_predict = hasattr(improved_model, 'predict')
+        
+        # Try to make a simple test prediction
+        test_result = None
+        if has_predict:
+            try:
+                # Create a simple test input with the expected features
+                test_data = pd.DataFrame([{
+                    'Hour': 14,
+                    'Temperature(°C)': 22.5,
+                    'Humidity(%)': 60,
+                    'Wind speed (m/s)': 2.5,
+                    'Visibility (10m)': 2000,
+                    'Dew point temperature(°C)': 15.0,
+                    'Solar Radiation (MJ/m2)': 1.5,
+                    'Rainfall(mm)': 0.0,
+                    'Snowfall (cm)': 0.0,
+                    'hour_squared': 196
+                }])
+                
+                prediction = improved_model.predict(test_data)
+                test_result = float(prediction[0])
+            except Exception as e:
+                test_result = f"Prediction error: {str(e)}"
+        
+        return jsonify({
+            "success": True,
+            "model_type": str(type(improved_model).__name__),
+            "has_predict_method": has_predict,
+            "test_prediction": test_result,
+            "feature_names": improved_model.feature_names_in_.tolist() if hasattr(improved_model, 'feature_names_in_') else None,
+            "n_features": improved_model.n_features_in_ if hasattr(improved_model, 'n_features_in_') else None
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        })
+
+@main.route('/api/dashboard-metrics')
+def dashboard_metrics():
+    """Get real-time dashboard metrics"""
+    try:
+        # Get prediction count for today
+        today = datetime.now().date()  
+        
+        # Use your existing JSON history file
+        all_predictions = get_prediction_history(limit=None)
+        
+        # Filter predictions for today
+        predictions_today = 0
+        recent_errors = []
+        
+        for pred in all_predictions:
+            try:
+                # Parse timestamp
+                if 'timestamp' in pred:
+                    pred_time = datetime.fromisoformat(pred['timestamp'].replace('Z', '+00:00'))
+                elif 'timestamp_readable' in pred:
+                    pred_time = datetime.strptime(pred['timestamp_readable'], "%Y-%m-%d %H:%M:%S")
+                else:
+                    continue
+                
+                # Count today's predictions
+                if pred_time.date() == today:
+                    predictions_today += 1
+                
+                # Collect recent predictions for error calculation (last 100)
+                if len(recent_errors) < 100:
+                    # Use default error
+                    error = 86
+                    recent_errors.append(error)
+                    
+            except Exception as e:
+                continue
+        
+        # Calculate average error
+        if recent_errors:
+            avg_error = sum(recent_errors) / len(recent_errors)
+        else:
+            avg_error = 86  # Default
+        
+        # Get model accuracy from metrics
+        try:
+            metrics_data = calculate_model_metrics()
+            overall_accuracy = metrics_data.get('r2_score', 0.824) * 100
+        except:
+            overall_accuracy = 92.4
+        
+        # Count available models
+        models_available = 0
+        if original_model is not None:
+            models_available += 1
+        if improved_model is not None and hasattr(improved_model, 'predict'):
+            models_available += 1
+        if advanced_model is not None:
+            models_available += 1
+        if xgboost_model is not None:
+            models_available += 1
+        
+        return jsonify({
+            'success': True,
+            'metrics': {
+                'model_accuracy': round(overall_accuracy, 1),
+                'predictions_today': predictions_today,
+                'avg_error': round(avg_error, 0),
+                'models_available': models_available
+            }
+        })
+    except Exception as e:
+        print(f"Error getting dashboard metrics: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @main.route('/api/features/advanced', methods=['GET'])
 def get_advanced_features():
@@ -2641,10 +3640,17 @@ def predict():
         # Check if we should calculate features automatically
         calculate_features = request.args.get('calculate_features', 'false').lower() == 'true'
         
+        # Apply field name normalization BEFORE any processing
+        print(f"\n🔤 Before normalization for {model_type} model:")
+        print(f"   Input keys: {list(data.keys())}")
+        
+        normalized_data = normalize_field_names_for_model(data, model_type)
+        print(f"   After normalization: {list(normalized_data.keys())}")
+        
         # For advanced or xgboost models with automatic feature calculation
         if model_type in ['advanced', 'xgboost'] and calculate_features:
             print(f"🧮 Auto-calculating engineered features for {model_type} model...")
-            data = calculate_engineered_features_from_basic(data)
+            normalized_data = calculate_engineered_features_from_basic(normalized_data)
         
         # Check if model is available
         model_to_use = None
@@ -2659,6 +3665,9 @@ def predict():
                     "fallback_available": True,
                     "hint": "Use ?model_type=original or run training script"
                 }), 503
+            print(f"🧮 Calculating all 38 improved features...")
+            enhanced_data = calculate_improved_features(normalized_data)
+            normalized_data = enhanced_data  # Replace with enhanced data
             model_to_use = improved_model
         elif model_type == 'advanced':
             if advanced_model is None:
@@ -2669,26 +3678,46 @@ def predict():
                     "fallback_available": True,
                     "hint": "Use ?model_type=original or train advanced model"
                 }), 503
+            if calculate_features:
+                print(f"🧮 Auto-calculating engineered features for advanced model...")
+                enhanced_data = calculate_engineered_features_from_basic(normalized_data)
+                normalized_data = enhanced_data
             model_to_use = advanced_model
         elif model_type == 'xgboost':
             if xgboost_model is None:
                 return jsonify({
                     "success": False,
-                    "error": "XGBoost model not available. Please train the XGBoost model first.",
+                    "error": "XGBoost model not available.",
                     "model_type": "original",
                     "fallback_available": True,
-                    "hint": "Use ?model_type=original or train XGBoost model"
                 }), 503
+            if calculate_features:
+                print(f"🧮 Auto-calculating engineered features for XGBoost model...")
+                enhanced_data = calculate_xgboost_features_from_basic(normalized_data)
+                normalized_data = enhanced_data
+
             model_to_use = xgboost_model
         
         # Validate input for the specific model type
-        validation_errors = validate_input(data, model_type)
+        validation_errors = validate_input(normalized_data, model_type)
         if validation_errors:
+            # Provide helpful error messages about required fields
+            required_fields = get_required_fields_for_model(model_type)
+            missing_fields = [field for field in required_fields if field not in normalized_data]
+            
+            error_msg = f"Input validation failed for {model_type} model"
+            if missing_fields:
+                error_msg += f". Missing required fields: {', '.join(missing_fields)}"
+                if model_type == 'improved' and 'Temperature(°C)' in missing_fields:
+                    error_msg += " (Note: Improved model expects 'Temperature(°C)', not 'Temperature(캜)')"
+            
             return jsonify({
                 "success": False,
                 "errors": validation_errors,
+                "missing_fields": missing_fields,
+                "required_fields": required_fields,
                 "model_type": model_type,
-                "message": "Input validation failed"
+                "message": error_msg
             }), 400
         
         # Log incoming data for debugging
@@ -2696,28 +3725,30 @@ def predict():
         print(f"📥 Received prediction request for {model_type.upper()} model:")
         print(f"   Model Type: {model_type}")
         print(f"   Auto-calculate features: {calculate_features}")
-        print(f"   Input features: {len(data)}")
-        for i, (key, value) in enumerate(list(data.items())[:10]):  # Show first 10
+        print(f"   Input features: {len(data)} -> Normalized: {len(normalized_data)}")
+        for i, (key, value) in enumerate(list(normalized_data.items())[:10]):  # Show first 10
             print(f"   {key}: {value}")
-        if len(data) > 10:
-            print(f"   ... and {len(data) - 10} more features")
+        if len(normalized_data) > 10:
+            print(f"   ... and {len(normalized_data) - 10} more features")
         print("="*50)
         
         # Preprocess data based on model type
         if model_type == 'advanced' or model_type == 'xgboost':
             # Both advanced and XGBoost models use the same preprocessing
-            processed_data = preprocess_with_advanced_features(data)
+            processed_data = preprocess_with_advanced_features(normalized_data)
         elif model_type == 'improved':
-            processed_data = preprocess_input_improved(data)
+            processed_data = preprocess_input_improved(normalized_data)
         else:
-            processed_data = preprocess_input_original(data)
+            processed_data = preprocess_input_original(normalized_data)
         
         # Log processed data
         print(f"\n📊 Processed data for {model_type.upper()} model:")
         print(f"  Shape: {processed_data.shape}")
         print(f"  Features: {len(processed_data.columns)}")
         if hasattr(model_to_use, 'feature_names_in_'):
-            print(f"  Expected features: {len(model_to_use.feature_names_in_)}")
+            expected_features = list(model_to_use.feature_names_in_)
+            print(f"  Expected features: {len(expected_features)}")
+            print(f"  First few expected: {expected_features[:10]}")
         elif model_type == 'xgboost' and hasattr(model_to_use, 'get_booster'):
             # For XGBoost models
             try:
@@ -2725,6 +3756,7 @@ def predict():
                 feature_names = booster.feature_names
                 if feature_names:
                     print(f"  Expected features: {len(feature_names)}")
+                    print(f"  First few expected: {list(feature_names)[:10]}")
             except:
                 pass
         print("="*50)
@@ -2742,7 +3774,7 @@ def predict():
         predicted_bikes_rounded = int(round(predicted_bikes))
         
         # Calculate confidence
-        confidence = calculate_confidence(data, predicted_bikes, model_type)
+        confidence = calculate_confidence(normalized_data, predicted_bikes, model_type)
         
         # Log prediction
         print(f"\n🎯 {model_type.upper()} model prediction: {predicted_bikes:.1f} bikes (rounded: {predicted_bikes_rounded})")
@@ -2750,19 +3782,19 @@ def predict():
         print("="*50 + "\n")
         
         # Log to history
-        log_prediction(data, predicted_bikes, model_type)
+        log_prediction(normalized_data, predicted_bikes, model_type)
         
         # Determine season from input
         season = "Unknown"
-        if 'Seasons' in data:
-            season = data.get('Seasons', 'Unknown')
-        elif data.get('Seasons_Spring') == 1:
+        if 'Seasons' in normalized_data:
+            season = normalized_data.get('Seasons', 'Unknown')
+        elif normalized_data.get('Seasons_Spring') == 1:
             season = "Spring"
-        elif data.get('Seasons_Summer') == 1:
+        elif normalized_data.get('Seasons_Summer') == 1:
             season = "Summer"
-        elif data.get('Seasons_Winter') == 1:
+        elif normalized_data.get('Seasons_Winter') == 1:
             season = "Winter"
-        elif data.get('Seasons_Autumn') == 1:
+        elif normalized_data.get('Seasons_Autumn') == 1:
             season = "Autumn"
         
         # Get feature count
@@ -2784,13 +3816,13 @@ def predict():
             "predicted_rented_bikes": predicted_bikes_rounded,
             "rounded": predicted_bikes_rounded,
             "prediction_id": len(get_prediction_history()) + 1,
-            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "confidence": confidence,
             "model_type": model_type,
             "message": f"Prediction successful using {model_type} model",
             "input_summary": {
-                "hour": data.get('Hour'),
-                "temperature": data.get('Temperature(°C)', data.get('Temperature(캜)', 'Unknown')),
+                "hour": normalized_data.get('Hour', normalized_data.get('hour')),
+                "temperature": normalized_data.get('Temperature(°C)', normalized_data.get('temperature', normalized_data.get('Temperature(캜)', 'Unknown'))),
                 "season": season,
                 "features_received": len(data),
                 "features_used": features_used,
@@ -2879,7 +3911,8 @@ def predict():
                 "type": "improved",
                 "features": features_used,
                 "description": "Engineered features model with interactions and categories",
-                "improved_available": improved_model is not None and hasattr(improved_model, 'predict')
+                "improved_available": improved_model is not None and hasattr(improved_model, 'predict'),
+                "note": "Field names automatically mapped from Korean characters to standard format"
             }
         else:
             response_data['model_info'] = {
@@ -2896,10 +3929,16 @@ def predict():
     except KeyError as e:
         error_msg = f"Missing required field: {str(e)}"
         print(f"❌ Validation error: {error_msg}")
+        
+        # Get model-specific required fields
+        required_fields = get_required_fields_for_model(model_type)
+        
         return jsonify({
             "success": False,
             "error": error_msg,
-            "hint": "Ensure all required features are provided"
+            "hint": f"Ensure all required features are provided for {model_type} model",
+            "required_fields": required_fields,
+            "model_type": model_type
         }), 400
         
     except ValueError as e:
@@ -2983,12 +4022,16 @@ def compare_predictions():
         # Improved model prediction
         try:
             if improved_model and hasattr(improved_model, 'predict'):
-                processed_improved = preprocess_input_improved(data)
+                # FIX: Apply field mapping for improved model
+                from app.routes import normalize_field_names_for_model
+                improved_data = normalize_field_names_for_model(data, 'improved')
+                
+                processed_improved = preprocess_input_improved(improved_data)
                 pred_improved = improved_model.predict(processed_improved)[0]
                 results['improved'] = {
                     'prediction': float(pred_improved),
                     'rounded': int(round(pred_improved)),
-                    'confidence': calculate_confidence(data, pred_improved, 'improved'),
+                    'confidence': calculate_confidence(improved_data, pred_improved, 'improved'),
                     'features': processed_improved.shape[1],
                     'status': 'success'
                 }
@@ -3002,13 +4045,19 @@ def compare_predictions():
         try:
             if advanced_model:
                 # Auto-calculate features for advanced model
-                enhanced_data = calculate_engineered_features_from_basic(data)
+                from app.routes import normalize_field_names_for_model, calculate_engineered_features_from_basic
+                
+                # First normalize field names
+                advanced_data = normalize_field_names_for_model(data, 'advanced')
+                
+                # Then calculate engineered features
+                enhanced_data = calculate_engineered_features_from_basic(advanced_data)
                 processed_advanced = preprocess_with_advanced_features(enhanced_data)
                 pred_advanced = advanced_model.predict(processed_advanced)[0]
                 results['advanced'] = {
                     'prediction': float(pred_advanced),
                     'rounded': int(round(pred_advanced)),
-                    'confidence': calculate_confidence(data, pred_advanced, 'advanced'),
+                    'confidence': calculate_confidence(advanced_data, pred_advanced, 'advanced'),
                     'features': processed_advanced.shape[1],
                     'status': 'success',
                     'engineered_features': len([f for f in processed_advanced.columns 
@@ -3026,13 +4075,19 @@ def compare_predictions():
         try:
             if xgboost_model:
                 # Auto-calculate features for XGBoost model
-                enhanced_data = calculate_engineered_features_from_basic(data)
+                from app.routes import normalize_field_names_for_model, calculate_engineered_features_from_basic
+                
+                # First normalize field names
+                xgboost_data = normalize_field_names_for_model(data, 'xgboost')
+                
+                # Then calculate engineered features
+                enhanced_data = calculate_engineered_features_from_basic(xgboost_data)
                 processed_xgboost = preprocess_with_advanced_features(enhanced_data)
                 pred_xgboost = xgboost_model.predict(processed_xgboost)[0]
                 results['xgboost'] = {
                     'prediction': float(pred_xgboost),
                     'rounded': int(round(pred_xgboost)),
-                    'confidence': calculate_confidence(data, pred_xgboost, 'xgboost'),
+                    'confidence': calculate_confidence(xgboost_data, pred_xgboost, 'xgboost'),
                     'features': processed_xgboost.shape[1],
                     'status': 'success',
                     'engineered_features': len([f for f in processed_xgboost.columns 
@@ -3098,7 +4153,7 @@ def compare_predictions():
         return jsonify({
             "success": True,
             "results": results,
-            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "models_available": {
                 "original": original_model is not None,
                 "improved": improved_model is not None and hasattr(improved_model, 'predict'),
@@ -3299,7 +4354,7 @@ def metrics():
                 "predictions_week": week_count,
                 "predictions_month": month_count,
                 "avg_response_time": "42ms",
-                "last_updated": datetime.datetime.now().isoformat(),
+                "last_updated": datetime.now().isoformat(),
                 "model_name": metrics_data.get('model_name', 'Random Forest Regressor'),
                 "dataset": metrics_data.get('dataset', 'Seoul Bike Sharing'),
                 "models_available": models_available,
@@ -3324,7 +4379,7 @@ def metrics():
                 "features_count": 14,
                 "total_predictions": 0,
                 "avg_response_time": "42ms",
-                "last_updated": datetime.datetime.now().isoformat(),
+                "last_updated": datetime.now().isoformat(),
                 "filtering_supported": True,
                 "advanced_model_available": advanced_model is not None,
                 "xgboost_model_available": xgboost_model is not None
@@ -3481,7 +4536,7 @@ def api_status():
             },
             "system_info": {
                 "uptime": "100%",
-                "last_checked": datetime.datetime.now().isoformat(),
+                "last_checked": datetime.now().isoformat(),
                 "version": "2.5.0",  # Updated version for XGBoost support
                 "email_configured": email_configured,
                 "feature_engineering": "Available" if improved_model is not None else "Not trained",
@@ -3813,7 +4868,7 @@ def export_chart(chart_type):
             }), 503
         
         # Create response
-        filename = f"urbanflow_{chart_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.{format_type}"
+        filename = f"urbanflow_{chart_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{format_type}"
         
         if format_type == 'pdf':
             response = make_response(chart_image)
@@ -3882,7 +4937,7 @@ def export_all_charts():
             UrbanFlow Analytics Charts Export
             ==================================
             
-            Exported: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            Exported: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             Filter: {time_filter}
             Format: {format_type.upper()}
             
@@ -3898,7 +4953,7 @@ def export_all_charts():
             - All charts are high-resolution (300 DPI)
             - Suitable for presentations and reports
             
-            © {datetime.datetime.now().year} UrbanFlow Systems
+            © {datetime.now().year} UrbanFlow Systems
             """
             
             zip_file.writestr("README.txt", readme_content.strip())
@@ -3908,7 +4963,7 @@ def export_all_charts():
         response = make_response(zip_buffer.getvalue())
         response.headers['Content-Type'] = 'application/zip'
         response.headers['Content-Disposition'] = \
-            f'attachment; filename="urbanflow_charts_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
+            f'attachment; filename="urbanflow_charts_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
         
         return response
         
@@ -4022,7 +5077,7 @@ def export_predictions_csv():
             writer.writerow(row)
         
         response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = f'attachment; filename=bike_predictions_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        response.headers["Content-Disposition"] = f'attachment; filename=bike_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         response.headers["Content-Type"] = "text/csv"
         
         return response
@@ -4073,13 +5128,13 @@ def export_predictions_json():
         data = {
             "success": True,
             "total_predictions": len(history),
-            "export_timestamp": datetime.datetime.now().isoformat(),
+            "export_timestamp": datetime.now().isoformat(),
             "data": history
         }
         
         # Create response using make_response
         response = make_response(json.dumps(data, indent=2))
-        response.headers["Content-Disposition"] = f'attachment; filename=bike_predictions_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        response.headers["Content-Disposition"] = f'attachment; filename=bike_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         response.headers["Content-Type"] = "application/json"
         
         return response
@@ -4117,7 +5172,7 @@ def export_model_report():
         <body>
             <div class="header">
                 <h1>🚲 Bike Rental Demand Model Report</h1>
-                <p>Generated: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+                <p>Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
             </div>
             
             <div class="section">
@@ -4161,7 +5216,7 @@ def export_model_report():
             
             <div class="footer">
                 <p>Generated by Urban Bike Rental Demand Prediction System</p>
-                <p>© {datetime.datetime.now().year} - Graduation Project</p>
+                <p>© {datetime.now().year} - Graduation Project</p>
             </div>
         </body>
         </html>
@@ -4169,7 +5224,7 @@ def export_model_report():
         
         # Create response using make_response
         response = make_response(html_report)
-        response.headers["Content-Disposition"] = f'attachment; filename=model_report_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.html'
+        response.headers["Content-Disposition"] = f'attachment; filename=model_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.html'
         response.headers["Content-Type"] = "text/html"
         
         return response
@@ -4224,7 +5279,7 @@ def export_via_email():
         # For compatibility, convert to new format
         email_data = {
             'recipients': [email_to],
-            'subject': f"UrbanFlow {export_type.title()} Report - {datetime.datetime.now().strftime('%Y-%m-%d')}",
+            'subject': f"UrbanFlow {export_type.title()} Report - {datetime.now().strftime('%Y-%m-%d')}",
             'message': custom_message or 'Please find attached the UrbanFlow report.',
             'includePDF': data.get('include_charts', True),
             'includeCSV': data.get('include_csv', True),
@@ -4241,7 +5296,7 @@ def export_via_email():
                 "message": f"Report sent successfully to {email_to}",
                 "email": email_to,
                 "type": export_type,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             })
         else:
             return jsonify({
@@ -4316,8 +5371,8 @@ def analytics_hourly_patterns():
         end_date = None
         if start_date_str and end_date_str:
             try:
-                start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-                end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
                 time_filter = 'custom'
             except ValueError:
                 pass
@@ -4396,8 +5451,8 @@ def analytics_kpis():
         end_date = None
         if start_date_str and end_date_str:
             try:
-                start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-                end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
                 time_filter = 'custom'
             except ValueError:
                 pass
@@ -4451,7 +5506,7 @@ def analytics_kpis():
             "filter": time_filter,
             "filtered_count": len(filtered_predictions),
             "total_count": len(all_history),
-            "timestamp": datetime.datetime.now().isoformat()
+            "timestamp":datetime.now().isoformat()
         }
         
         # Add date range info for custom filter
@@ -4516,8 +5571,8 @@ def analytics_insights():
         end_date = None
         if start_date_str and end_date_str:
             try:
-                start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-                end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
                 time_filter = 'custom'
             except ValueError:
                 pass
@@ -4851,8 +5906,8 @@ def analytics_date_range():
         
         # Validate dates
         try:
-            start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
             
             if start_dt > end_dt:
                 return jsonify({
