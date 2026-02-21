@@ -51,6 +51,11 @@
             background: linear-gradient(135deg, #f3e8ff, #ffffff);
         }
 
+        .model-option[data-model="advanced"].active {
+            border-color: #06d6a0;
+            background: linear-gradient(135deg, #e6faf5, #ffffff);
+        }
+
         .model-option[data-model="xgboost"].active {
             border-color: #f72585;
             background: linear-gradient(135deg, #ffe0f0, #ffffff);
@@ -74,6 +79,10 @@
 
         .model-option[data-model="improved"] .model-icon {
             color: #7209b7;
+        }
+
+        .model-option[data-model="advanced"] .model-icon {
+            color: #06d6a0;
         }
 
         .model-option[data-model="xgboost"] .model-icon {
@@ -112,6 +121,11 @@
 
         .badge-improved {
             background: #7209b7;
+            color: white;
+        }
+
+        .badge-advanced {
+            background: #06d6a0;
             color: white;
         }
 
@@ -196,11 +210,13 @@
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             margin-bottom: 12px;
+            overflow-x: auto;
         }
 
         .model-comparison {
             width: 100%;
             border-collapse: collapse;
+            min-width: 700px;
         }
 
         .model-comparison th {
@@ -222,22 +238,34 @@
             border-bottom: none;
         }
 
+        .metric-value.improved {
+            color: #7209b7;
+            font-weight: 600;
+        }
+
+        .metric-value.advanced {
+            color: #06d6a0;
+            font-weight: 600;
+        }
+
+        .metric-value.xgboost {
+            color: #f72585;
+            font-weight: 600;
+        }
+
         .model-comparison td.improved {
             color: #7209b7;
+            font-weight: 600;
+        }
+
+        .model-comparison td.advanced {
+            color: #06d6a0;
             font-weight: 600;
         }
 
         .model-comparison td.xgboost {
             color: #f72585;
             font-weight: 600;
-        }
-
-        .metric-value.improved {
-            color: #7209b7;
-        }
-
-        .metric-value.xgboost {
-            color: #f72585;
         }
 
         .model-note {
@@ -292,27 +320,57 @@
             margin-bottom: 6px;
         }
 
-        /* Quick Scenarios Dropdown */
+        /* Enhanced Scenario Selector Styling */
         .scenario-selector {
             width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            padding: 14px 16px;
+            margin: 8px 0 16px 0;
+            border-radius: 12px;
+            border: 2px solid var(--gray-200);
             background: white;
-            font-size: 0.9rem;
-            color: #1e293b;
+            font-size: 0.95rem;
+            color: var(--gray-800);
             cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234361ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 16px;
+            padding-right: 40px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 2px solid #e2e8f0;
         }
 
         .scenario-selector:hover {
             border-color: #4361ee;
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+            transform: translateY(-1px);
         }
 
         .scenario-selector:focus {
             outline: none;
             border-color: #4361ee;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.2);
+        }
+
+        /* Style for the default/placeholder option */
+        .scenario-selector option:first-child {
+            color: #6c757d;
+            font-weight: 400;
+        }
+
+        /* Custom styling for dropdown options */
+        .scenario-selector option {
+            padding: 12px;
+            font-size: 0.95rem;
+            background: white;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         /* Export Format Modal */
@@ -352,7 +410,10 @@
         }
 
         .export-option {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             width: 100%;
             padding: 14px;
             margin: 10px 0;
@@ -364,9 +425,17 @@
             transition: all 0.2s ease;
         }
 
+        .export-option i {
+            font-size: 1.2rem;
+        }
+
         .export-option.json {
             background: #4361ee;
             color: white;
+        }
+
+        .export-option.json i {
+            color: #ffd166;
         }
 
         .export-option.json:hover {
@@ -379,6 +448,10 @@
             color: white;
         }
 
+        .export-option.csv i {
+            color: #2ecc71;
+        }
+
         .export-option.csv:hover {
             background: #27ae60;
             transform: translateY(-2px);
@@ -389,13 +462,20 @@
             color: white;
         }
 
+        .export-option.text i {
+            color: #f39c12;
+        }
+
         .export-option.text:hover {
             background: #e67e22;
             transform: translateY(-2px);
         }
 
         .export-cancel {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             width: 100%;
             padding: 12px;
             margin-top: 15px;
@@ -410,6 +490,24 @@
 
         .export-cancel:hover {
             background: #cbd5e1;
+        }
+
+        /* Fix for action button icons */
+        .action-btn-small i {
+            font-size: 1rem;
+            width: 18px;
+            text-align: center;
+            color: inherit;
+        }
+
+        /* Ensure Font Awesome loads properly */
+        .far, .fas, .fab {
+            font-family: 'Font Awesome 6 Free' !important;
+            font-weight: 400;
+        }
+
+        .fas {
+            font-weight: 900;
         }
 
         @keyframes fadeIn {
@@ -512,22 +610,22 @@
                     <div class="stat-label">Models Available</div>
                     <div class="stat-value" id="models-available">
                         <span class="metric-loading">Loading...</span>
-                        <span class="metric-value" style="display: none;">3</span>
+                        <span class="metric-value" style="display: none;">4</span>
                     </div>
                 </div>
             </div>
             <div class="quick-actions">
                 <h4>Quick Actions</h4>
                 
-                <!-- Scenario Selector Dropdown -->
+                <!-- Professional Scenario Selector with Font Awesome Icons -->
                 <select class="scenario-selector" id="scenario-selector" onchange="loadSpecificSample(this.value)">
-                    <option value="">📋 Quick Scenarios...</option>
-                    <option value="morning">🌅 Morning Commute (8 AM, Spring)</option>
-                    <option value="afternoon">☀️ Afternoon Peak (2 PM, Summer)</option>
-                    <option value="evening">🌆 Evening Commute (5 PM, Autumn)</option>
-                    <option value="winter">❄️ Winter Day (12 PM, Snow)</option>
-                    <option value="rainy">🌧️ Rainy Day (9 AM, Rain)</option>
-                    <option value="holiday">🎉 Holiday Afternoon (2 PM, Holiday)</option>
+                    <option value=""><i class="fas fa-list"></i> Select a scenario...</option>
+                    <option value="morning"><i class="fas fa-sun"></i> Morning Commute (8 AM, Spring)</option>
+                    <option value="afternoon"><i class="fas fa-sun"></i> Afternoon Peak (2 PM, Summer)</option>
+                    <option value="evening"><i class="fas fa-cloud-sun"></i> Evening Commute (5 PM, Autumn)</option>
+                    <option value="winter"><i class="fas fa-snowflake"></i> Winter Day (12 PM, Snow)</option>
+                    <option value="rainy"><i class="fas fa-cloud-rain"></i> Rainy Day (9 AM, Rain)</option>
+                    <option value="holiday"><i class="fas fa-gift"></i> Holiday Afternoon (2 PM, Holiday)</option>
                 </select>
                 
                 <button type="button" class="action-btn" onclick="loadSampleData()">
@@ -555,7 +653,7 @@
                 </div>
                 <div class="header-status">
                     <span class="status-indicator active"></span>
-                    <span class="status-text">Tri-Model System <span id="fe-status">Available</span></span>
+                    <span class="status-text">Quad-Model System <span id="fe-status">Available</span></span>
                 </div>
             </div>
 
@@ -789,12 +887,12 @@
                         </div>
                     </div>
 
-                    <!-- Features Tab - Enhanced Model Selection -->
+                    <!-- Features Tab - Enhanced Model Selection with 4 Models -->
                     <div class="form-tab" id="features-tab">
                         <div class="form-section">
                             <h3><i class="fas fa-rocket"></i> Model Selection</h3>
                             <div class="model-selector-section">
-                                <!-- Standard Model -->
+                                <!-- Standard Model (Original) -->
                                 <div class="model-option active" data-model="original" onclick="selectModel('original')">
                                     <div class="model-icon">
                                         <i class="fas fa-cube"></i>
@@ -832,29 +930,29 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Improved/Advanced Model -->
+                                <!-- Improved Model (38 features) -->
                                 <div class="model-option" data-model="improved" onclick="selectModel('improved')">
                                     <div class="model-icon">
-                                        <i class="fas fa-microchip"></i>
+                                        <i class="fas fa-chart-line"></i>
                                     </div>
                                     <div class="model-content">
                                         <div class="model-header">
-                                            <h4>Advanced Feature-Engineered RF</h4>
-                                            <span class="model-badge badge-improved">Recommended</span>
+                                            <h4>Improved Random Forest</h4>
+                                            <span class="model-badge badge-improved">Enhanced</span>
                                         </div>
-                                        <p class="model-description">35+ engineered features • Higher accuracy • Pattern detection</p>
+                                        <p class="model-description">38 engineered features • Better accuracy • Pattern detection</p>
                                         <div class="model-stats">
                                             <div class="stat">
                                                 <span class="stat-label">R² Score</span>
-                                                <span class="stat-value" id="stat-r2-improved">0.92</span>
+                                                <span class="stat-value" id="stat-r2-improved">0.90</span>
                                             </div>
                                             <div class="stat">
                                                 <span class="stat-label">RMSE</span>
-                                                <span class="stat-value" id="stat-rmse-improved">30.5</span>
+                                                <span class="stat-value" id="stat-rmse-improved">194.6</span>
                                             </div>
                                             <div class="stat">
                                                 <span class="stat-label">MAE</span>
-                                                <span class="stat-value" id="stat-mae-improved">22.8</span>
+                                                <span class="stat-value" id="stat-mae-improved">116.6</span>
                                             </div>
                                         </div>
                                         <div class="feature-tags">
@@ -862,7 +960,45 @@
                                             <span class="feature-tag">Weather Severity</span>
                                             <span class="feature-tag">Wind Chill</span>
                                             <span class="feature-tag">Workday</span>
-                                            <span class="feature-tag-more">+31 more</span>
+                                            <span class="feature-tag-more">+34 more</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Advanced Model (36 features) - NEW -->
+                                <div class="model-option" data-model="advanced" onclick="selectModel('advanced')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-microchip"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <div class="model-header">
+                                            <h4>Advanced Random Forest</h4>
+                                            <span class="model-badge badge-advanced">Recommended</span>
+                                        </div>
+                                        <p class="model-description">36 advanced features • Cyclical encoding • Weather categories</p>
+                                        <div class="model-stats">
+                                            <div class="stat">
+                                                <span class="stat-label">R² Score</span>
+                                                <span class="stat-value" id="stat-r2-advanced">0.91</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">RMSE</span>
+                                                <span class="stat-value" id="stat-rmse-advanced">192.4</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">MAE</span>
+                                                <span class="stat-value" id="stat-mae-advanced">116.6</span>
+                                            </div>
+                                        </div>
+                                        <div class="feature-tags">
+                                            <span class="feature-tag">Hour Sin/Cos</span>
+                                            <span class="feature-tag">Temp Categories</span>
+                                            <span class="feature-tag">Time of Day</span>
+                                            <span class="feature-tag">Rush Intensity</span>
+                                            <span class="feature-tag-more">+32 more</span>
                                         </div>
                                     </div>
                                     <div class="selection-indicator">
@@ -880,7 +1016,7 @@
                                             <h4>XGBoost Gradient Boosting</h4>
                                             <span class="model-badge badge-xgboost">High Performance</span>
                                         </div>
-                                        <p class="model-description">Advanced gradient boosting • 35+ features • State-of-the-art</p>
+                                        <p class="model-description">Advanced gradient boosting • 36 features • State-of-the-art</p>
                                         <div class="model-stats">
                                             <div class="stat">
                                                 <span class="stat-label">R² Score</span>
@@ -888,11 +1024,11 @@
                                             </div>
                                             <div class="stat">
                                                 <span class="stat-label">RMSE</span>
-                                                <span class="stat-value" id="stat-rmse-xgboost">153.0</span>
+                                                <span class="stat-value" id="stat-rmse-xgboost">153.3</span>
                                             </div>
                                             <div class="stat">
                                                 <span class="stat-label">MAE</span>
-                                                <span class="stat-value" id="stat-mae-xgboost">91.0</span>
+                                                <span class="stat-value" id="stat-mae-xgboost">90.9</span>
                                             </div>
                                         </div>
                                         <div class="feature-tags">
@@ -910,7 +1046,7 @@
                             </div>
                         </div>
 
-                        <!-- Model Comparison Section -->
+                        <!-- Model Comparison Section - Updated to 4 columns -->
                         <div class="form-section">
                             <h3><i class="fas fa-chart-simple"></i> Model Comparison</h3>
                             <div class="comparison-table">
@@ -919,6 +1055,7 @@
                                         <tr>
                                             <th>Metric</th>
                                             <th>Standard RF</th>
+                                            <th>Improved RF</th>
                                             <th>Advanced RF</th>
                                             <th>XGBoost</th>
                                         </tr>
@@ -927,30 +1064,35 @@
                                         <tr>
                                             <td>R² Score</td>
                                             <td><span class="metric-value">0.82</span></td>
-                                            <td><span class="metric-value improved">0.92</span></td>
+                                            <td><span class="metric-value improved">0.90</span></td>
+                                            <td><span class="metric-value advanced">0.91</span></td>
                                             <td><span class="metric-value xgboost">0.94</span></td>
                                         </tr>
                                         <tr>
                                             <td>RMSE</td>
                                             <td>112.5</td>
-                                            <td class="improved">30.5</td>
-                                            <td class="xgboost">153.0</td>
+                                            <td class="improved">194.6</td>
+                                            <td class="advanced">192.4</td>
+                                            <td class="xgboost">153.3</td>
                                         </tr>
                                         <tr>
                                             <td>MAE</td>
                                             <td>87.2</td>
-                                            <td class="improved">22.8</td>
-                                            <td class="xgboost">91.0</td>
+                                            <td class="improved">116.6</td>
+                                            <td class="advanced">116.6</td>
+                                            <td class="xgboost">90.9</td>
                                         </tr>
                                         <tr>
                                             <td>Features</td>
                                             <td>14</td>
-                                            <td>35+</td>
-                                            <td>35+</td>
+                                            <td>38</td>
+                                            <td>36</td>
+                                            <td>36</td>
                                         </tr>
                                         <tr>
                                             <td>Training Time</td>
                                             <td>Fast</td>
+                                            <td>Moderate</td>
                                             <td>Moderate</td>
                                             <td>Slow</td>
                                         </tr>
@@ -959,7 +1101,7 @@
                             </div>
                             <div class="model-note">
                                 <i class="fas fa-info-circle"></i>
-                                <span><strong>Note:</strong> Advanced RF has the best balance of accuracy and interpretability. XGBoost has higher R² but different error characteristics.</span>
+                                <span><strong>Note:</strong> Advanced RF uses cyclical encoding and weather categories. XGBoost has highest R² but different error characteristics.</span>
                             </div>
                         </div>
 
@@ -975,6 +1117,7 @@
                                         <li>Hour² and Hour³</li>
                                         <li>Weekend indicator</li>
                                         <li>Rush hour detection</li>
+                                        <li>Hour Sin/Cos (cyclical)</li>
                                     </ul>
                                 </div>
                                 
@@ -987,6 +1130,7 @@
                                         <li>Precipitation intensity</li>
                                         <li>Visibility × Precipitation</li>
                                         <li>Comfort index</li>
+                                        <li>Temperature categories</li>
                                     </ul>
                                 </div>
                                 
@@ -1011,6 +1155,7 @@
                                         <li>Polynomial features</li>
                                         <li>Binned variables</li>
                                         <li>Feature crossing</li>
+                                        <li>Time of day categories</li>
                                     </ul>
                                 </div>
                             </div>
@@ -1118,7 +1263,7 @@
                                     <i class="far fa-copy"></i> Copy Result
                                 </button>
                                 <button class="action-btn-small" onclick="showExportOptions()">
-                                    <i class="far fa-file-export"></i> Export
+                                    <i class="fas fa-download"></i> Export
                                 </button>
                                 <a href="/analytics" class="action-btn-small">
                                     <i class="fas fa-chart-bar"></i> View Analytics
@@ -1140,7 +1285,7 @@
                             </div>
                             <div class="insight-content">
                                 <h4>Model Recommendation</h4>
-                                <p>Using <strong>standard model</strong>. Switch to feature-engineered or XGBoost model for potentially better accuracy.</p>
+                                <p>Using <strong>standard model</strong>. Switch to advanced, improved, or XGBoost model for potentially better accuracy.</p>
                             </div>
                         </div>
                         <div class="insight-item" id="weather-insight">
@@ -1196,9 +1341,9 @@
                     <a href="#" onclick="openModelManager(); return false;"><i class="fas fa-cogs"></i> Model Manager</a>
                 </div>
                 <div class="footer-meta">
-                    <span class="version">v2.3.0</span>
+                    <span class="version">v2.5.0</span>
                     <span class="status-indicator active"></span>
-                    <span class="status-text">Tri-Model System Available</span>
+                    <span class="status-text">Quad-Model System Available</span>
                 </div>
             </div>
         </div>
@@ -1307,6 +1452,54 @@
             });
         }
 
+        // Model selection function (make sure this matches your script.js)
+        function selectModel(modelType) {
+            // Update active class on model options
+            document.querySelectorAll('.model-option').forEach(opt => {
+                opt.classList.remove('active');
+                if (opt.getAttribute('data-model') === modelType) {
+                    opt.classList.add('active');
+                }
+            });
+            
+            // Update model indicator on button
+            const modelIndicator = document.getElementById('model-indicator');
+            const modelBadge = document.getElementById('model-type-badge');
+            
+            if (modelIndicator) {
+                modelIndicator.className = `model-indicator ${modelType}`;
+                if (modelType === 'original') modelIndicator.textContent = 'Standard';
+                else if (modelType === 'improved') modelIndicator.textContent = 'Improved';
+                else if (modelType === 'advanced') modelIndicator.textContent = 'Advanced';
+                else if (modelType === 'xgboost') modelIndicator.textContent = 'XGBoost';
+            }
+            
+            if (modelBadge) {
+                modelBadge.className = `model-badge ${modelType}`;
+                if (modelType === 'original') modelBadge.textContent = 'Standard Model';
+                else if (modelType === 'improved') modelBadge.textContent = 'Improved Model';
+                else if (modelType === 'advanced') modelBadge.textContent = 'Advanced Model';
+                else if (modelType === 'xgboost') modelBadge.textContent = 'XGBoost Model';
+            }
+            
+            // Update insight text
+            const modelInsight = document.getElementById('model-insight');
+            if (modelInsight) {
+                const pElement = modelInsight.querySelector('p');
+                if (pElement) {
+                    if (modelType === 'original') {
+                        pElement.innerHTML = 'Using <strong>standard model</strong>. Switch to advanced, improved, or XGBoost model for potentially better accuracy.';
+                    } else if (modelType === 'improved') {
+                        pElement.innerHTML = 'Using <strong>improved model</strong> with 38 engineered features for better pattern detection.';
+                    } else if (modelType === 'advanced') {
+                        pElement.innerHTML = 'Using <strong>advanced model</strong> with cyclical encoding and weather categories for optimal performance.';
+                    } else if (modelType === 'xgboost') {
+                        pElement.innerHTML = 'Using <strong>XGBoost model</strong> with gradient boosting for state-of-the-art accuracy.';
+                    }
+                }
+            }
+        }
+
         // Export options modal
         function showExportOptions() {
             // Check if there's a prediction to export
@@ -1339,7 +1532,7 @@
                     </button>
                     
                     <button class="export-cancel" onclick="this.closest('.export-modal').remove()">
-                        Cancel
+                        <i class="fas fa-times"></i> Cancel
                     </button>
                 </div>
             `;
@@ -1505,7 +1698,10 @@
                 }
                 
                 // Update UI elements
-                document.querySelector('.humidity-fill').style.width = `${sample['Humidity(%)']}%`;
+                const humidityBar = document.querySelector('.humidity-fill');
+                if (humidityBar) {
+                    humidityBar.style.width = `${sample['Humidity(%)']}%`;
+                }
                 updateHourDescription(sample.Hour);
                 updateWeatherInsight(sample['Temperature(캜)']);
                 
@@ -1531,6 +1727,9 @@
             console.log('✅ DOM loaded - waiting for script.js to initialize');
             updateHourDescription(14);
             updateWeatherInsight(22.5);
+            
+            // Set default model to original
+            selectModel('original');
         });
 
         // Make functions globally available
@@ -1539,6 +1738,7 @@
         window.showNotification = showNotification;
         window.showExportOptions = showExportOptions;
         window.loadSpecificSample = loadSpecificSample;
+        window.selectModel = selectModel;
     </script>
 </body>
 </html>

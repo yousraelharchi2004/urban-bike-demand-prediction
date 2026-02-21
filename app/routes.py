@@ -46,182 +46,390 @@ def normalize_field_names_for_model(data, target_model):
     
     normalized_data = {}
     
-    # Map common field name variations
-    field_mappings = {
-        # Korean character to degree symbol (improved model)
-        'Temperature(캜)': {
-            'improved': 'Temperature(°C)',
-            'advanced': 'temperature',
-            'xgboost': 'temperature'
-        },
-        'Dew point temperature(캜)': {
-            'improved': 'Dew point temperature(°C)',
-            'advanced': 'dew_point',
-            'xgboost': 'dew_point'
-        },
-        # Keep other fields as is, but handle variations
-        'Wind speed (m/s)': {
-            'improved': 'Wind speed (m/s)',
-            'advanced': 'Wind_speed_m/s',
-            'xgboost': 'wind_speed'
-        },
-        'Visibility (10m)': {
-            'improved': 'Visibility (10m)',
-            'advanced': 'visibility',
-            'xgboost': 'visibility'
-        },
-        'Solar Radiation (MJ/m2)': {
-            'improved': 'Solar Radiation (MJ/m2)',
-            'advanced': 'Solar_Radiation_MJ/m2',
-            'xgboost': 'solar_radiation'
-        },
-        'Rainfall(mm)': {
-            'improved': 'Rainfall(mm)',
-            'advanced': 'rainfall',
-            'xgboost': 'rainfall'
-        },
-        'Snowfall (cm)': {
-            'improved': 'Snowfall (cm)',
-            'advanced': 'snowfall',
-            'xgboost': 'snowfall'
-        },
-        'Humidity(%)': {
-            'improved': 'Humidity(%)',
-            'advanced': 'Humidity%',
-            'xgboost': 'humidity'
-        },
-        'Hour': {
-            'improved': 'Hour',
-            'advanced': 'hour',
-            'xgboost': 'hour'
-        },
-        # Day of week mapping
-        'day_of_week': {
-            'improved': 'day_of_week',
-            'advanced': 'day_of_week',
-            'xgboost': 'day_of_week'
-        },
-        # Season mappings (already one-hot encoded, but ensure consistency)
-        'Seasons_Spring': {
-            'improved': 'Seasons_Spring',
-            'advanced': 'season_Spring',
-            'xgboost': 'season_Spring'
-        },
-        'Seasons_Summer': {
-            'improved': 'Seasons_Summer',
-            'advanced': 'season_Summer',
-            'xgboost': 'season_Summer'
-        },
-        'Seasons_Winter': {
-            'improved': 'Seasons_Winter',
-            'advanced': 'season_Winter',
-            'xgboost': 'season_Winter'
-        },
-        'Seasons_Autumn': {
-            'improved': 'Seasons_Autumn',  # Note: Autumn might be inferred when others are 0
-            'advanced': 'season_Autumn',
-            'xgboost': 'season_Autumn'
-        },
-        # Holiday mappings
-        'Holiday_No Holiday': {
-            'improved': 'Holiday_No Holiday',
-            'advanced': 'holiday_No_Holiday',
-            'xgboost': 'holiday_No_Holiday'
-        },
-        'Holiday_Holiday': {
-            'improved': 'Holiday_Holiday',
-            'advanced': 'holiday_Holiday',
-            'xgboost': 'holiday_Holiday'
-        },
-        # Functioning day mappings
-        'Functioning Day_Yes': {
-            'improved': 'Functioning Day_Yes',
-            'advanced': 'functioning_day_Yes',
-            'xgboost': 'functioning_day_Yes'
-        },
-        'Functioning Day_No': {
-            'improved': 'Functioning Day_No',
-            'advanced': 'functioning_day_No',
-            'xgboost': 'functioning_day_No'
-        }
-    }
-    
-    # Process each input field
-    for key, value in data.items():
-        if key in field_mappings and target_model in field_mappings[key]:
-            # Map the field name
-            mapped_key = field_mappings[key][target_model]
-            normalized_data[mapped_key] = value
-        else:
-            # Keep original key for other fields
-            normalized_data[key] = value
-    
-    # Special handling for temperature field if not mapped
-    if 'Temperature(캜)' in data and 'temperature' not in normalized_data and target_model in ['advanced', 'xgboost']:
-        normalized_data['temperature'] = data['Temperature(캜)']
-    
-    if 'Temperature(캜)' in data and 'Temperature(°C)' not in normalized_data and target_model == 'improved':
-        normalized_data['Temperature(°C)'] = data['Temperature(캜)']
-        print(f"   🌡️ Mapped Temperature(캜) to Temperature(°C) for improved model")
-    
-    if 'Dew point temperature(캜)' in data and 'dew_point' not in normalized_data and target_model in ['advanced', 'xgboost']:
-        normalized_data['dew_point'] = data['Dew point temperature(캜)']
-    
-    if 'Dew point temperature(캜)' in data and 'Dew point temperature(°C)' not in normalized_data and target_model == 'improved':
-        normalized_data['Dew point temperature(°C)'] = data['Dew point temperature(캜)']
-        print(f"   💧 Mapped Dew point temperature(캜) to Dew point temperature(°C) for improved model")
-    
-    # Handle day_of_week if present
-    if 'day_of_week' in data and 'day_of_week' not in normalized_data and target_model in ['improved', 'advanced', 'xgboost']:
-        normalized_data['day_of_week'] = data['day_of_week']
-    
-    # Handle season inference for improved model (if not already one-hot encoded)
-    if target_model == 'improved':
-        # Check if we have season information in other formats
-        if 'Seasons' in data and all(f'Seasons_{s}' not in normalized_data for s in ['Spring', 'Summer', 'Winter']):
-            season = data['Seasons']
-            normalized_data['Seasons_Spring'] = 1 if season == 'Spring' else 0
-            normalized_data['Seasons_Summer'] = 1 if season == 'Summer' else 0
-            normalized_data['Seasons_Winter'] = 1 if season == 'Winter' else 0
-            # Autumn is implied when all are 0
-            print(f"   🍂 Inferred season encoding from '{season}'")
-    
-    # Ensure we have all required features for improved model
-    if target_model == 'improved':
-        # These are the engineered features that will be calculated later
-        # We just need to ensure basic ones are present
-        required_basics = ['Hour', 'Temperature(°C)', 'Humidity(%)', 'Wind speed (m/s)',
-                          'Visibility (10m)', 'Dew point temperature(°C)', 
-                          'Solar Radiation (MJ/m2)', 'Rainfall(mm)', 'Snowfall (cm)',
-                          'Seasons_Spring', 'Seasons_Summer', 'Seasons_Winter']
-        
-        missing = [f for f in required_basics if f not in normalized_data]
-        if missing:
-            print(f"   ⚠️ Missing basic features for improved model: {missing}")
-            # Add defaults for missing features
-            defaults = {
-                'Hour': 12,
-                'Temperature(°C)': 20,
-                'Humidity(%)': 50,
-                'Wind speed (m/s)': 2,
-                'Visibility (10m)': 2000,
-                'Dew point temperature(°C)': 10,
-                'Solar Radiation (MJ/m2)': 1,
-                'Rainfall(mm)': 0,
-                'Snowfall (cm)': 0,
-                'Seasons_Spring': 0,
-                'Seasons_Summer': 1,
-                'Seasons_Winter': 0
-            }
-            for feat in missing:
-                if feat in defaults:
-                    normalized_data[feat] = defaults[feat]
-                    print(f"      Added default for {feat}: {defaults[feat]}")
-    
-    print(f"🔤 Field mapping for {target_model} model:")
+    print(f"\n🔤 Starting normalization for {target_model} model")
     print(f"   Input keys: {list(data.keys())}")
-    print(f"   Mapped keys: {list(normalized_data.keys())}")
-    print(f"   Total features after mapping: {len(normalized_data)}")
+    
+    # =============================================
+    # CRITICAL: Handle Korean temperature field
+    # =============================================
+    
+    # Look for any key containing 'Temperature' with Korean character
+    korean_temp_key = None
+    for key in data.keys():
+        if 'Temperature' in key and ('캜' in key or '\uce9c' in key):
+            korean_temp_key = key
+            print(f"   Found Korean temperature key: '{key}'")
+            break
+    
+    # Look for any key containing 'Dew point' with Korean character
+    korean_dew_key = None
+    for key in data.keys():
+        if 'Dew point temperature' in key and ('캜' in key or '\uce9c' in key):
+            korean_dew_key = key
+            print(f"   Found Korean dew point key: '{key}'")
+            break
+    
+    # =============================================
+    # ADVANCED MODEL - needs EXACT feature names from advanced_model_info.json
+    # =============================================
+    if target_model == 'advanced':
+        # Extract values from various possible sources
+        # Hour
+        if 'Hour' in data:
+            normalized_data['hour'] = float(data['Hour'])
+        elif 'hour' in data:
+            normalized_data['hour'] = float(data['hour'])
+        else:
+            normalized_data['hour'] = 12  # Default
+        
+        # Temperature
+        if korean_temp_key:
+            normalized_data['temperature'] = float(data[korean_temp_key])
+        elif 'Temperature(°C)' in data:
+            normalized_data['temperature'] = float(data['Temperature(°C)'])
+        elif 'temperature' in data:
+            normalized_data['temperature'] = float(data['temperature'])
+        else:
+            normalized_data['temperature'] = 20  # Default
+        
+        # Humidity% (EXACT name from model)
+        if 'Humidity(%)' in data:
+            normalized_data['Humidity%'] = float(data['Humidity(%)'])
+        elif 'humidity' in data:
+            normalized_data['Humidity%'] = float(data['humidity'])
+        elif 'Humidity%' in data:
+            normalized_data['Humidity%'] = float(data['Humidity%'])
+        else:
+            normalized_data['Humidity%'] = 50  # Default
+        
+        # Wind_speed_m/s (EXACT name from model)
+        if 'Wind speed (m/s)' in data:
+            normalized_data['Wind_speed_m/s'] = float(data['Wind speed (m/s)'])
+        elif 'wind_speed' in data:
+            normalized_data['Wind_speed_m/s'] = float(data['wind_speed'])
+        elif 'Wind_speed_m/s' in data:
+            normalized_data['Wind_speed_m/s'] = float(data['Wind_speed_m/s'])
+        else:
+            normalized_data['Wind_speed_m/s'] = 2.5  # Default
+        
+        # visibility
+        if 'Visibility (10m)' in data:
+            normalized_data['visibility'] = float(data['Visibility (10m)'])
+        elif 'visibility' in data:
+            normalized_data['visibility'] = float(data['visibility'])
+        else:
+            normalized_data['visibility'] = 2000  # Default
+        
+        # dew_point
+        if korean_dew_key:
+            normalized_data['dew_point'] = float(data[korean_dew_key])
+        elif 'Dew point temperature(°C)' in data:
+            normalized_data['dew_point'] = float(data['Dew point temperature(°C)'])
+        elif 'dew_point' in data:
+            normalized_data['dew_point'] = float(data['dew_point'])
+        else:
+            normalized_data['dew_point'] = 10  # Default
+        
+        # Solar_Radiation_MJ/m2 (EXACT name from model)
+        if 'Solar Radiation (MJ/m2)' in data:
+            normalized_data['Solar_Radiation_MJ/m2'] = float(data['Solar Radiation (MJ/m2)'])
+        elif 'solar_radiation' in data:
+            normalized_data['Solar_Radiation_MJ/m2'] = float(data['solar_radiation'])
+        elif 'Solar_Radiation_MJ/m2' in data:
+            normalized_data['Solar_Radiation_MJ/m2'] = float(data['Solar_Radiation_MJ/m2'])
+        else:
+            normalized_data['Solar_Radiation_MJ/m2'] = 1.5  # Default
+        
+        # rainfall
+        if 'Rainfall(mm)' in data:
+            normalized_data['rainfall'] = float(data['Rainfall(mm)'])
+        elif 'rainfall' in data:
+            normalized_data['rainfall'] = float(data['rainfall'])
+        else:
+            normalized_data['rainfall'] = 0  # Default
+        
+        # snowfall
+        if 'Snowfall (cm)' in data:
+            normalized_data['snowfall'] = float(data['Snowfall (cm)'])
+        elif 'snowfall' in data:
+            normalized_data['snowfall'] = float(data['snowfall'])
+        else:
+            normalized_data['snowfall'] = 0  # Default
+        
+        # day_of_week
+        if 'day_of_week' in data:
+            normalized_data['day_of_week'] = float(data['day_of_week'])
+        else:
+            normalized_data['day_of_week'] = 3  # Default to Thursday
+        
+        # ==================================================
+        # SEASON ENCODING
+        # ==================================================
+        # Check for season flags in various formats
+        spring_val = 0
+        summer_val = 0
+        winter_val = 0
+        autumn_val = 0
+        
+        # Try to get from original format
+        if 'Seasons_Spring' in data:
+            spring_val = float(data['Seasons_Spring'])
+        if 'Seasons_Summer' in data:
+            summer_val = float(data['Seasons_Summer'])
+        if 'Seasons_Winter' in data:
+            winter_val = float(data['Seasons_Winter'])
+        if 'Seasons_Autumn' in data:
+            autumn_val = float(data['Seasons_Autumn'])
+        
+        # Try to get from advanced format
+        if 'season_Spring' in data:
+            spring_val = float(data['season_Spring'])
+        if 'season_Summer' in data:
+            summer_val = float(data['season_Summer'])
+        if 'season_Winter' in data:
+            winter_val = float(data['season_Winter'])
+        if 'season_Autumn' in data:
+            autumn_val = float(data['season_Autumn'])
+        
+        # If no season flags found, default to Summer (most common)
+        if spring_val == 0 and summer_val == 0 and winter_val == 0 and autumn_val == 0:
+            summer_val = 1
+        
+        normalized_data['season_Spring'] = spring_val
+        normalized_data['season_Summer'] = summer_val
+        normalized_data['season_Winter'] = winter_val
+        normalized_data['season_Autumn'] = autumn_val
+        
+        # ==================================================
+        # HOLIDAY ENCODING
+        # ==================================================
+        holiday_val = 0
+        no_holiday_val = 1  # Default to no holiday
+        
+        if 'Holiday_No Holiday' in data:
+            no_holiday_val = float(data['Holiday_No Holiday'])
+            holiday_val = 1 - no_holiday_val
+        elif 'Holiday_Holiday' in data:
+            holiday_val = float(data['Holiday_Holiday'])
+            no_holiday_val = 1 - holiday_val
+        elif 'holiday_No Holiday' in data:
+            no_holiday_val = float(data['holiday_No Holiday'])
+            holiday_val = 1 - no_holiday_val
+        elif 'holiday_Holiday' in data:
+            holiday_val = float(data['holiday_Holiday'])
+            no_holiday_val = 1 - holiday_val
+        
+        normalized_data['holiday_Holiday'] = holiday_val
+        normalized_data['holiday_No Holiday'] = no_holiday_val
+        
+        # ==================================================
+        # FUNCTIONING DAY ENCODING
+        # ==================================================
+        yes_val = 1  # Default to functioning day
+        no_val = 0
+        
+        if 'Functioning Day_Yes' in data:
+            yes_val = float(data['Functioning Day_Yes'])
+            no_val = 1 - yes_val
+        elif 'Functioning Day_No' in data:
+            no_val = float(data['Functioning Day_No'])
+            yes_val = 1 - no_val
+        elif 'functioning_day_Yes' in data:
+            yes_val = float(data['functioning_day_Yes'])
+            no_val = 1 - yes_val
+        elif 'functioning_day_No' in data:
+            no_val = float(data['functioning_day_No'])
+            yes_val = 1 - no_val
+        
+        normalized_data['functioning_day_Yes'] = yes_val
+        normalized_data['functioning_day_No'] = no_val
+        
+        # The engineered features (hour_sin, hour_cos, etc.) will be calculated
+        # in calculate_engineered_features_from_basic function
+        
+        print(f"   ✅ Created base fields for advanced model")
+    
+    # =============================================
+    # XGBOOST MODEL - same as advanced (uses same feature set)
+    # =============================================
+    elif target_model == 'xgboost':
+        # Same mapping as advanced - XGBoost uses the same feature set
+        if 'Hour' in data:
+            normalized_data['hour'] = float(data['Hour'])
+        elif 'hour' in data:
+            normalized_data['hour'] = float(data['hour'])
+        else:
+            normalized_data['hour'] = 12
+        
+        if korean_temp_key:
+            normalized_data['temperature'] = float(data[korean_temp_key])
+        elif 'Temperature(°C)' in data:
+            normalized_data['temperature'] = float(data['Temperature(°C)'])
+        elif 'temperature' in data:
+            normalized_data['temperature'] = float(data['temperature'])
+        else:
+            normalized_data['temperature'] = 20
+        
+        if 'Humidity(%)' in data:
+            normalized_data['Humidity%'] = float(data['Humidity(%)'])
+        elif 'humidity' in data:
+            normalized_data['Humidity%'] = float(data['humidity'])
+        elif 'Humidity%' in data:
+            normalized_data['Humidity%'] = float(data['Humidity%'])
+        else:
+            normalized_data['Humidity%'] = 50
+        
+        if 'Wind speed (m/s)' in data:
+            normalized_data['Wind_speed_m/s'] = float(data['Wind speed (m/s)'])
+        elif 'wind_speed' in data:
+            normalized_data['Wind_speed_m/s'] = float(data['wind_speed'])
+        elif 'Wind_speed_m/s' in data:
+            normalized_data['Wind_speed_m/s'] = float(data['Wind_speed_m/s'])
+        else:
+            normalized_data['Wind_speed_m/s'] = 2.5
+        
+        if 'Visibility (10m)' in data:
+            normalized_data['visibility'] = float(data['Visibility (10m)'])
+        elif 'visibility' in data:
+            normalized_data['visibility'] = float(data['visibility'])
+        else:
+            normalized_data['visibility'] = 2000
+        
+        if korean_dew_key:
+            normalized_data['dew_point'] = float(data[korean_dew_key])
+        elif 'Dew point temperature(°C)' in data:
+            normalized_data['dew_point'] = float(data['Dew point temperature(°C)'])
+        elif 'dew_point' in data:
+            normalized_data['dew_point'] = float(data['dew_point'])
+        else:
+            normalized_data['dew_point'] = 10
+        
+        if 'Solar Radiation (MJ/m2)' in data:
+            normalized_data['Solar_Radiation_MJ/m2'] = float(data['Solar Radiation (MJ/m2)'])
+        elif 'solar_radiation' in data:
+            normalized_data['Solar_Radiation_MJ/m2'] = float(data['solar_radiation'])
+        elif 'Solar_Radiation_MJ/m2' in data:
+            normalized_data['Solar_Radiation_MJ/m2'] = float(data['Solar_Radiation_MJ/m2'])
+        else:
+            normalized_data['Solar_Radiation_MJ/m2'] = 1.5
+        
+        if 'Rainfall(mm)' in data:
+            normalized_data['rainfall'] = float(data['Rainfall(mm)'])
+        elif 'rainfall' in data:
+            normalized_data['rainfall'] = float(data['rainfall'])
+        else:
+            normalized_data['rainfall'] = 0
+        
+        if 'Snowfall (cm)' in data:
+            normalized_data['snowfall'] = float(data['Snowfall (cm)'])
+        elif 'snowfall' in data:
+            normalized_data['snowfall'] = float(data['snowfall'])
+        else:
+            normalized_data['snowfall'] = 0
+        
+        if 'day_of_week' in data:
+            normalized_data['day_of_week'] = float(data['day_of_week'])
+        else:
+            normalized_data['day_of_week'] = 3
+        
+        # Season encoding
+        spring_val = 0
+        summer_val = 0
+        winter_val = 0
+        autumn_val = 0
+        
+        if 'Seasons_Spring' in data:
+            spring_val = float(data['Seasons_Spring'])
+        if 'Seasons_Summer' in data:
+            summer_val = float(data['Seasons_Summer'])
+        if 'Seasons_Winter' in data:
+            winter_val = float(data['Seasons_Winter'])
+        if 'Seasons_Autumn' in data:
+            autumn_val = float(data['Seasons_Autumn'])
+        
+        if 'season_Spring' in data:
+            spring_val = float(data['season_Spring'])
+        if 'season_Summer' in data:
+            summer_val = float(data['season_Summer'])
+        if 'season_Winter' in data:
+            winter_val = float(data['season_Winter'])
+        if 'season_Autumn' in data:
+            autumn_val = float(data['season_Autumn'])
+        
+        if spring_val == 0 and summer_val == 0 and winter_val == 0 and autumn_val == 0:
+            summer_val = 1
+        
+        normalized_data['season_Spring'] = spring_val
+        normalized_data['season_Summer'] = summer_val
+        normalized_data['season_Winter'] = winter_val
+        normalized_data['season_Autumn'] = autumn_val
+        
+        # Holiday encoding
+        holiday_val = 0
+        no_holiday_val = 1
+        
+        if 'Holiday_No Holiday' in data:
+            no_holiday_val = float(data['Holiday_No Holiday'])
+            holiday_val = 1 - no_holiday_val
+        elif 'Holiday_Holiday' in data:
+            holiday_val = float(data['Holiday_Holiday'])
+            no_holiday_val = 1 - holiday_val
+        elif 'holiday_No Holiday' in data:
+            no_holiday_val = float(data['holiday_No Holiday'])
+            holiday_val = 1 - no_holiday_val
+        elif 'holiday_Holiday' in data:
+            holiday_val = float(data['holiday_Holiday'])
+            no_holiday_val = 1 - holiday_val
+        
+        normalized_data['holiday_Holiday'] = holiday_val
+        normalized_data['holiday_No Holiday'] = no_holiday_val
+        
+        # Functioning day encoding
+        yes_val = 1
+        no_val = 0
+        
+        if 'Functioning Day_Yes' in data:
+            yes_val = float(data['Functioning Day_Yes'])
+            no_val = 1 - yes_val
+        elif 'Functioning Day_No' in data:
+            no_val = float(data['Functioning Day_No'])
+            yes_val = 1 - no_val
+        elif 'functioning_day_Yes' in data:
+            yes_val = float(data['functioning_day_Yes'])
+            no_val = 1 - yes_val
+        elif 'functioning_day_No' in data:
+            no_val = float(data['functioning_day_No'])
+            yes_val = 1 - no_val
+        
+        normalized_data['functioning_day_Yes'] = yes_val
+        normalized_data['functioning_day_No'] = no_val
+        
+        print(f"   ✅ Created base fields for xgboost model")
+    
+    # =============================================
+    # IMPROVED MODEL - needs degree symbol
+    # =============================================
+    elif target_model == 'improved':
+        # Copy all original data
+        for key, value in data.items():
+            normalized_data[key] = value
+        
+        # Map temperature to proper format
+        if korean_temp_key:
+            normalized_data['Temperature(°C)'] = float(data[korean_temp_key])
+            print(f"   ✅ Added 'Temperature(°C)' from {korean_temp_key}")
+        elif 'Temperature(°C)' in data:
+            print(f"   ✅ 'Temperature(°C)' already exists")
+        
+        # Map dew point
+        if korean_dew_key:
+            normalized_data['Dew point temperature(°C)'] = float(data[korean_dew_key])
+            print(f"   ✅ Added 'Dew point temperature(°C)' from {korean_dew_key}")
+        elif 'Dew point temperature(°C)' in data:
+            print(f"   ✅ 'Dew point temperature(°C)' already exists")
+    
+    print(f"   Final keys for {target_model}: {list(normalized_data.keys())}")
+    print(f"🔤 Normalization complete\n")
     
     return normalized_data
 
@@ -236,64 +444,17 @@ def get_required_fields_for_model(model_type):
             'Holiday_No Holiday', 'Functioning Day_Yes'
         ]
     elif model_type == 'improved':
-        # Complete list of 38 features from the improved model
-        return [
-            'Hour',
-            'Temperature(°C)',
-            'Humidity(%)',
-            'Wind speed (m/s)',
-            'Visibility (10m)',
-            'Dew point temperature(°C)',
-            'Solar Radiation (MJ/m2)',
-            'Rainfall(mm)',
-            'Snowfall (cm)',
-            'hour_squared',
-            'hour_cubed',
-            'is_peak_hour',
-            'rush_hour_intensity',
-            'is_weekend',
-            'day_of_week',
-            'temp_hour_interaction',
-            'temp_humidity_interaction',
-            'wind_chill',
-            'heat_index',
-            'weather_severity_score',
-            'comfort_index',
-            'demand_lag_24',
-            'demand_lag_168',
-            'demand_rolling_3h',
-            'demand_rolling_24h',
-            'temp_deviation_from_season',
-            'is_daylight',
-            'workday_hour_interaction',
-            'hour_category_evening',
-            'hour_category_morning',
-            'hour_category_night',
-            'weather_category_good',
-            'weather_category_perfect',
-            'weather_category_poor',
-            'weather_category_severe',
-            'Seasons_Spring',
-            'Seasons_Summer',
-            'Seasons_Winter'
-        ]
+        # This is just for validation, the actual features will be generated
+        return ['Hour', 'day_of_week']  # Simplified for validation
     elif model_type == 'advanced':
-        return [
-            'hour', 'temperature', 'Humidity%', 'Wind_speed_m/s',
-            'visibility', 'dew_point', 'Solar_Radiation_MJ/m2',
-            'rainfall', 'snowfall', 'hour_sin', 'hour_cos', 'hour_squared',
-            'day_of_week', 'is_weekend'
-        ]
+        # These are the base fields needed before feature engineering
+        return ['hour', 'temperature', 'day_of_week']
     elif model_type == 'xgboost':
-        return [
-            'hour', 'temperature', 'humidity', 'wind_speed',
-            'visibility', 'dew_point', 'solar_radiation',
-            'rainfall', 'snowfall', 'hour_sin', 'hour_cos', 'hour_squared',
-            'day_of_week', 'is_weekend'
-        ]
+        # These are the base fields needed before feature engineering
+        return ['hour', 'temperature', 'day_of_week']
     else:
         return []
-    
+
 # Load environment variables
 load_dotenv()
 
@@ -677,27 +838,36 @@ def calculate_engineered_features_from_basic(input_data):
         hour = float(input_data.get('hour', input_data.get('Hour', 12)))
         temperature = float(input_data.get('temperature', input_data.get('Temperature(°C)', input_data.get('Temperature(캜)', 20))))
         humidity = float(input_data.get('humidity', input_data.get('Humidity(%)', input_data.get('Humidity%', 50))))
-        wind_speed = float(input_data.get('wind_speed', input_data.get('Wind speed (m/s)', 5)))
+        wind_speed = float(input_data.get('wind_speed', input_data.get('Wind speed (m/s)', input_data.get('Wind_speed_m/s', 2.5))))
         rainfall = float(input_data.get('rainfall', input_data.get('Rainfall(mm)', 0)))
         snowfall = float(input_data.get('snowfall', input_data.get('Snowfall (cm)', 0)))
         visibility = float(input_data.get('visibility', input_data.get('Visibility (10m)', 2000)))
         dew_point = float(input_data.get('dew_point', input_data.get('Dew point temperature(°C)', input_data.get('Dew point temperature(캜)', 10))))
-        solar_radiation = float(input_data.get('solar_radiation', input_data.get('Solar Radiation (MJ/m2)', 1)))
+        solar_radiation = float(input_data.get('solar_radiation', input_data.get('Solar Radiation (MJ/m2)', input_data.get('Solar_Radiation_MJ/m2', 1.5))))
         
-        # Get categorical inputs (with defaults)
-        season = input_data.get('Seasons', 'Summer')
-        holiday = input_data.get('Holiday', 'No Holiday')
-        functioning_day = input_data.get('Functioning Day', 'Yes')
+        # Get categorical inputs (with defaults from input_data or use defaults)
+        day_of_week = int(input_data.get('day_of_week', 3))
         
-        # Extract day of week if provided, otherwise default
-        day_of_week = int(input_data.get('day_of_week', 0))  # 0=Monday, 6=Sunday
+        # Get season flags (with defaults)
+        season_spring = float(input_data.get('season_Spring', input_data.get('Seasons_Spring', 0)))
+        season_summer = float(input_data.get('season_Summer', input_data.get('Seasons_Summer', 1)))  # Default to Summer
+        season_winter = float(input_data.get('season_Winter', input_data.get('Seasons_Winter', 0)))
+        season_autumn = float(input_data.get('season_Autumn', input_data.get('Seasons_Autumn', 0)))
+        
+        # Get holiday flags
+        holiday_holiday = float(input_data.get('holiday_Holiday', input_data.get('Holiday_Holiday', 0)))
+        holiday_no_holiday = float(input_data.get('holiday_No Holiday', input_data.get('Holiday_No Holiday', 1)))
+        
+        # Get functioning day flags
+        functioning_yes = float(input_data.get('functioning_day_Yes', input_data.get('Functioning Day_Yes', 1)))
+        functioning_no = float(input_data.get('functioning_day_No', input_data.get('Functioning Day_No', 0)))
         
         # ==================================================
-        # 1. BASIC FEATURES (with exact names from advanced model)
+        # 1. BASIC FEATURES (already in input_data, but ensure they exist)
         # ==================================================
         engineered['hour'] = hour
         engineered['temperature'] = temperature
-        engineered['Humidity%'] = humidity  # Note: exact name with %
+        engineered['Humidity%'] = humidity
         engineered['Wind_speed_m/s'] = wind_speed
         engineered['visibility'] = visibility
         engineered['dew_point'] = dew_point
@@ -758,25 +928,25 @@ def calculate_engineered_features_from_basic(input_data):
         # ==================================================
         # 8. SEASON ENCODING (One-hot)
         # ==================================================
-        engineered['season_Autumn'] = 1 if season == 'Autumn' else 0
-        engineered['season_Spring'] = 1 if season == 'Spring' else 0
-        engineered['season_Summer'] = 1 if season == 'Summer' else 0
-        engineered['season_Winter'] = 1 if season == 'Winter' else 0
+        engineered['season_Autumn'] = season_autumn
+        engineered['season_Spring'] = season_spring
+        engineered['season_Summer'] = season_summer
+        engineered['season_Winter'] = season_winter
         
         # ==================================================
         # 9. HOLIDAY ENCODING
         # ==================================================
-        engineered['holiday_Holiday'] = 1 if holiday == 'Holiday' else 0
-        engineered['holiday_No Holiday'] = 1 if holiday == 'No Holiday' else 0
+        engineered['holiday_Holiday'] = holiday_holiday
+        engineered['holiday_No Holiday'] = holiday_no_holiday
         
         # ==================================================
         # 10. FUNCTIONING DAY ENCODING
         # ==================================================
-        engineered['functioning_day_No'] = 1 if functioning_day == 'No' else 0
-        engineered['functioning_day_Yes'] = 1 if functioning_day == 'Yes' else 0
+        engineered['functioning_day_No'] = functioning_no
+        engineered['functioning_day_Yes'] = functioning_yes
         
         # ==================================================
-        # 11. TEMPERATURE CATEGORIES (in correct order)
+        # 11. TEMPERATURE CATEGORIES
         # ==================================================
         if temperature < 0:
             temp_category = 'freezing'
@@ -796,7 +966,7 @@ def calculate_engineered_features_from_basic(input_data):
         engineered['temp_category_warm'] = 1 if temp_category == 'warm' else 0
         
         # ==================================================
-        # 12. TIME OF DAY CATEGORIES (in correct order)
+        # 12. TIME OF DAY CATEGORIES
         # ==================================================
         if hour < 6:
             time_of_day = 'night'
@@ -834,7 +1004,7 @@ def calculate_engineered_features_from_basic(input_data):
             if feature in engineered:
                 ordered_features[feature] = engineered[feature]
             else:
-                print(f"⚠️ Warning: Missing feature '{feature}'")
+                print(f"⚠️ Warning: Missing feature '{feature}' - adding with default 0")
                 ordered_features[feature] = 0
         
         print(f"✅ Calculated {len(ordered_features)} engineered features for advanced model")
@@ -847,7 +1017,7 @@ def calculate_engineered_features_from_basic(input_data):
         print(f"❌ Error calculating engineered features: {e}")
         traceback.print_exc()
         # Return original data if calculation fails
-        return input_data        
+        return input_data      
 
 def get_advanced_features_list():
     """Get the list of features expected by the advanced model"""
@@ -968,7 +1138,7 @@ def load_xgboost_model():
         return None
 
 # =============================================
-# EMAIL SERVICE CLASS (UPDATED)
+# EMAIL SERVICE CLASS (FIXED)
 # =============================================
 
 class EmailService:
@@ -1524,7 +1694,7 @@ class EmailService:
             # Footer
             story.append(Paragraph("UrbanFlow Predictive Analytics Platform", normal_style))
             story.append(Paragraph("Advanced Bike Demand Prediction System", normal_style))
-            story.append(Paragraph(f"Report ID: {hash(analytics_data['timestamp'])}", 
+            story.append(Paragraph(f"Report ID: {abs(hash(analytics_data['timestamp']))}", 
                                  ParagraphStyle('Small', parent=normal_style, fontSize=8)))
             
             # Build PDF
@@ -2248,6 +2418,38 @@ def calculate_hourly_patterns_from_history(predictions):
     patterns.sort(key=lambda x: x['hour'])
     return patterns
 
+def generate_sample_hourly_patterns():
+    """Generate realistic sample hourly patterns"""
+    patterns = []
+    for hour in range(24):
+        # Base demand
+        demand = 500
+        
+        # Add peaks
+        if hour in [7, 8, 9]:  # Morning peak
+            demand = 1200 + (hour - 7) * 100
+        elif hour in [17, 18, 19]:  # Evening peak
+            demand = 1400 + (hour - 17) * 150
+        elif hour in [12, 13, 14]:  # Lunchtime
+            demand = 900
+        elif hour >= 22 or hour <= 5:  # Night
+            demand = 100 + hour * 10
+        else:  # Regular hours
+            demand = 600
+        
+        # Add some randomness
+        demand += (hour % 3) * 50
+        
+        patterns.append({
+            'hour': hour,
+            'hour_label': f"{hour:02d}:00",
+            'average_demand': round(demand, 2),
+            'prediction_count': 10,  # Sample count
+            'is_peak_hour': hour in [7, 8, 9, 17, 18, 19]
+        })
+    
+    return patterns
+
 def calculate_kpis_from_history(predictions, time_filter='all'):
     """Calculate KPIs from filtered prediction history"""
     total_predictions = len(predictions)
@@ -2312,38 +2514,6 @@ def calculate_kpis_from_history(predictions, time_filter='all'):
             'trend': 'Standard configuration'
         }
     }
-
-def generate_sample_hourly_patterns():
-    """Generate realistic sample hourly patterns"""
-    patterns = []
-    for hour in range(24):
-        # Base demand
-        demand = 500
-        
-        # Add peaks
-        if hour in [7, 8, 9]:  # Morning peak
-            demand = 1200 + (hour - 7) * 100
-        elif hour in [17, 18, 19]:  # Evening peak
-            demand = 1400 + (hour - 17) * 150
-        elif hour in [12, 13, 14]:  # Lunchtime
-            demand = 900
-        elif hour >= 22 or hour <= 5:  # Night
-            demand = 100 + hour * 10
-        else:  # Regular hours
-            demand = 600
-        
-        # Add some randomness
-        demand += (hour % 3) * 50
-        
-        patterns.append({
-            'hour': hour,
-            'hour_label': f"{hour:02d}:00",
-            'average_demand': round(demand, 2),
-            'prediction_count': 10,  # Sample count
-            'is_peak_hour': hour in [7, 8, 9, 17, 18, 19]
-        })
-    
-    return patterns
 
 def generate_insights_from_history(predictions, time_filter='all'):
     """Generate insights from filtered prediction history"""
@@ -4023,7 +4193,6 @@ def compare_predictions():
         try:
             if improved_model and hasattr(improved_model, 'predict'):
                 # FIX: Apply field mapping for improved model
-                from app.routes import normalize_field_names_for_model
                 improved_data = normalize_field_names_for_model(data, 'improved')
                 
                 processed_improved = preprocess_input_improved(improved_data)
@@ -4045,9 +4214,6 @@ def compare_predictions():
         try:
             if advanced_model:
                 # Auto-calculate features for advanced model
-                from app.routes import normalize_field_names_for_model, calculate_engineered_features_from_basic
-                
-                # First normalize field names
                 advanced_data = normalize_field_names_for_model(data, 'advanced')
                 
                 # Then calculate engineered features
@@ -4075,9 +4241,6 @@ def compare_predictions():
         try:
             if xgboost_model:
                 # Auto-calculate features for XGBoost model
-                from app.routes import normalize_field_names_for_model, calculate_engineered_features_from_basic
-                
-                # First normalize field names
                 xgboost_data = normalize_field_names_for_model(data, 'xgboost')
                 
                 # Then calculate engineered features
@@ -4769,12 +4932,12 @@ def feature_engineering():
     '''
 
 # =============================================
-# UPDATED EMAIL ENDPOINT
+# EMAIL ENDPOINT (FIXED - single implementation)
 # =============================================
 
 @main.route('/api/send-analytics-email', methods=['POST'])
-def send_analytics_email_endpoint():
-    """Send analytics report via email - UPDATED with real functionality"""
+def send_analytics_email():
+    """Send analytics report via email"""
     try:
         email_data = request.json
         
@@ -4796,11 +4959,12 @@ def send_analytics_email_endpoint():
         # Send email using service
         result = email_service.send_analytics_report(email_data)
         
-        if result['success']:
+        # FIX: Check result correctly
+        if result.get('success'):
             print(f"✅ Email sent successfully")
             return jsonify({
                 'success': True, 
-                'message': result['message'],
+                'message': result.get('message', 'Email sent successfully'),
                 'attachments_count': result.get('attachments_count', 0)
             })
         else:
@@ -5290,7 +5454,8 @@ def export_via_email():
         # Send email using the new service
         result = email_service.send_analytics_report(email_data)
         
-        if result['success']:
+        # FIX: Check result correctly
+        if result.get('success'):
             return jsonify({
                 "success": True,
                 "message": f"Report sent successfully to {email_to}",
@@ -5327,9 +5492,10 @@ def test_email_config():
             'schedule': 'once'
         }
         
-        success = email_service.send_analytics_report(test_data)
+        result = email_service.send_analytics_report(test_data)
         
-        if success['success']:
+        # FIX: Check result correctly
+        if result.get('success'):
             return jsonify({
                 "success": True,
                 "message": "Email test completed successfully",
@@ -5343,7 +5509,7 @@ def test_email_config():
         else:
             return jsonify({
                 "success": False,
-                "error": success.get('error', 'Email test failed'),
+                "error": result.get('error', 'Email test failed'),
                 "note": "Check your email configuration in environment variables"
             }), 500
             
@@ -5506,7 +5672,7 @@ def analytics_kpis():
             "filter": time_filter,
             "filtered_count": len(filtered_predictions),
             "total_count": len(all_history),
-            "timestamp":datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat()
         }
         
         # Add date range info for custom filter
@@ -5979,16 +6145,6 @@ def analytics_date_range():
         }), 500
 
 # =============================================
-# COMPATIBILITY EMAIL ENDPOINT
-# =============================================
-
-@main.route('/api/send-analytics-email', methods=['POST'])
-def send_analytics_email():
-    """Send analytics report via email - COMPATIBILITY LAYER (deprecated)"""
-    # Redirect to the new endpoint
-    return send_analytics_email_endpoint()
-
-# =============================================
 # COMPATIBILITY TEST EMAIL ENDPOINT
 # =============================================
 
@@ -6007,9 +6163,10 @@ def test_email():
             'schedule': 'once'
         }
         
-        success = email_service.send_analytics_report(test_data)
+        result = email_service.send_analytics_report(test_data)
         
-        if success['success']:
+        # FIX: Check result correctly
+        if result.get('success'):
             return jsonify({
                 "success": True,
                 "message": "Email test completed successfully",
@@ -6023,7 +6180,7 @@ def test_email():
         else:
             return jsonify({
                 "success": False,
-                "error": success.get('error', 'Email test failed'),
+                "error": result.get('error', 'Email test failed'),
                 "note": "Check your email configuration in environment variables"
             }), 500
             

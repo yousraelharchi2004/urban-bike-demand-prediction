@@ -1,5 +1,6 @@
 """
 app/utils.py - Complete updated version with advanced feature engineering
+FIXED: Better field name handling for Korean characters
 """
 
 import pandas as pd
@@ -458,7 +459,7 @@ def preprocess_input_improved(input_data):
 def prepare_input_with_advanced_features(input_data):
     """
     Prepare input data with ADVANCED feature engineering for RMSE reduction
-    Includes all 5 requested features plus additional engineered features
+    FIXED: Creating exact feature names that match the model
     """
     # Convert to DataFrame if dict
     if isinstance(input_data, dict):
@@ -466,16 +467,88 @@ def prepare_input_with_advanced_features(input_data):
     else:
         df = input_data
     
-    # Ensure required numeric fields
-    numeric_fields = ['Hour', 'Temperature(°C)', 'Humidity(%)', 'Wind speed (m/s)', 
-                     'Visibility (10m)', 'Solar Radiation (MJ/m2)', 'Rainfall(mm)', 
-                     'Snowfall (cm)', 'Dew point temperature(°C)']
+    print(f"🔧 Preparing advanced features from columns: {list(df.columns)}")
     
-    for field in numeric_fields:
-        if field in df.columns:
-            df[field] = pd.to_numeric(df[field], errors='coerce').fillna(0)
+    # ==================================================
+    # MAP ALL POSSIBLE FIELD NAMES TO STANDARD FORMAT
+    # ==================================================
     
-    # Handle day_of_week conversion (FIX for string input)
+    # Map Hour
+    if 'Hour' in df.columns and 'hour' not in df.columns:
+        df['hour'] = df['Hour']
+    elif 'hour' in df.columns and 'Hour' not in df.columns:
+        df['Hour'] = df['hour']
+    
+    # Map Temperature
+    if 'Temperature(캜)' in df.columns:
+        df['Temperature(°C)'] = df['Temperature(캜)']
+        df['temperature'] = df['Temperature(캜)']
+    elif 'Temperature(°C)' in df.columns:
+        df['temperature'] = df['Temperature(°C)']
+    elif 'temperature' in df.columns:
+        df['Temperature(°C)'] = df['temperature']
+    
+    # Map Dew Point
+    if 'Dew point temperature(캜)' in df.columns:
+        df['Dew point temperature(°C)'] = df['Dew point temperature(캜)']
+        df['dew_point'] = df['Dew point temperature(캜)']
+    elif 'Dew point temperature(°C)' in df.columns:
+        df['dew_point'] = df['Dew point temperature(°C)']
+    elif 'dew_point' in df.columns:
+        df['Dew point temperature(°C)'] = df['dew_point']
+    
+    # Map Humidity - CRITICAL FIX: Create EXACT name 'Humidity%' not 'Humidity(%)'
+    if 'Humidity(%)' in df.columns:
+        df['Humidity%'] = df['Humidity(%)']  # Remove parentheses
+        df['humidity'] = df['Humidity(%)']
+    elif 'Humidity%' in df.columns:
+        df['Humidity(%)'] = df['Humidity%']
+        df['humidity'] = df['Humidity%']
+    elif 'humidity' in df.columns:
+        df['Humidity(%)'] = df['humidity']
+        df['Humidity%'] = df['humidity']  # Add both formats
+    
+    # Map Wind Speed - CRITICAL FIX: Create EXACT name 'Wind_speed_m/s'
+    if 'Wind speed (m/s)' in df.columns:
+        df['Wind_speed_m/s'] = df['Wind speed (m/s)']
+        df['wind_speed'] = df['Wind speed (m/s)']
+    elif 'Wind_speed_m/s' in df.columns:
+        df['Wind speed (m/s)'] = df['Wind_speed_m/s']
+        df['wind_speed'] = df['Wind_speed_m/s']
+    elif 'wind_speed' in df.columns:
+        df['Wind speed (m/s)'] = df['wind_speed']
+        df['Wind_speed_m/s'] = df['wind_speed']
+    
+    # Map Visibility
+    if 'Visibility (10m)' in df.columns:
+        df['visibility'] = df['Visibility (10m)']
+    elif 'visibility' in df.columns:
+        df['Visibility (10m)'] = df['visibility']
+    
+    # Map Solar Radiation - CRITICAL FIX: Create EXACT name 'Solar_Radiation_MJ/m2'
+    if 'Solar Radiation (MJ/m2)' in df.columns:
+        df['Solar_Radiation_MJ/m2'] = df['Solar Radiation (MJ/m2)']
+        df['solar_radiation'] = df['Solar Radiation (MJ/m2)']
+    elif 'Solar_Radiation_MJ/m2' in df.columns:
+        df['Solar Radiation (MJ/m2)'] = df['Solar_Radiation_MJ/m2']
+        df['solar_radiation'] = df['Solar_Radiation_MJ/m2']
+    elif 'solar_radiation' in df.columns:
+        df['Solar Radiation (MJ/m2)'] = df['solar_radiation']
+        df['Solar_Radiation_MJ/m2'] = df['solar_radiation']
+    
+    # Map Rainfall
+    if 'Rainfall(mm)' in df.columns:
+        df['rainfall'] = df['Rainfall(mm)']
+    elif 'rainfall' in df.columns:
+        df['Rainfall(mm)'] = df['rainfall']
+    
+    # Map Snowfall
+    if 'Snowfall (cm)' in df.columns:
+        df['snowfall'] = df['Snowfall (cm)']
+    elif 'snowfall' in df.columns:
+        df['Snowfall (cm)'] = df['snowfall']
+    
+    # Map day_of_week
     if 'day_of_week' in df.columns:
         try:
             if isinstance(df['day_of_week'].iloc[0], str):
@@ -486,149 +559,61 @@ def prepare_input_with_advanced_features(input_data):
             print(f"⚠️ Error converting day_of_week: {e}")
             df['day_of_week'] = 0
     
+    # Ensure required numeric fields exist with EXACT names
+    required_fields = {
+        'hour': 12,
+        'temperature': 20,
+        'Humidity%': 50,  # Note: EXACT name with % not parentheses
+        'Wind_speed_m/s': 2.5,  # Note: EXACT name
+        'visibility': 2000,
+        'rainfall': 0,
+        'snowfall': 0,
+        'Solar_Radiation_MJ/m2': 1.5,  # Note: EXACT name
+        'dew_point': 10,
+        'day_of_week': 3
+    }
+    
+    for field, default in required_fields.items():
+        if field not in df.columns:
+            df[field] = default
+            print(f"➕ Added missing field '{field}' with default value {default}")
+    
+    # Convert all to numeric
+    for field in required_fields.keys():
+        if field in df.columns:
+            df[field] = pd.to_numeric(df[field], errors='coerce').fillna(default)
+    
     # ==================================================
     # 1. HOUR SQUARED FEATURE (hour²)
     # ==================================================
-    df['Hour_squared'] = df['Hour'] ** 2
+    df['hour_squared'] = df['hour'] ** 2
     
     # ==================================================
     # 2. TEMPERATURE-HOUR INTERACTION TERM
     # ==================================================
-    df['Temp_Hour_interaction'] = df['Temperature(°C)'] * df['Hour']
+    df['temp_hour_interaction'] = df['temperature'] * df['hour']
     
     # ==================================================
     # 3. WEEKDAY/WEEKEND FLAG
     # ==================================================
     if 'day_of_week' in df.columns:
-        df['Day_of_week'] = df['day_of_week']
-        # Ensure it's integer for comparison
         try:
-            day_val = int(df['Day_of_week'].iloc[0])
+            day_val = int(df['day_of_week'].iloc[0])
         except (ValueError, TypeError):
             day_val = 0
-        # FIXED: Convert boolean to integer properly
-        df['Is_weekend'] = 1 if day_val >= 5 else 0  # 5=Saturday, 6=Sunday
+        df['is_weekend'] = 1 if day_val >= 5 else 0
     else:
-        # Default to weekday if not provided
-        df['Is_weekend'] = 0
+        df['is_weekend'] = 0
     
     # ==================================================
     # 4. PEAK HOURS INDICATOR (7-9 AM, 5-7 PM)
     # ==================================================
-    df['Is_morning_peak'] = ((df['Hour'] >= 7) & (df['Hour'] <= 9)).astype(int)
-    df['Is_evening_peak'] = ((df['Hour'] >= 17) & (df['Hour'] <= 19)).astype(int)
-    df['Is_peak_hour'] = (df['Is_morning_peak'] | df['Is_evening_peak']).astype(int)
+    df['is_peak_hour'] = ((df['hour'] >= 7) & (df['hour'] <= 9)) | ((df['hour'] >= 17) & (df['hour'] <= 19))
+    df['is_peak_hour'] = df['is_peak_hour'].astype(int)
     
     # ==================================================
-    # 5. WEATHER CONDITIONS CATEGORIZATION
+    # 5. RUSH HOUR INTENSITY
     # ==================================================
-    
-    # Temperature categories
-    def get_temp_category(temp):
-        if temp < 0:
-            return 'Freezing'
-        elif temp < 10:
-            return 'Cold'
-        elif temp < 20:
-            return 'Cool'
-        elif temp < 30:
-            return 'Warm'
-        else:
-            return 'Hot'
-    
-    # Precipitation categories
-    def get_precip_category(rainfall, snowfall):
-        if rainfall > 5 or snowfall > 2:
-            return 'Heavy'
-        elif rainfall > 0.5 or snowfall > 0:
-            return 'Light'
-        else:
-            return 'None'
-    
-    # Wind categories
-    def get_wind_category(wind_speed):
-        if wind_speed > 7:
-            return 'Strong'
-        elif wind_speed > 3:
-            return 'Moderate'
-        else:
-            return 'Calm'
-    
-    # Apply categorizations
-    temp_cat = df['Temperature(°C)'].apply(get_temp_category).iloc[0]
-    precip_cat = get_precip_category(
-        df['Rainfall(mm)'].iloc[0] if 'Rainfall(mm)' in df.columns else 0,
-        df['Snowfall (cm)'].iloc[0] if 'Snowfall (cm)' in df.columns else 0
-    )
-    wind_cat = get_wind_category(
-        df['Wind speed (m/s)'].iloc[0] if 'Wind speed (m/s)' in df.columns else 0
-    )
-    
-    weather_category = f"{temp_cat}_{precip_cat}_{wind_cat}"
-    
-    # Create all possible weather category columns
-    possible_categories = [
-        'Freezing_None_Calm', 'Freezing_None_Moderate', 'Freezing_None_Strong',
-        'Freezing_Light_Calm', 'Freezing_Light_Moderate', 'Freezing_Light_Strong',
-        'Freezing_Heavy_Calm', 'Freezing_Heavy_Moderate', 'Freezing_Heavy_Strong',
-        'Cold_None_Calm', 'Cold_None_Moderate', 'Cold_None_Strong',
-        'Cold_Light_Calm', 'Cold_Light_Moderate', 'Cold_Light_Strong',
-        'Cold_Heavy_Calm', 'Cold_Heavy_Moderate', 'Cold_Heavy_Strong',
-        'Cool_None_Calm', 'Cool_None_Moderate', 'Cool_None_Strong',
-        'Cool_Light_Calm', 'Cool_Light_Moderate', 'Cool_Light_Strong',
-        'Cool_Heavy_Calm', 'Cool_Heavy_Moderate', 'Cool_Heavy_Strong',
-        'Warm_None_Calm', 'Warm_None_Moderate', 'Warm_None_Strong',
-        'Warm_Light_Calm', 'Warm_Light_Moderate', 'Warm_Light_Strong',
-        'Warm_Heavy_Calm', 'Warm_Heavy_Moderate', 'Warm_Heavy_Strong',
-        'Hot_None_Calm', 'Hot_None_Moderate', 'Hot_None_Strong',
-        'Hot_Light_Calm', 'Hot_Light_Moderate', 'Hot_Light_Strong',
-        'Hot_Heavy_Calm', 'Hot_Heavy_Moderate', 'Hot_Heavy_Strong'
-    ]
-    
-    for category in possible_categories:
-        df[f'Weather_{category}'] = 0
-    
-    # Set the actual category to 1
-    df[f'Weather_{weather_category}'] = 1
-    
-    # ==================================================
-    # ADDITIONAL ADVANCED FEATURES FOR RMSE REDUCTION
-    # ==================================================
-    
-    # 6. Comfort index: temperature and humidity combination
-    df['Comfort_index'] = df['Temperature(°C)'] - (df['Humidity(%)'] / 10)
-    
-    # 7. Visibility normalized
-    df['Visibility_normalized'] = df['Visibility (10m)'] / 2000
-    
-    # 8. Solar radiation categories
-    df['Solar_high'] = (df['Solar Radiation (MJ/m2)'] > 1.0).astype(int)
-    
-    # 9. Time of day categories
-    hour = df['Hour'].iloc[0]
-    time_categories = ['Time_Night', 'Time_Morning', 'Time_Afternoon', 'Time_Evening']
-    for cat in time_categories:
-        df[cat] = 0
-    
-    if hour < 6:
-        df['Time_Night'] = 1
-    elif hour < 12:
-        df['Time_Morning'] = 1
-    elif hour < 18:
-        df['Time_Afternoon'] = 1
-    else:
-        df['Time_Evening'] = 1
-    
-    # 10. Temperature squared (non-linear effect)
-    df['Temp_squared'] = df['Temperature(°C)'] ** 2
-    
-    # 11. Humidity squared
-    df['Humidity_squared'] = df['Humidity(%)'] ** 2
-    
-    # 12. Temperature-Humidity-Wind interaction
-    df['Temp_Humidity_Wind'] = df['Temperature(°C)'] * df['Humidity(%)'] * df['Wind speed (m/s)']
-    
-    # 13. Rush hour intensity (weighted)
     def rush_hour_intensity_advanced(hour):
         if hour in [7, 8, 17, 18]:  # Peak of peaks
             return 1.0
@@ -639,86 +624,89 @@ def prepare_input_with_advanced_features(input_data):
         else:
             return 0.0
     
-    df['Rush_hour_intensity'] = df['Hour'].apply(rush_hour_intensity_advanced)
+    df['rush_hour_intensity'] = df['hour'].apply(rush_hour_intensity_advanced)
     
-    # 14. Weather severity score (comprehensive)
-    def weather_severity_score_advanced(row):
-        score = 0
-        
-        # Temperature penalty
-        temp = row['Temperature(°C)']
-        if temp < 0:
-            score += 5
-        elif temp < 5:
-            score += 3
-        elif temp < 10:
-            score += 2
-        elif temp > 30:
-            score += 4
-        elif temp > 25:
-            score += 2
-        
-        # Precipitation penalty
-        if row.get('Rainfall(mm)', 0) > 0:
-            score += min(5, row['Rainfall(mm)'] * 2)
-        
-        if row.get('Snowfall (cm)', 0) > 0:
-            score += min(5, row['Snowfall (cm)'] * 3)
-        
-        # Wind penalty
-        if row['Wind speed (m/s)'] > 10:
-            score += 5
-        elif row['Wind speed (m/s)'] > 7:
-            score += 3
-        elif row['Wind speed (m/s)'] > 5:
-            score += 2
-        
-        # Visibility penalty
-        if row['Visibility (10m)'] < 500:
-            score += 4
-        elif row['Visibility (10m)'] < 1000:
-            score += 2
-        
-        return score
+    # ==================================================
+    # 6. TEMPERATURE SQUARED
+    # ==================================================
+    df['temp_squared'] = df['temperature'] ** 2
     
-    df['Weather_severity_score'] = df.apply(weather_severity_score_advanced, axis=1)
-    
-    # 15. Good biking conditions indicator
-    df['Good_biking_conditions'] = (
-        (df['Temperature(°C)'] >= 15) & 
-        (df['Temperature(°C)'] <= 25) & 
-        (df['Rainfall(mm)'] == 0) & 
-        (df['Snowfall (cm)'] == 0) & 
-        (df['Wind speed (m/s)'] < 5)
+    # ==================================================
+    # 7. GOOD BIKING CONDITIONS
+    # ==================================================
+    df['good_biking_conditions'] = (
+        (df['temperature'] >= 10) & 
+        (df['temperature'] <= 30) & 
+        (df['rainfall'] == 0) & 
+        (df['snowfall'] == 0) & 
+        (df['Wind_speed_m/s'] < 10)
     ).astype(int)
     
     # ==================================================
-    # ORIGINAL FEATURES (keep these)
+    # 8. CYCLICAL TIME FEATURES
     # ==================================================
+    df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
     
-    # Handle season encoding
-    season_cols = ['Seasons_Spring', 'Seasons_Summer', 'Seasons_Winter', 'Seasons_Autumn']
-    for col in season_cols:
-        if col not in df.columns:
-            df[col] = 0
+    # ==================================================
+    # 9. SEASON ENCODING
+    # ==================================================
+    # Default to Summer if not specified
+    if 'season_Spring' not in df.columns:
+        df['season_Spring'] = 0
+    if 'season_Summer' not in df.columns:
+        df['season_Summer'] = 1
+    if 'season_Winter' not in df.columns:
+        df['season_Winter'] = 0
+    if 'season_Autumn' not in df.columns:
+        df['season_Autumn'] = 0
     
-    # Ensure holiday encoding
-    if 'Holiday_No Holiday' not in df.columns:
-        df['Holiday_No Holiday'] = 1
-        df['Holiday_Holiday'] = 0
+    # ==================================================
+    # 10. HOLIDAY ENCODING
+    # ==================================================
+    if 'holiday_Holiday' not in df.columns:
+        df['holiday_Holiday'] = 0
+    if 'holiday_No Holiday' not in df.columns:
+        df['holiday_No Holiday'] = 1
     
-    # Ensure functioning day encoding
-    if 'Functioning Day_Yes' not in df.columns:
-        df['Functioning Day_Yes'] = 1
-        df['Functioning Day_No'] = 0
+    # ==================================================
+    # 11. FUNCTIONING DAY ENCODING
+    # ==================================================
+    if 'functioning_day_Yes' not in df.columns:
+        df['functioning_day_Yes'] = 1
+    if 'functioning_day_No' not in df.columns:
+        df['functioning_day_No'] = 0
     
-    # Handle field name mappings for backward compatibility
-    if 'Temperature(캜)' in df.columns:
-        df['Temperature(°C)'] = df['Temperature(캜)']
+    # ==================================================
+    # 12. TEMPERATURE CATEGORIES
+    # ==================================================
+    temp = df['temperature'].iloc[0]
+    temp_cats = {
+        'temp_category_freezing': 1 if temp < 0 else 0,
+        'temp_category_cold': 1 if 0 <= temp < 10 else 0,
+        'temp_category_cool': 1 if 10 <= temp < 20 else 0,
+        'temp_category_warm': 1 if 20 <= temp < 30 else 0,
+        'temp_category_hot': 1 if temp >= 30 else 0
+    }
     
-    if 'Dew point temperature(캜)' in df.columns:
-        df['Dew point temperature(°C)'] = df['Dew point temperature(캜)']
+    for cat, val in temp_cats.items():
+        df[cat] = val
     
+    # ==================================================
+    # 13. TIME OF DAY CATEGORIES
+    # ==================================================
+    hour = df['hour'].iloc[0]
+    time_cats = {
+        'time_of_day_night': 1 if hour < 6 else 0,
+        'time_of_day_morning': 1 if 6 <= hour < 12 else 0,
+        'time_of_day_afternoon': 1 if 12 <= hour < 18 else 0,
+        'time_of_day_evening': 1 if hour >= 18 else 0
+    }
+    
+    for cat, val in time_cats.items():
+        df[cat] = val
+    
+    print(f"✅ Advanced feature engineering complete. Final columns: {list(df.columns)}")
     return df
 
 def preprocess_with_advanced_features(input_data, model=None):
@@ -726,18 +714,30 @@ def preprocess_with_advanced_features(input_data, model=None):
     # First apply advanced feature engineering
     engineered_df = prepare_input_with_advanced_features(input_data)
     
-    # Get expected features from model if available, otherwise use default list
+    # Get expected features from model if available
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
         print(f"📋 Using model.feature_names_in_ for advanced model: {len(expected_features)} features")
     else:
-        expected_features = get_advanced_feature_list()
-        print(f"📋 Using default feature list for advanced model: {len(expected_features)} features")
+        # Try to load from file
+        try:
+            if os.path.exists('models/advanced_model_info.json'):
+                with open('models/advanced_model_info.json', 'r') as f:
+                    model_info = json.load(f)
+                    expected_features = model_info.get('feature_names', [])
+                    print(f"📋 Loaded {len(expected_features)} features from advanced_model_info.json")
+            else:
+                expected_features = get_advanced_feature_list()
+                print(f"📋 Using default feature list: {len(expected_features)} features")
+        except:
+            expected_features = get_advanced_feature_list()
+            print(f"📋 Using default feature list: {len(expected_features)} features")
     
-    print(f"📋 Advanced model expects {len(expected_features)} features")
+    print(f"📋 Model expects {len(expected_features)} features")
+    print(f"📋 First 5 expected: {expected_features[:5]}")
     
     # Create a new DataFrame with exactly the expected features
-    processed_df = pd.DataFrame()
+    processed_df = pd.DataFrame(index=engineered_df.index)
     
     for feature in expected_features:
         if feature in engineered_df.columns:
@@ -813,70 +813,46 @@ def get_engineered_feature_list():
 def get_advanced_feature_list():
     """
     Return the list of features expected by the advanced model
-    This should match EXACTLY what train_with_advanced_features.py produces
+    This should match EXACTLY what advanced_model_info.json shows
     """
-    # Base features (from original dataset)
-    base_features = [
-        'Hour',
-        'Temperature(°C)',
-        'Humidity(%)',
-        'Wind speed (m/s)',
-        'Visibility (10m)',
-        'Dew point temperature(°C)',
-        'Solar Radiation (MJ/m2)',
-        'Rainfall(mm)',
-        'Snowfall (cm)',
-        'Seasons_Spring',
-        'Seasons_Summer',
-        'Seasons_Winter',
-        'Holiday_No Holiday',
-        'Functioning Day_Yes'
+    return [
+        "hour",
+        "temperature",
+        "Humidity%",
+        "Wind_speed_m/s",
+        "visibility",
+        "dew_point",
+        "Solar_Radiation_MJ/m2",
+        "rainfall",
+        "snowfall",
+        "hour_sin",
+        "hour_cos",
+        "hour_squared",
+        "day_of_week",
+        "is_weekend",
+        "temp_hour_interaction",
+        "temp_squared",
+        "is_peak_hour",
+        "rush_hour_intensity",
+        "good_biking_conditions",
+        "season_Autumn",
+        "season_Spring",
+        "season_Summer",
+        "season_Winter",
+        "holiday_Holiday",
+        "holiday_No Holiday",
+        "functioning_day_No",
+        "functioning_day_Yes",
+        "temp_category_cold",
+        "temp_category_cool",
+        "temp_category_freezing",
+        "temp_category_hot",
+        "temp_category_warm",
+        "time_of_day_afternoon",
+        "time_of_day_evening",
+        "time_of_day_morning",
+        "time_of_day_night"
     ]
-    
-    # Advanced engineered features
-    advanced_features = [
-        # Requested features
-        'Hour_squared',
-        'Temp_Hour_interaction',
-        'Is_weekend',
-        'Is_morning_peak',
-        'Is_evening_peak',
-        'Is_peak_hour',
-        
-        # Additional advanced features
-        'Comfort_index',
-        'Visibility_normalized',
-        'Solar_high',
-        'Temp_squared',
-        'Humidity_squared',
-        'Temp_Humidity_Wind',
-        'Rush_hour_intensity',
-        'Weather_severity_score',
-        'Good_biking_conditions'
-    ]
-    
-    # Time categories
-    time_features = [
-        'Time_Night',
-        'Time_Morning', 
-        'Time_Afternoon',
-        'Time_Evening'
-    ]
-    
-    # All features combined
-    all_features = base_features + advanced_features + time_features
-    
-    # Add weather categories (45 possible combinations)
-    weather_base = ['Freezing', 'Cold', 'Cool', 'Warm', 'Hot']
-    precip = ['None', 'Light', 'Heavy']
-    wind = ['Calm', 'Moderate', 'Strong']
-    
-    for temp in weather_base:
-        for p in precip:
-            for w in wind:
-                all_features.append(f'Weather_{temp}_{p}_{w}')
-    
-    return all_features
 
 def validate_input(data, model_type='original'):
     """
@@ -922,66 +898,260 @@ def validate_input(data, model_type='original'):
         # Dew point can be in either format
         if 'Dew point temperature(°C)' not in data and 'Dew point temperature(캜)' not in data:
             errors.append('Dew point temperature is required (use Dew point temperature(°C) or Dew point temperature(캜))')
-    elif model_type == 'advanced' or model_type == 'xgboost':
-        required_fields = [
-            'Hour',
-            'Humidity(%)',
-            'Wind speed (m/s)',
-            'Visibility (10m)',
-            'Solar Radiation (MJ/m2)',
-            'Rainfall(mm)',
-            'Snowfall (cm)',
-            'day_of_week'
-        ]
-        # Advanced models accept either temperature format
-        if 'Temperature(°C)' not in data and 'Temperature(캜)' not in data:
-            errors.append('Temperature is required (use Temperature(°C) or Temperature(캜))')
-        
-        # Advanced models accept either dew point format
-        if 'Dew point temperature(°C)' not in data and 'Dew point temperature(캜)' not in data:
-            errors.append('Dew point temperature is required (use Dew point temperature(°C) or Dew point temperature(캜))')
     
-    # Check other required fields
-    for field in required_fields:
-        if field not in data:
-            errors.append(f'{field} is required')
+    elif model_type == 'advanced':
+        # Check for required fields in any accepted format
+        # Check Hour
+        if not any(key in data for key in ['Hour', 'hour']):
+            errors.append('Hour is required (use Hour or hour)')
+        
+        # Check Temperature
+        if not any(key in data for key in ['Temperature(°C)', 'Temperature(캜)', 'temperature']):
+            errors.append('Temperature is required (use Temperature(°C), Temperature(캜), or temperature)')
+        
+        # Check Humidity
+        if not any(key in data for key in ['Humidity(%)', 'Humidity%', 'humidity']):
+            errors.append('Humidity is required (use Humidity(%), Humidity%, or humidity)')
+        
+        # Check Wind Speed
+        if not any(key in data for key in ['Wind speed (m/s)', 'wind_speed', 'Wind_speed_m/s']):
+            errors.append('Wind speed is required (use Wind speed (m/s), wind_speed, or Wind_speed_m/s)')
+        
+        # Check Visibility
+        if not any(key in data for key in ['Visibility (10m)', 'visibility']):
+            errors.append('Visibility is required (use Visibility (10m) or visibility)')
+        
+        # Check Solar Radiation
+        if not any(key in data for key in ['Solar Radiation (MJ/m2)', 'solar_radiation', 'Solar_Radiation_MJ/m2']):
+            errors.append('Solar Radiation is required (use Solar Radiation (MJ/m2), solar_radiation, or Solar_Radiation_MJ/m2)')
+        
+        # Check Rainfall
+        if not any(key in data for key in ['Rainfall(mm)', 'rainfall']):
+            errors.append('Rainfall is required (use Rainfall(mm) or rainfall)')
+        
+        # Check Snowfall
+        if not any(key in data for key in ['Snowfall (cm)', 'snowfall']):
+            errors.append('Snowfall is required (use Snowfall (cm) or snowfall)')
+        
+        # Check Dew Point
+        if not any(key in data for key in ['Dew point temperature(°C)', 'Dew point temperature(캜)', 'dew_point']):
+            errors.append('Dew point temperature is required (use Dew point temperature(°C), Dew point temperature(캜), or dew_point)')
+        
+        # Check day_of_week
+        if 'day_of_week' not in data:
+            errors.append('day_of_week is required')
+    
+    elif model_type == 'xgboost':
+        # Check for required fields in any accepted format for XGBoost
+        # Check Hour
+        if not any(key in data for key in ['Hour', 'hour']):
+            errors.append('Hour is required (use Hour or hour)')
+        
+        # Check Temperature
+        if not any(key in data for key in ['Temperature(°C)', 'Temperature(캜)', 'temperature']):
+            errors.append('Temperature is required (use Temperature(°C), Temperature(캜), or temperature)')
+        
+        # Check Humidity
+        if not any(key in data for key in ['Humidity(%)', 'humidity']):
+            errors.append('Humidity is required (use Humidity(%) or humidity)')
+        
+        # Check Wind Speed
+        if not any(key in data for key in ['Wind speed (m/s)', 'wind_speed']):
+            errors.append('Wind speed is required (use Wind speed (m/s) or wind_speed)')
+        
+        # Check Visibility
+        if not any(key in data for key in ['Visibility (10m)', 'visibility']):
+            errors.append('Visibility is required (use Visibility (10m) or visibility)')
+        
+        # Check Solar Radiation
+        if not any(key in data for key in ['Solar Radiation (MJ/m2)', 'solar_radiation']):
+            errors.append('Solar Radiation is required (use Solar Radiation (MJ/m2) or solar_radiation)')
+        
+        # Check Rainfall
+        if not any(key in data for key in ['Rainfall(mm)', 'rainfall']):
+            errors.append('Rainfall is required (use Rainfall(mm) or rainfall)')
+        
+        # Check Snowfall
+        if not any(key in data for key in ['Snowfall (cm)', 'snowfall']):
+            errors.append('Snowfall is required (use Snowfall (cm) or snowfall)')
+        
+        # Check Dew Point
+        if not any(key in data for key in ['Dew point temperature(°C)', 'Dew point temperature(캜)', 'dew_point']):
+            errors.append('Dew point temperature is required (use Dew point temperature(°C), Dew point temperature(캜), or dew_point)')
+        
+        # Check day_of_week
+        if 'day_of_week' not in data:
+            errors.append('day_of_week is required')
+    
+    # Check other required fields for original and improved models
+    if model_type in ['original', 'improved']:
+        for field in required_fields:
+            if field not in data:
+                errors.append(f'{field} is required')
     
     # Common validations for all models
+    # Validate Hour
+    hour_value = None
     if 'Hour' in data:
+        hour_value = data['Hour']
+    elif 'hour' in data and model_type in ['advanced', 'xgboost']:
+        hour_value = data['hour']
+    
+    if hour_value is not None:
         try:
-            hour = float(data.get('Hour', -1))
+            hour = float(hour_value)
             if not (0 <= hour <= 23):
                 errors.append('Hour must be between 0 and 23')
         except (ValueError, TypeError):
             errors.append('Hour must be a number')
     
-    # Check temperature (accept any format)
-    if 'Temperature(°C)' in data or 'Temperature(캜)' in data:
+    # Validate Temperature
+    temp_value = None
+    if 'Temperature(°C)' in data:
+        temp_value = data['Temperature(°C)']
+    elif 'Temperature(캜)' in data:
+        temp_value = data['Temperature(캜)']
+    elif 'temperature' in data and model_type in ['advanced', 'xgboost']:
+        temp_value = data['temperature']
+    
+    if temp_value is not None:
         try:
-            temp = float(data.get('Temperature(°C)', data.get('Temperature(캜)', -100)))
+            temp = float(temp_value)
             if not (-20 <= temp <= 50):
                 errors.append('Temperature must be between -20°C and 50°C')
         except (ValueError, TypeError):
             errors.append('Temperature must be a number')
     
+    # Validate Humidity
+    humidity_value = None
     if 'Humidity(%)' in data:
+        humidity_value = data['Humidity(%)']
+    elif 'Humidity%' in data and model_type == 'advanced':
+        humidity_value = data['Humidity%']
+    elif 'humidity' in data and model_type == 'xgboost':
+        humidity_value = data['humidity']
+    
+    if humidity_value is not None:
         try:
-            humidity = float(data.get('Humidity(%)', -1))
+            humidity = float(humidity_value)
             if not (0 <= humidity <= 100):
                 errors.append('Humidity must be between 0% and 100%')
         except (ValueError, TypeError):
             errors.append('Humidity must be a number')
     
-    # Validate day_of_week for models that need it
-    if model_type in ['improved', 'advanced', 'xgboost'] and 'day_of_week' in data:
+    # Validate Wind Speed
+    wind_value = None
+    if 'Wind speed (m/s)' in data:
+        wind_value = data['Wind speed (m/s)']
+    elif 'wind_speed' in data and model_type == 'xgboost':
+        wind_value = data['wind_speed']
+    elif 'Wind_speed_m/s' in data and model_type == 'advanced':
+        wind_value = data['Wind_speed_m/s']
+    
+    if wind_value is not None:
         try:
-            # Handle string input from form
-            day_str = str(data.get('day_of_week', '0'))
-            day = int(float(day_str))  # Convert string like "0" or float like 0.0 to int
-            if not (0 <= day <= 6):
-                errors.append('day_of_week must be between 0 (Monday) and 6 (Sunday)')
-        except (TypeError, ValueError):
-            errors.append('day_of_week must be an integer between 0 and 6')
+            wind = float(wind_value)
+            if wind < 0 or wind > 50:
+                errors.append('Wind speed must be between 0 and 50 m/s')
+        except (ValueError, TypeError):
+            errors.append('Wind speed must be a number')
+    
+    # Validate Visibility
+    visibility_value = None
+    if 'Visibility (10m)' in data:
+        visibility_value = data['Visibility (10m)']
+    elif 'visibility' in data and model_type in ['advanced', 'xgboost']:
+        visibility_value = data['visibility']
+    
+    if visibility_value is not None:
+        try:
+            visibility = float(visibility_value)
+            if visibility < 0 or visibility > 5000:
+                errors.append('Visibility must be between 0 and 5000 (10m)')
+        except (ValueError, TypeError):
+            errors.append('Visibility must be a number')
+    
+    # Validate Solar Radiation
+    solar_value = None
+    if 'Solar Radiation (MJ/m2)' in data:
+        solar_value = data['Solar Radiation (MJ/m2)']
+    elif 'solar_radiation' in data and model_type == 'xgboost':
+        solar_value = data['solar_radiation']
+    elif 'Solar_Radiation_MJ/m2' in data and model_type == 'advanced':
+        solar_value = data['Solar_Radiation_MJ/m2']
+    
+    if solar_value is not None:
+        try:
+            solar = float(solar_value)
+            if solar < 0 or solar > 5:
+                errors.append('Solar Radiation must be between 0 and 5 MJ/m2')
+        except (ValueError, TypeError):
+            errors.append('Solar Radiation must be a number')
+    
+    # Validate Rainfall
+    rainfall_value = None
+    if 'Rainfall(mm)' in data:
+        rainfall_value = data['Rainfall(mm)']
+    elif 'rainfall' in data and model_type in ['advanced', 'xgboost']:
+        rainfall_value = data['rainfall']
+    
+    if rainfall_value is not None:
+        try:
+            rainfall = float(rainfall_value)
+            if rainfall < 0 or rainfall > 100:
+                errors.append('Rainfall must be between 0 and 100 mm')
+        except (ValueError, TypeError):
+            errors.append('Rainfall must be a number')
+    
+    # Validate Snowfall
+    snowfall_value = None
+    if 'Snowfall (cm)' in data:
+        snowfall_value = data['Snowfall (cm)']
+    elif 'snowfall' in data and model_type in ['advanced', 'xgboost']:
+        snowfall_value = data['snowfall']
+    
+    if snowfall_value is not None:
+        try:
+            snowfall = float(snowfall_value)
+            if snowfall < 0 or snowfall > 50:
+                errors.append('Snowfall must be between 0 and 50 cm')
+        except (ValueError, TypeError):
+            errors.append('Snowfall must be a number')
+    
+    # Validate Dew Point
+    dew_point_value = None
+    if 'Dew point temperature(°C)' in data:
+        dew_point_value = data['Dew point temperature(°C)']
+    elif 'Dew point temperature(캜)' in data:
+        dew_point_value = data['Dew point temperature(캜)']
+    elif 'dew_point' in data and model_type in ['advanced', 'xgboost']:
+        dew_point_value = data['dew_point']
+    
+    if dew_point_value is not None:
+        try:
+            dew_point = float(dew_point_value)
+            if dew_point < -30 or dew_point > 30:
+                errors.append('Dew point temperature must be between -30°C and 30°C')
+        except (ValueError, TypeError):
+            errors.append('Dew point temperature must be a number')
+    
+    # Validate day_of_week for models that need it
+    if model_type in ['improved', 'advanced', 'xgboost']:
+        day_value = None
+        if 'day_of_week' in data:
+            day_value = data['day_of_week']
+        
+        if day_value is not None:
+            try:
+                # Handle string input from form
+                day_str = str(day_value)
+                day = int(float(day_str))  # Convert string like "0" or float like 0.0 to int
+                if not (0 <= day <= 6):
+                    errors.append('day_of_week must be between 0 (Monday) and 6 (Sunday)')
+            except (TypeError, ValueError):
+                errors.append('day_of_week must be an integer between 0 and 6')
+        else:
+            errors.append('day_of_week is required for this model')
     
     return errors
 
