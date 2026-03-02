@@ -114,7 +114,7 @@ def calculate_model_metrics():
         return metrics
         
     except Exception as e:
-        print(f"⚠️ Error calculating model metrics: {e}")
+        print(f" Error calculating model metrics: {e}")
         return {
             "model_name": "Random Forest Regressor",
             "model_status": "Metrics calculation failed",
@@ -165,24 +165,24 @@ def generate_performance_report():
             model_path = metrics.get("model_path", "models/random_forest_model.pkl")
             
             return f"""
-    🎯 MODEL PERFORMANCE REPORT
+     MODEL PERFORMANCE REPORT
     {'=' * 50}
     
-    ⚠️  Model Status: Not Available
+      Model Status: Not Available
     
     Issue: {error_msg}
     
     File Check:
-      • Expected path: {model_path}
-      • File exists: {'✅ Yes' if os.path.exists(model_path) else '❌ No'}
+       Expected path: {model_path}
+       File exists: {' Yes' if os.path.exists(model_path) else ' No'}
     
     Basic Application Information:
-      • Application: Bike Rental Demand Prediction
-      • Model Type: Random Forest Regressor
-      • Expected Features: 14
-      • Status: Application running, but model needs to be loaded
+       Application: Bike Rental Demand Prediction
+       Model Type: Random Forest Regressor
+       Expected Features: 14
+       Status: Application running, but model needs to be loaded
     
-    🔧 Troubleshooting:
+     Troubleshooting:
       1. Ensure the model file exists at {model_path}
       2. Check file permissions
       3. Verify model was trained and saved properly
@@ -192,15 +192,15 @@ def generate_performance_report():
         # Check if metrics calculation failed in another way
         if "error" in metrics and metrics["error"]:
             return f"""
-    🎯 MODEL PERFORMANCE REPORT
+     MODEL PERFORMANCE REPORT
     {'=' * 50}
     
-    ⚠️  Could not generate full report: {metrics.get('error', 'Unknown error')}
+      Could not generate full report: {metrics.get('error', 'Unknown error')}
     
     Basic Model Information:
-      • Model Type: Random Forest Regressor
-      • Status: File exists but error loading
-      • Features: 14
+       Model Type: Random Forest Regressor
+       Status: File exists but error loading
+       Features: 14
     
     Please ensure:
       1. The model file exists at 'models/random_forest_model.pkl'
@@ -210,42 +210,42 @@ def generate_performance_report():
         
         # Model is available, generate full report
         report = f"""
-    🎯 MODEL PERFORMANCE REPORT
+     MODEL PERFORMANCE REPORT
     {'=' * 50}
     
-    📊 Model Information:
-      • Name: {metrics.get('model_name', 'Random Forest Regressor')}
-      • Type: {metrics.get('model_type', 'RandomForestRegressor')}
-      • Status: {metrics.get('model_status', 'Available')}
-      • Features: {metrics.get('features_count', 14)}
-      • Dataset: {metrics.get('dataset', 'Seoul Bike Sharing')}
-      • Period: {metrics.get('data_period', '2017-2018')}
+     Model Information:
+       Name: {metrics.get('model_name', 'Random Forest Regressor')}
+       Type: {metrics.get('model_type', 'RandomForestRegressor')}
+       Status: {metrics.get('model_status', 'Available')}
+       Features: {metrics.get('features_count', 14)}
+       Dataset: {metrics.get('dataset', 'Seoul Bike Sharing')}
+       Period: {metrics.get('data_period', '2017-2018')}
     
-    📈 Performance Metrics:
-      • R² Score: {metrics.get('r2_score', 0.82):.3f} ({metrics.get('interpretation', {}).get('r2_interpretation', 'Variance explained')})
-      • Mean Absolute Error (MAE): {metrics.get('mean_absolute_error', 87.2):.1f} bikes
-      • Root Mean Squared Error (RMSE): {metrics.get('root_mean_squared_error', 112.5):.1f} bikes
-      • Mean Absolute Percentage Error: {metrics.get('mean_absolute_percentage_error', '15.3%')}
-      • Explained Variance: {metrics.get('explained_variance_score', 0.83):.3f}
+     Performance Metrics:
+       R² Score: {metrics.get('r2_score', 0.82):.3f} ({metrics.get('interpretation', {}).get('r2_interpretation', 'Variance explained')})
+       Mean Absolute Error (MAE): {metrics.get('mean_absolute_error', 87.2):.1f} bikes
+       Root Mean Squared Error (RMSE): {metrics.get('root_mean_squared_error', 112.5):.1f} bikes
+       Mean Absolute Percentage Error: {metrics.get('mean_absolute_percentage_error', '15.3%')}
+       Explained Variance: {metrics.get('explained_variance_score', 0.83):.3f}
     
-    ⚙️ Model Configuration:
-      • Number of Trees: {metrics.get('n_estimators', 100)}
-      • Max Depth: {metrics.get('max_depth', 'Not limited')}
-      • Min Samples Split: {metrics.get('min_samples_split', 2)}
-      • Min Samples Leaf: {metrics.get('min_samples_leaf', 1)}
-      • Random State: {metrics.get('random_state', 'Not set')}
+     Model Configuration:
+       Number of Trees: {metrics.get('n_estimators', 100)}
+       Max Depth: {metrics.get('max_depth', 'Not limited')}
+       Min Samples Split: {metrics.get('min_samples_split', 2)}
+       Min Samples Leaf: {metrics.get('min_samples_leaf', 1)}
+       Random State: {metrics.get('random_state', 'Not set')}
     
-    📋 Data Information:
-      • Total Records: {metrics.get('dataset_size', '8,760')}
-      • Training Samples: {metrics.get('training_samples', 7008)}
-      • Testing Samples: {metrics.get('testing_samples', 1752)}
-      • Train/Test Split: {metrics.get('validation_split', '80/20')}
+     Data Information:
+       Total Records: {metrics.get('dataset_size', '8,760')}
+       Training Samples: {metrics.get('training_samples', 7008)}
+       Testing Samples: {metrics.get('testing_samples', 1752)}
+       Train/Test Split: {metrics.get('validation_split', '80/20')}
     """
         
         # Add feature importance if available
         top_features = metrics.get('top_features')
         if top_features:
-            report += "\n    🏆 Top 5 Most Important Features:\n"
+            report += "\n     Top 5 Most Important Features:\n"
             for feat in top_features:
                 feature_name = feat['feature']
                 # Make feature names more readable
@@ -261,27 +261,27 @@ def generate_performance_report():
                 report += f"      {feat['rank']}. {feature_name}: {feat['importance_percent']}\n"
         
         # Add model interpretation
-        report += "\n    📝 Model Interpretation:\n"
-        report += f"      • {metrics.get('interpretation', {}).get('r2_interpretation', 'Good explanatory power')}\n"
-        report += f"      • {metrics.get('interpretation', {}).get('mae_interpretation', 'Reasonable prediction accuracy')}\n"
-        report += f"      • {metrics.get('interpretation', {}).get('rmse_interpretation', 'Acceptable error range')}\n"
+        report += "\n     Model Interpretation:\n"
+        report += f"       {metrics.get('interpretation', {}).get('r2_interpretation', 'Good explanatory power')}\n"
+        report += f"       {metrics.get('interpretation', {}).get('mae_interpretation', 'Reasonable prediction accuracy')}\n"
+        report += f"       {metrics.get('interpretation', {}).get('rmse_interpretation', 'Acceptable error range')}\n"
         
         report += "\n" + "=" * 50
-        report += "\n    💡 Note: For detailed analysis, visit http://127.0.0.1:5000/metrics"
+        report += "\n     Note: For detailed analysis, visit http://127.0.0.1:5000/metrics"
         
         return report
         
     except Exception as e:
         return f"""
-    🎯 MODEL PERFORMANCE REPORT
+     MODEL PERFORMANCE REPORT
     {'=' * 50}
     
-    ⚠️  Error generating report: {str(e)}
+      Error generating report: {str(e)}
     
     Basic Information:
-      • Application: Bike Rental Demand Prediction
-      • Model: Random Forest Regressor
-      • Status: Error in report generation
+       Application: Bike Rental Demand Prediction
+       Model: Random Forest Regressor
+       Status: Error in report generation
     
     Check if:
       1. Model file exists: models/random_forest_model.pkl

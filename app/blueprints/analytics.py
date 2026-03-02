@@ -271,7 +271,7 @@ def feature_importance():
 
 @analytics.route('/api/analytics/model-performance', methods=['GET'])
 def model_performance():
-    """Model performance metrics for radar chart — includes all loaded models."""
+    """Model performance metrics for radar chart  includes all loaded models."""
     state = get_state()
     loaded = _loaded_models(state)
 

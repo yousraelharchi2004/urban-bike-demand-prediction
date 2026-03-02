@@ -56,16 +56,16 @@ def load_model(model_type='original'):
     
     for model_path in model_paths:
         if os.path.exists(model_path):
-            print(f"✅ Found {model_name} model at: {model_path}")
+            print(f" Found {model_name} model at: {model_path}")
             try:
                 model_data = joblib.load(model_path)
                 
                 # HANDLE IMPROVED MODEL SPECIFICALLY - IT'S STORED AS A DICTIONARY
                 if model_type == 'improved' and isinstance(model_data, dict):
-                    print(f"📦 Improved model loaded as dictionary. Extracting actual model...")
+                    print(f" Improved model loaded as dictionary. Extracting actual model...")
                     if 'model' in model_data:
                         model = model_data['model']
-                        print(f"✅ Extracted Random Forest model from dictionary key 'model'")
+                        print(f" Extracted Random Forest model from dictionary key 'model'")
                         print(f"   Model type: {type(model).__name__}")
                         
                         if hasattr(model, 'feature_names_in_'):
@@ -76,42 +76,41 @@ def load_model(model_type='original'):
                             print(f"   Model expects {model.n_features_in_} features")
                         return model
                     else:
-                        print(f"❌ No 'model' key found in dictionary")
+                        print(f" No 'model' key found in dictionary")
                         print(f"   Available keys: {list(model_data.keys())}")
                         # Fallback: try to find any object with predict method
                         for key, value in model_data.items():
                             if hasattr(value, 'predict'):
-                                print(f"✅ Found model in key '{key}', type: {type(value).__name__}")
+                                print(f" Found model in key '{key}', type: {type(value).__name__}")
                                 return value
-                        print(f"❌ No valid model object found in dictionary")
+                        print(f" No valid model object found in dictionary")
                         return None
                 else:
                     # For original, advanced, and xgboost models
                     model = model_data
-                    print(f"✅ {model_name} loaded successfully. Type: {type(model).__name__}")
+                    print(f" {model_name} loaded successfully. Type: {type(model).__name__}")
                     
                     if hasattr(model, 'feature_names_in_'):
                         feature_names = list(model.feature_names_in_)
-                        print(f"✅ Model feature names: {feature_names}")
-                        print(f"✅ Model expects {len(feature_names)} features")
+                        print(f" Model expects {len(feature_names)} features")
                     elif hasattr(model, 'n_features_in_'):
-                        print(f"✅ Model expects {model.n_features_in_} features")
+                        print(f" Model expects {model.n_features_in_} features")
                     return model
                     
             except Exception as e:
-                print(f"❌ Error loading model from {model_path}: {e}")
+                print(f" Error loading model from {model_path}: {e}")
                 traceback.print_exc()
                 continue
     
     # If we get here, no model was found
     if model_type == 'xgboost':
-        raise FileNotFoundError(f"❌ {model_name} model not found. Please run the XGBoost training script first.")
+        raise FileNotFoundError(f" {model_name} model not found. Please run the XGBoost training script first.")
     elif model_type == 'improved':
-        raise FileNotFoundError(f"❌ {model_name} model not found. Please run the training script first.")
+        raise FileNotFoundError(f" {model_name} model not found. Please run the training script first.")
     elif model_type == 'advanced':
-        raise FileNotFoundError(f"❌ {model_name} model not found. Please run train_with_advanced_features.py first.")
+        raise FileNotFoundError(f" {model_name} model not found. Please run train_with_advanced_features.py first.")
     else:
-        raise FileNotFoundError("❌ Model file not found. Please train the model first.")
+        raise FileNotFoundError(" Model file not found. Please train the model first.")
 
 def load_advanced_model():
     """Load the advanced Random Forest model"""
@@ -127,14 +126,14 @@ def preprocess_input(data, use_engineered_features=False, model_type='original',
         model_type: 'original', 'improved', 'advanced', or 'xgboost'
         model: The loaded model object (optional, used to get feature_names_in_)
     """
-    print(f"🔄 Preprocessing input for {model_type.upper()} model...")
+    print(f" Preprocessing input for {model_type.upper()} model...")
     
     # Create a copy to avoid modifying original
     df = pd.DataFrame([data])
     
     # Debug: print what columns we received
-    print(f"📥 Input data columns received: {list(df.columns)}")
-    print(f"📥 Input data shape: {df.shape}")
+    print(f" Input data columns received: {list(df.columns)}")
+    print(f" Input data shape: {df.shape}")
     
     if model_type == 'advanced' or model_type == 'xgboost':
         return preprocess_with_advanced_features(df, model)
@@ -154,7 +153,7 @@ def preprocess_original_features(input_data, model=None):
     # Get expected features from model if available, otherwise use default
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
-        print(f"📋 Using model.feature_names_in_ for original model: {expected_features}")
+        print(f" Using model.feature_names_in_ for original model: {expected_features}")
     else:
         # FALLBACK: Use the model's actual training feature names
         # The original model was trained with Temperature(캜) and Dew point temperature(캜)
@@ -174,9 +173,9 @@ def preprocess_original_features(input_data, model=None):
             'Holiday_No Holiday',
             'Functioning Day_Yes'
         ]
-        print(f"📋 Using default feature list for original model: {expected_features}")
+        print(f" Using default feature list for original model: {expected_features}")
     
-    print(f"📋 Original model expects these {len(expected_features)} features: {expected_features}")
+    print(f" Original model expects these {len(expected_features)} features: {expected_features}")
     
     # Handle field name mappings - convert input format to model's expected format
     # If input has Temperature(°C), rename it to Temperature(캜) for the model
@@ -217,9 +216,9 @@ def preprocess_original_features(input_data, model=None):
     extra_cols = [col for col in df.columns if col not in expected_features]
     
     if missing_cols:
-        print(f"⚠️ Missing columns in input: {missing_cols}")
+        print(f" Missing columns in input: {missing_cols}")
     if extra_cols:
-        print(f"⚠️ Extra columns in input (will be ignored): {extra_cols}")
+        print(f" Extra columns in input (will be ignored): {extra_cols}")
     
     # Create a new DataFrame with exactly the expected features
     processed_df = pd.DataFrame()
@@ -230,7 +229,7 @@ def preprocess_original_features(input_data, model=None):
         else:
             # Add missing column with default value 0
             processed_df[feature] = 0
-            print(f"➕ Added missing column '{feature}' with value 0")
+            print(f" Added missing column '{feature}' with value 0")
     
     # Ensure correct data types
     for col in processed_df.columns:
@@ -243,9 +242,9 @@ def preprocess_original_features(input_data, model=None):
     if model is not None and hasattr(model, 'feature_names_in_'):
         processed_df = processed_df[list(model.feature_names_in_)]
     
-    print(f"✅ Processed data shape: {processed_df.shape}")
-    print(f"✅ Processed columns: {list(processed_df.columns)}")
-    print(f"✅ First row values: {processed_df.iloc[0].to_dict()}")
+    print(f" Processed data shape: {processed_df.shape}")
+    print(f" Processed columns: {list(processed_df.columns)}")
+    print(f" First row values: {processed_df.iloc[0].to_dict()}")
     
     return processed_df
 
@@ -280,7 +279,7 @@ def prepare_input_with_engineered_features(input_data):
             else:
                 df['day_of_week'] = pd.to_numeric(df['day_of_week'], errors='coerce').fillna(0).astype(int)
         except Exception as e:
-            print(f"⚠️ Error converting day_of_week: {e}")
+            print(f" Error converting day_of_week: {e}")
             df['day_of_week'] = 0
     
     # Basic engineered features
@@ -389,18 +388,18 @@ def preprocess_with_engineered_features(input_data, model=None):
     # Get expected features from model if available, otherwise use default list
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
-        print(f"📋 Using model.feature_names_in_ for improved model: {len(expected_features)} features")
-        print(f"📋 Feature order from model: {expected_features}")
+        print(f" Using model.feature_names_in_ for improved model: {len(expected_features)} features")
+        print(f" Feature order from model: {expected_features}")
     else:
         expected_features = get_engineered_feature_list()
-        print(f"📋 Using default feature list for improved model: {len(expected_features)} features")
+        print(f" Using default feature list for improved model: {len(expected_features)} features")
     
-    print(f"📋 Improved model expects {len(expected_features)} features")
+    print(f" Improved model expects {len(expected_features)} features")
     
     # Debug: Check which features are missing
     missing_features = [f for f in expected_features if f not in engineered_df.columns]
     if missing_features:
-        print(f"⚠️ Missing features that will be added with defaults: {missing_features}")
+        print(f" Missing features that will be added with defaults: {missing_features}")
     
     # Create a new DataFrame with exactly the expected features in the EXACT order
     processed_df = pd.DataFrame(index=engineered_df.index)
@@ -422,7 +421,7 @@ def preprocess_with_engineered_features(input_data, model=None):
                 processed_df[feature] = 0  # Default deviation
             else:
                 processed_df[feature] = 0
-            print(f"➕ Added missing column '{feature}' with default value")
+            print(f" Added missing column '{feature}' with default value")
     
     # Ensure correct data types
     for col in processed_df.columns:
@@ -432,9 +431,9 @@ def preprocess_with_engineered_features(input_data, model=None):
     processed_df = processed_df.fillna(0)
     
     # The DataFrame is already in the correct order because we built it sequentially
-    print(f"✅ Processed data shape: {processed_df.shape}")
-    print(f"✅ Processed columns (in exact order): {list(processed_df.columns)}")
-    print(f"✅ Total engineered features: {len(processed_df.columns)}")
+    print(f" Processed data shape: {processed_df.shape}")
+    print(f" Processed columns (in exact order): {list(processed_df.columns)}")
+    print(f" Total engineered features: {len(processed_df.columns)}")
     
     return processed_df
 
@@ -467,7 +466,7 @@ def prepare_input_with_advanced_features(input_data):
     else:
         df = input_data
     
-    print(f"🔧 Preparing advanced features from columns: {list(df.columns)}")
+    print(f" Preparing advanced features from columns: {list(df.columns)}")
     
     # ==================================================
     # MAP ALL POSSIBLE FIELD NAMES TO STANDARD FORMAT
@@ -556,7 +555,7 @@ def prepare_input_with_advanced_features(input_data):
             else:
                 df['day_of_week'] = pd.to_numeric(df['day_of_week'], errors='coerce').fillna(0).astype(int)
         except Exception as e:
-            print(f"⚠️ Error converting day_of_week: {e}")
+            print(f" Error converting day_of_week: {e}")
             df['day_of_week'] = 0
     
     # Ensure required numeric fields exist with EXACT names
@@ -576,7 +575,7 @@ def prepare_input_with_advanced_features(input_data):
     for field, default in required_fields.items():
         if field not in df.columns:
             df[field] = default
-            print(f"➕ Added missing field '{field}' with default value {default}")
+            print(f" Added missing field '{field}' with default value {default}")
     
     # Convert all to numeric
     for field in required_fields.keys():
@@ -706,7 +705,7 @@ def prepare_input_with_advanced_features(input_data):
     for cat, val in time_cats.items():
         df[cat] = val
     
-    print(f"✅ Advanced feature engineering complete. Final columns: {list(df.columns)}")
+    print(f" Advanced feature engineering complete. Final columns: {list(df.columns)}")
     return df
 
 def preprocess_with_advanced_features(input_data, model=None):
@@ -717,7 +716,7 @@ def preprocess_with_advanced_features(input_data, model=None):
     # Get expected features from model if available
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
-        print(f"📋 Using model.feature_names_in_ for advanced model: {len(expected_features)} features")
+        print(f" Using model.feature_names_in_ for advanced model: {len(expected_features)} features")
     else:
         # Try to load from file
         try:
@@ -725,16 +724,16 @@ def preprocess_with_advanced_features(input_data, model=None):
                 with open('models/advanced_model_info.json', 'r') as f:
                     model_info = json.load(f)
                     expected_features = model_info.get('feature_names', [])
-                    print(f"📋 Loaded {len(expected_features)} features from advanced_model_info.json")
+                    print(f" Loaded {len(expected_features)} features from advanced_model_info.json")
             else:
                 expected_features = get_advanced_feature_list()
-                print(f"📋 Using default feature list: {len(expected_features)} features")
+                print(f" Using default feature list: {len(expected_features)} features")
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
             expected_features = get_advanced_feature_list()
-            print(f"📋 Using default feature list: {len(expected_features)} features")
+            print(f" Using default feature list: {len(expected_features)} features")
     
-    print(f"📋 Model expects {len(expected_features)} features")
-    print(f"📋 First 5 expected: {expected_features[:5]}")
+    print(f" Model expects {len(expected_features)} features")
+    print(f" First 5 expected: {expected_features[:5]}")
     
     # Create a new DataFrame with exactly the expected features
     processed_df = pd.DataFrame(index=engineered_df.index)
@@ -745,7 +744,7 @@ def preprocess_with_advanced_features(input_data, model=None):
         else:
             # Add missing column with default value 0
             processed_df[feature] = 0
-            print(f"➕ Added missing column '{feature}' with value 0")
+            print(f" Added missing column '{feature}' with value 0")
     
     # Ensure correct data types
     for col in processed_df.columns:
@@ -758,9 +757,9 @@ def preprocess_with_advanced_features(input_data, model=None):
     if model is not None and hasattr(model, 'feature_names_in_'):
         processed_df = processed_df[list(model.feature_names_in_)]
     
-    print(f"✅ Processed data shape: {processed_df.shape}")
-    print(f"✅ Processed columns: {list(processed_df.columns)}")
-    print(f"✅ Total advanced features: {len(processed_df.columns)}")
+    print(f" Processed data shape: {processed_df.shape}")
+    print(f" Processed columns: {list(processed_df.columns)}")
+    print(f" Total advanced features: {len(processed_df.columns)}")
     
     return processed_df
 
@@ -807,7 +806,7 @@ def get_engineered_feature_list():
         'Seasons_Winter'
     ]
     
-    print(f"📋 Improved model expects {len(expected_features)} features in specific order")
+    print(f" Improved model expects {len(expected_features)} features in specific order")
     return expected_features
 
 def get_advanced_feature_list():
@@ -1192,10 +1191,10 @@ def save_prediction_to_history(input_data, prediction_result):
         with open(history_file, 'w') as f:
             json.dump(history, f, indent=2)
         
-        print(f"✅ Prediction saved to history. Total predictions: {len(history)}")
+        print(f" Prediction saved to history. Total predictions: {len(history)}")
         
     except Exception as e:
-        print(f"❌ Error saving prediction to history: {e}")
+        print(f" Error saving prediction to history: {e}")
 
 def get_prediction_history(limit=50):
     """Get prediction history"""
@@ -1212,7 +1211,7 @@ def get_prediction_history(limit=50):
             return []
         
     except Exception as e:
-        print(f"❌ Error loading prediction history: {e}")
+        print(f" Error loading prediction history: {e}")
         return []
 
 def get_model_feature_names(model_type='original'):

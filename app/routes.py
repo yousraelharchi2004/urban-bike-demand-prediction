@@ -44,7 +44,7 @@ def normalize_field_names_for_model(data, target_model):
     
     normalized_data = {}
     
-    print(f"\n🔤 Starting normalization for {target_model} model")
+    print(f"\n Starting normalization for {target_model} model")
     print(f"   Input keys: {list(data.keys())}")
     
     # =============================================
@@ -245,7 +245,7 @@ def normalize_field_names_for_model(data, target_model):
         # The engineered features (hour_sin, hour_cos, etc.) will be calculated
         # in calculate_engineered_features_from_basic function
         
-        print(f"   ✅ Created base fields for advanced model")
+        print(f"   [OK] Created base fields for advanced model")
     
     # =============================================
     # XGBOOST MODEL - same as advanced (uses same feature set)
@@ -402,7 +402,7 @@ def normalize_field_names_for_model(data, target_model):
         normalized_data['functioning_day_Yes'] = yes_val
         normalized_data['functioning_day_No'] = no_val
         
-        print(f"   ✅ Created base fields for xgboost model")
+        print(f"   [OK] Created base fields for xgboost model")
     
     # =============================================
     # IMPROVED MODEL - needs degree symbol
@@ -415,19 +415,19 @@ def normalize_field_names_for_model(data, target_model):
         # Map temperature to proper format
         if korean_temp_key:
             normalized_data['Temperature(°C)'] = float(data[korean_temp_key])
-            print(f"   ✅ Added 'Temperature(°C)' from {korean_temp_key}")
+            print(f"   [OK] Added 'Temperature(°C)' from {korean_temp_key}")
         elif 'Temperature(°C)' in data:
-            print(f"   ✅ 'Temperature(°C)' already exists")
+            print(f"   [OK] 'Temperature(°C)' already exists")
         
         # Map dew point
         if korean_dew_key:
             normalized_data['Dew point temperature(°C)'] = float(data[korean_dew_key])
-            print(f"   ✅ Added 'Dew point temperature(°C)' from {korean_dew_key}")
+            print(f"   [OK] Added 'Dew point temperature(°C)' from {korean_dew_key}")
         elif 'Dew point temperature(°C)' in data:
-            print(f"   ✅ 'Dew point temperature(°C)' already exists")
+            print(f"   [OK] 'Dew point temperature(°C)' already exists")
     
     print(f"   Final keys for {target_model}: {list(normalized_data.keys())}")
-    print(f"🔤 Normalization complete\n")
+    print(f" Normalization complete\n")
     
     return normalized_data
 
@@ -656,12 +656,12 @@ def calculate_improved_features(input_data):
         features['Seasons_Winter'] = seasons.get('Seasons_Winter', 0)
         # Note: Autumn is implied when all three are 0
         
-        print(f"✅ Calculated {len(features)} improved features")
+        print(f"[OK] Calculated {len(features)} improved features")
         print(f"   Features: {list(features.keys())}")
         return features
         
     except Exception as e:
-        print(f"❌ Error calculating improved features: {e}")
+        print(f"[ERROR] Error calculating improved features: {e}")
         traceback.print_exc()
         return input_data
     
@@ -811,13 +811,13 @@ def calculate_xgboost_features_from_basic(input_data):
         engineered['time_of_day_morning'] = 1 if time_of_day == 'morning' else 0
         engineered['time_of_day_night'] = 1 if time_of_day == 'night' else 0
         
-        print(f"✅ Calculated {len(engineered)} engineered features for XGBoost model")
+        print(f"[OK] Calculated {len(engineered)} engineered features for XGBoost model")
         print(f"   Features: {list(engineered.keys())}")
         
         return {**input_data, **engineered}
         
     except Exception as e:
-        print(f"❌ Error calculating XGBoost features: {e}")
+        print(f"[ERROR] Error calculating XGBoost features: {e}")
         traceback.print_exc()
         return input_data
 
@@ -999,17 +999,17 @@ def calculate_engineered_features_from_basic(input_data):
             if feature in engineered:
                 ordered_features[feature] = engineered[feature]
             else:
-                print(f"⚠️ Warning: Missing feature '{feature}' - adding with default 0")
+                print(f"[WARN] Warning: Missing feature '{feature}' - adding with default 0")
                 ordered_features[feature] = 0
         
-        print(f"✅ Calculated {len(ordered_features)} engineered features for advanced model")
+        print(f"[OK] Calculated {len(ordered_features)} engineered features for advanced model")
         print(f"   Features in correct order: {list(ordered_features.keys())}")
         
         # Return combined dictionary with original input data
         return {**input_data, **ordered_features}
         
     except Exception as e:
-        print(f"❌ Error calculating engineered features: {e}")
+        print(f"[ERROR] Error calculating engineered features: {e}")
         traceback.print_exc()
         # Return original data if calculation fails
         return input_data      
@@ -1061,7 +1061,7 @@ def get_advanced_features_list():
         return default_features
         
     except Exception as e:
-        print(f"❌ Error getting advanced features list: {e}")
+        print(f"[ERROR] Error getting advanced features list: {e}")
         return []
 
 def get_feature_importance():
@@ -1084,7 +1084,7 @@ def get_feature_importance():
         return importance
         
     except Exception as e:
-        print(f"❌ Error getting feature importance: {e}")
+        print(f"[ERROR] Error getting feature importance: {e}")
         return []
 
 def load_xgboost_model():
@@ -1095,16 +1095,16 @@ def load_xgboost_model():
         model_path = 'models/xgboost_model.pkl'
         
         if not os.path.exists(model_path):
-            print(f"⚠️ XGBoost model not found at {model_path}")
+            print(f"[WARN] XGBoost model not found at {model_path}")
             xgboost_model = None
             xgboost_model_features = None
             return None
         
-        print(f"🔄 Loading XGBoost model from {model_path}...")
+        print(f"[LOADING] Loading XGBoost model from {model_path}...")
         with open(model_path, 'rb') as f:
             xgboost_model = pickle.load(f)
         
-        print(f"✅ XGBoost model loaded successfully!")
+        print(f"[OK] XGBoost model loaded successfully!")
         print(f"   Model type: {type(xgboost_model).__name__}")
         
         # Try to get feature names
@@ -1120,13 +1120,13 @@ def load_xgboost_model():
                     xgboost_model_features = list(feature_names)
                     print(f"   Features: {len(xgboost_model_features)}")
         except Exception as e:
-            print(f"⚠️ Could not extract feature names: {e}")
+            print(f"[WARN] Could not extract feature names: {e}")
             xgboost_model_features = None
         
         return xgboost_model
         
     except Exception as e:
-        print(f"❌ Error loading XGBoost model: {e}")
+        print(f"[ERROR] Error loading XGBoost model: {e}")
         traceback.print_exc()
         xgboost_model = None
         xgboost_model_features = None
@@ -1197,7 +1197,7 @@ class EmailService:
                 if pdf_attachment:
                     msg.attach(pdf_attachment)
                     attachments_added += 1
-                    print(f"📄 PDF report attached: {pdf_attachment.get_filename()}")
+                    print(f"[PDF] PDF report attached: {pdf_attachment.get_filename()}")
             
             # Attach real CSV data
             if email_data.get('includeCSV', False):
@@ -1205,7 +1205,7 @@ class EmailService:
                 if csv_attachment:
                     msg.attach(csv_attachment)
                     attachments_added += 1
-                    print(f"📊 CSV data attached: {csv_attachment.get_filename()}")
+                    print(f"[DATA] CSV data attached: {csv_attachment.get_filename()}")
             
             # Attach chart images
             if email_data.get('includeCharts', False):
@@ -1213,10 +1213,10 @@ class EmailService:
                 for chart_attachment in chart_attachments:
                     msg.attach(chart_attachment)
                     attachments_added += 1
-                    print(f"📈 Chart attached: {chart_attachment.get_filename()}")
+                    print(f"[CHART] Chart attached: {chart_attachment.get_filename()}")
             
             # Send email
-            print(f"📤 Sending email to {len(email_data['recipients'])} recipients...")
+            print(f"[SEND] Sending email to {len(email_data['recipients'])} recipients...")
             
             with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
                 server.starttls()
@@ -1226,7 +1226,7 @@ class EmailService:
                 print(f"   Sending message...")
                 server.send_message(msg)
                 
-            print(f"✅ Email sent successfully with {attachments_added} attachments")
+            print(f"[OK] Email sent successfully with {attachments_added} attachments")
             
             # Log email sent
             self.log_email_sent(email_data, analytics_data)
@@ -1241,17 +1241,17 @@ class EmailService:
             error_msg = "SMTP Authentication failed. Please check your email credentials."
             if "Application-specific password" in str(e):
                 error_msg += "\n\nFor Gmail, you need to use an App Password instead of your regular password."
-            print(f"❌ Email authentication error: {error_msg}")
+            print(f"[ERROR] Email authentication error: {error_msg}")
             return {'success': False, 'error': error_msg}
             
         except smtplib.SMTPException as e:
             error_msg = f"SMTP Error: {str(e)}"
-            print(f"❌ SMTP error: {error_msg}")
+            print(f"[ERROR] SMTP error: {error_msg}")
             return {'success': False, 'error': error_msg}
             
         except Exception as e:
             error_msg = f"Email sending error: {str(e)}"
-            print(f"❌ Unexpected error: {error_msg}")
+            print(f"[ERROR] Unexpected error: {error_msg}")
             traceback.print_exc()
             return {'success': False, 'error': error_msg}
     
@@ -1304,7 +1304,7 @@ class EmailService:
             try:
                 data['metrics'] = calculate_model_metrics()
             except Exception as e:
-                print(f"⚠️ Could not get metrics: {e}")
+                print(f"[WARN] Could not get metrics: {e}")
                 data['metrics'] = {
                     'r2_score': 0.82,
                     'mean_absolute_error': 87.2,
@@ -1316,7 +1316,7 @@ class EmailService:
             try:
                 data['history'] = get_prediction_history(limit=100)
             except Exception as e:
-                print(f"⚠️ Could not get history: {e}")
+                print(f"[WARN] Could not get history: {e}")
                 data['history'] = []
             
             # Get insights
@@ -1329,7 +1329,7 @@ class EmailService:
                 else:
                     data['insights'] = []
             except Exception as e:
-                print(f"⚠️ Could not get insights: {e}")
+                print(f"[WARN] Could not get insights: {e}")
                 data['insights'] = []
             
             # Get feature importance
@@ -1342,7 +1342,7 @@ class EmailService:
                 else:
                     data['features'] = []
             except Exception as e:
-                print(f"⚠️ Could not get features: {e}")
+                print(f"[WARN] Could not get features: {e}")
                 data['features'] = []
             
             # Get hourly patterns
@@ -1355,13 +1355,13 @@ class EmailService:
                 else:
                     data['patterns'] = []
             except Exception as e:
-                print(f"⚠️ Could not get patterns: {e}")
+                print(f"[WARN] Could not get patterns: {e}")
                 data['patterns'] = []
             
             return data
             
         except Exception as e:
-            print(f"❌ Error getting analytics data: {e}")
+            print(f"[ERROR] Error getting analytics data: {e}")
             return self.get_fallback_analytics_data()
     
     def get_fallback_analytics_data(self):
@@ -1460,7 +1460,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🚲 UrbanFlow Analytics Report</h1>
+                    <h1> UrbanFlow Analytics Report</h1>
                     <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
                 
@@ -1471,15 +1471,15 @@ class EmailService:
                         <div class="attachment-info">
                             <p><i class="fas fa-paperclip"></i> <strong>This report includes:</strong></p>
                             <p>
-                                {'✅ PDF Report<br>' if email_data.get('includePDF') else ''}
-                                {'✅ CSV Data<br>' if email_data.get('includeCSV') else ''}
-                                {'✅ Chart Images<br>' if email_data.get('includeCharts') else ''}
+                                {'[OK] PDF Report<br>' if email_data.get('includePDF') else ''}
+                                {'[OK] CSV Data<br>' if email_data.get('includeCSV') else ''}
+                                {'[OK] Chart Images<br>' if email_data.get('includeCharts') else ''}
                             </p>
                         </div>
                     </div>
                     
                     <div class="section">
-                        <h2>📊 Executive Summary</h2>
+                        <h2>[DATA] Executive Summary</h2>
                         <div class="metrics-grid">
                             <div class="metric-card">
                                 <div class="metric-value">{metrics.get('r2_score', 0.82) * 100:.1f}%</div>
@@ -1501,21 +1501,21 @@ class EmailService:
                     </div>
                     
                     <div class="section">
-                        <h2>💡 Key Insights</h2>
+                        <h2>[TIP] Key Insights</h2>
                         <ul class="insights-list">
                             {insights_html}
                         </ul>
                     </div>
                     
                     <div class="section">
-                        <h2>🎯 Top Features</h2>
+                        <h2>[TARGET] Top Features</h2>
                         <ul class="features-list">
                             {features_html}
                         </ul>
                     </div>
                     
                     <div class="section">
-                        <h2>📈 Performance Details</h2>
+                        <h2>[CHART] Performance Details</h2>
                         <p><strong>Model:</strong> {metrics.get('model_name', 'Random Forest Regressor')}</p>
                         <p><strong>Dataset:</strong> {metrics.get('dataset', 'Seoul Bike Sharing')}</p>
                         <p><strong>Average Prediction:</strong> {avg_prediction:.0f} bikes</p>
@@ -1707,12 +1707,12 @@ class EmailService:
             return attachment
             
         except ImportError:
-            print("⚠️ ReportLab not installed. PDF generation disabled.")
+            print("[WARN] ReportLab not installed. PDF generation disabled.")
             print("   Install with: pip install reportlab")
             return None
             
         except Exception as e:
-            print(f"⚠️ Error generating PDF: {e}")
+            print(f"[WARN] Error generating PDF: {e}")
             traceback.print_exc()
             return None
     
@@ -1774,7 +1774,7 @@ class EmailService:
             return attachment
             
         except Exception as e:
-            print(f"⚠️ Error generating CSV: {e}")
+            print(f"[WARN] Error generating CSV: {e}")
             return None
     
     def generate_chart_images(self, analytics_data):
@@ -1819,7 +1819,7 @@ class EmailService:
             return attachments
             
         except Exception as e:
-            print(f"⚠️ Error generating chart images: {e}")
+            print(f"[WARN] Error generating chart images: {e}")
             return []
     
     def log_email_sent(self, email_data, analytics_data):
@@ -1861,10 +1861,10 @@ class EmailService:
             with open(email_log_file, 'w') as f:
                 json.dump(logs, f, indent=2)
             
-            print(f"📝 Email logged to {email_log_file}")
+            print(f"[LOG] Email logged to {email_log_file}")
             
         except Exception as e:
-            print(f"⚠️ Error logging email: {e}")
+            print(f"[WARN] Error logging email: {e}")
 
 # Initialize email service
 email_service = EmailService()
@@ -1878,7 +1878,7 @@ def extract_model_from_dict(model_data):
     if not isinstance(model_data, dict):
         return model_data
     
-    print(f"📦 Model loaded as dictionary with keys: {list(model_data.keys())}")
+    print(f"[INFO] Model loaded as dictionary with keys: {list(model_data.keys())}")
     
     # Expanded list of possible keys that might contain the model
     possible_keys = ['model', 'best_model', 'estimator', 'regressor', 'random_forest', 'rf_model', 
@@ -1889,20 +1889,20 @@ def extract_model_from_dict(model_data):
         if key in model_data:
             print(f"   Found key: '{key}'")
             if hasattr(model_data[key], 'predict'):
-                print(f"   ✅ Extracted model from '{key}', type: {type(model_data[key]).__name__}")
+                print(f"   [OK] Extracted model from '{key}', type: {type(model_data[key]).__name__}")
                 return model_data[key]
             else:
-                print(f"   ❌ Key '{key}' exists but has no predict method (type: {type(model_data[key]).__name__})")
+                print(f"   [ERROR] Key '{key}' exists but has no predict method (type: {type(model_data[key]).__name__})")
     
     # Try to find any object with predict method
     print("   Searching all dictionary keys for object with predict method...")
     for key, value in model_data.items():
         if hasattr(value, 'predict'):
-            print(f"   ✅ Found model in key '{key}', type: {type(value).__name__}")
+            print(f"   [OK] Found model in key '{key}', type: {type(value).__name__}")
             return value
     
     # If no model found, return None
-    print(f"   ❌ No valid model found in dictionary")
+    print(f"   [ERROR] No valid model found in dictionary")
     return None
 
 
@@ -2074,17 +2074,17 @@ def init_models():
     
     try:
         # Load original model
-        print("🔄 Loading original model...")
+        print("[LOADING] Loading original model...")
         original_model = load_model('original')
         
         # Try to load improved model - FIXED VERSION
-        print("🔄 Loading improved model...")
+        print("[LOADING] Loading improved model...")
         try:
             improved_model = load_model('improved')
             
             # Check if improved_model is actually a dictionary
             if isinstance(improved_model, dict):
-                print(f"⚠️ Improved model loaded as dictionary with keys: {list(improved_model.keys())}")
+                print(f"[WARN] Improved model loaded as dictionary with keys: {list(improved_model.keys())}")
                 
                 # Try common keys that might contain the model
                 possible_keys = ['model', 'best_model', 'estimator', 'regressor', 'random_forest', 'rf_model', 'model_obj', 'trained_model']
@@ -2096,10 +2096,10 @@ def init_models():
                         print(f"   Found potential model key: '{key}'")
                         if hasattr(improved_model[key], 'predict'):
                             extracted_model = improved_model[key]
-                            print(f"   ✅ Extracted model from '{key}', type: {type(extracted_model).__name__}")
+                            print(f"   [OK] Extracted model from '{key}', type: {type(extracted_model).__name__}")
                             break
                         else:
-                            print(f"   ❌ Key '{key}' exists but has no predict method")
+                            print(f"   [ERROR] Key '{key}' exists but has no predict method")
                 
                 # If not found in common keys, look for any object with predict method
                 if extracted_model is None:
@@ -2107,31 +2107,31 @@ def init_models():
                     for key, value in improved_model.items():
                         if hasattr(value, 'predict'):
                             extracted_model = value
-                            print(f"   ✅ Found model in key '{key}', type: {type(extracted_model).__name__}")
+                            print(f"   [OK] Found model in key '{key}', type: {type(extracted_model).__name__}")
                             break
                 
                 # If still not found, check if the dictionary itself has predict (unlikely)
                 if extracted_model is None and hasattr(improved_model, 'predict'):
-                    print(f"   ✅ Dictionary itself has predict method! Using it directly.")
+                    print(f"   [OK] Dictionary itself has predict method! Using it directly.")
                     extracted_model = improved_model
                 
                 if extracted_model:
                     improved_model = extracted_model
-                    print(f"✅ Improved model extracted successfully! Type: {type(improved_model).__name__}")
+                    print(f"[OK] Improved model extracted successfully! Type: {type(improved_model).__name__}")
                 else:
-                    print(f"❌ Could not extract model from dictionary. Checking if it's a valid model object directly...")
+                    print(f"[ERROR] Could not extract model from dictionary. Checking if it's a valid model object directly...")
                     # One last check: maybe it's a valid model stored differently
                     if hasattr(improved_model, 'predict'):
-                        print(f"✅ Dictionary has predict method! Using it directly.")
+                        print(f"[OK] Dictionary has predict method! Using it directly.")
                         # Keep as is
                     else:
-                        print(f"❌ No valid model found in dictionary. Improved model not available.")
+                        print(f"[ERROR] No valid model found in dictionary. Improved model not available.")
                         improved_model = None
             else:
-                print(f"✅ Improved model loaded successfully! Type: {type(improved_model).__name__}")
+                print(f"[OK] Improved model loaded successfully! Type: {type(improved_model).__name__}")
                 
         except Exception as e:
-            print(f"⚠️ Could not load improved model: {e}")
+            print(f"[WARN] Could not load improved model: {e}")
             traceback.print_exc()
             improved_model = None
         
@@ -2140,46 +2140,46 @@ def init_models():
             print(f"   Improved model has predict method: {hasattr(improved_model, 'predict')}")
         
         # Try to load advanced model
-        print("🔄 Loading advanced model...")
+        print("[LOADING] Loading advanced model...")
         try:
             advanced_model = load_advanced_model()
             if advanced_model:
-                print("✅ Advanced model loaded successfully!")
+                print("[OK] Advanced model loaded successfully!")
                 # Load advanced model features
                 advanced_model_features = get_advanced_features_list()
                 print(f"   Advanced model features: {len(advanced_model_features)}")
             else:
-                print("⚠️ Advanced model not available. Run train_with_advanced_features.py first")
+                print("[WARN] Advanced model not available. Run train_with_advanced_features.py first")
         except Exception as e:
-            print(f"⚠️ Could not load advanced model: {e}")
+            print(f"[WARN] Could not load advanced model: {e}")
             advanced_model = None
             advanced_model_features = None
         
         # Try to load XGBoost model
-        print("🔄 Loading XGBoost model...")
+        print("[LOADING] Loading XGBoost model...")
         try:
             xgboost_model = load_xgboost_model()
             if xgboost_model:
-                print("✅ XGBoost model loaded successfully!")
+                print("[OK] XGBoost model loaded successfully!")
             else:
-                print("⚠️ XGBoost model not available. Train XGBoost model first")
+                print("[WARN] XGBoost model not available. Train XGBoost model first")
         except Exception as e:
-            print(f"⚠️ Could not load XGBoost model: {e}")
+            print(f"[WARN] Could not load XGBoost model: {e}")
             xgboost_model = None
             xgboost_model_features = None
         
         model_loaded = True
-        print("✅ Models loaded successfully in routes!")
+        print("[OK] Models loaded successfully in routes!")
         
         # Print model types for debugging
-        print(f"\n📊 Model types loaded:")
+        print(f"\n[DATA] Model types loaded:")
         print(f"   Original model: {type(original_model).__name__ if original_model else 'None'}")
         print(f"   Improved model: {type(improved_model).__name__ if improved_model else 'None'}")
         print(f"   Advanced model: {type(advanced_model).__name__ if advanced_model else 'None'}")
         print(f"   XGBoost model: {type(xgboost_model).__name__ if xgboost_model else 'None'}")
         
         # Check if models have predict method
-        print(f"\n📋 Model predict methods:")
+        print(f"\n[LIST] Model predict methods:")
         print(f"   Original model has predict: {hasattr(original_model, 'predict') if original_model else 'N/A'}")
         print(f"   Improved model has predict: {hasattr(improved_model, 'predict') if improved_model else 'N/A'}")
         print(f"   Advanced model has predict: {hasattr(advanced_model, 'predict') if advanced_model else 'N/A'}")
@@ -2193,7 +2193,7 @@ def init_models():
         advanced_model_features = None
         xgboost_model_features = None
         model_loaded = False
-        print(f"❌ Error loading models in routes: {e}")
+        print(f"[ERROR] Error loading models in routes: {e}")
         traceback.print_exc()
 
 def get_prediction_history(limit=None):
@@ -2214,7 +2214,7 @@ def get_prediction_history(limit=None):
         return history
         
     except Exception as e:
-        print(f"⚠️ Could not load prediction history: {e}")
+        print(f"[WARN] Could not load prediction history: {e}")
         return []
 
 def log_prediction(input_data, prediction, model_type='original'):
@@ -2267,12 +2267,12 @@ def log_prediction(input_data, prediction, model_type='original'):
         with open(PREDICTION_HISTORY_FILE, 'w') as f:
             json.dump(history, f, indent=2)
             
-        print(f"📝 Logged prediction #{prediction_entry['id']}: {prediction_entry['summary']}")
+        print(f"[LOG] Logged prediction #{prediction_entry['id']}: {prediction_entry['summary']}")
         
         return True
         
     except Exception as e:
-        print(f"⚠️ Could not log prediction: {e}")
+        print(f"[WARN] Could not log prediction: {e}")
         return False
 
 def calculate_confidence(input_data, prediction, model_type='original'):
@@ -2368,7 +2368,7 @@ def filter_predictions_by_date_range(predictions, start_date=None, end_date=None
                 filtered.append(pred)
                 
         except Exception as e:
-            print(f"⚠️ Error filtering prediction: {e}")
+            print(f"[WARN] Error filtering prediction: {e}")
             continue
     
     return filtered
@@ -2993,12 +2993,12 @@ def generate_chart_image(chart_data, chart_type, format_type='png'):
         return buffer.getvalue()
         
     except ImportError:
-        print("⚠️ Matplotlib not installed. Chart export disabled.")
+        print("[WARN] Matplotlib not installed. Chart export disabled.")
         print("   Install with: pip install matplotlib pillow")
         return None
         
     except Exception as e:
-        print(f"⚠️ Error generating chart image: {e}")
+        print(f"[WARN] Error generating chart image: {e}")
         traceback.print_exc()
         return None
 
@@ -3031,7 +3031,7 @@ def export_predictions_with_format(format_type, filters):
             return export_predictions_excel_response(history)
         
     except Exception as e:
-        print(f"❌ Predictions export error: {e}")
+        print(f"[ERROR] Predictions export error: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3173,7 +3173,7 @@ def export_predictions_excel_response(history):
         }), 503
         
     except Exception as e:
-        print(f"❌ Excel export error: {e}")
+        print(f"[ERROR] Excel export error: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3192,7 +3192,7 @@ def export_metrics_with_format(format_type):
             return export_metrics_pdf_response(metrics)
         
     except Exception as e:
-        print(f"❌ Metrics export error: {e}")
+        print(f"[ERROR] Metrics export error: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3400,14 +3400,14 @@ def export_all_data_zip(filters):
                     csv_content = generate_predictions_csv_content(history)
                     zip_file.writestr("predictions.csv", csv_content)
             except Exception as e:
-                print(f"⚠️ Error adding predictions to ZIP: {e}")
+                print(f"[WARN] Error adding predictions to ZIP: {e}")
             
             # Add metrics JSON
             try:
                 metrics = calculate_model_metrics()
                 zip_file.writestr("metrics.json", json.dumps(metrics, indent=2))
             except Exception as e:
-                print(f"⚠️ Error adding metrics to ZIP: {e}")
+                print(f"[WARN] Error adding metrics to ZIP: {e}")
             
             # Add README
             readme_content = f"""
@@ -3445,7 +3445,7 @@ def export_all_data_zip(filters):
         return response
         
     except Exception as e:
-        print(f"❌ Complete export error: {e}")
+        print(f"[ERROR] Complete export error: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3671,7 +3671,7 @@ def get_advanced_features():
         })
         
     except Exception as e:
-        print(f"❌ Error getting advanced features: {e}")
+        print(f"[ERROR] Error getting advanced features: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3689,7 +3689,7 @@ def calculate_features():
                 "error": "No data provided"
             }), 400
         
-        print(f"🧮 Calculating engineered features from {len(data)} basic inputs")
+        print(f"[CALC] Calculating engineered features from {len(data)} basic inputs")
         
         # Calculate all engineered features
         engineered_data = calculate_engineered_features_from_basic(data)
@@ -3716,7 +3716,7 @@ def calculate_features():
         })
         
     except Exception as e:
-        print(f"❌ Error calculating features: {e}")
+        print(f"[ERROR] Error calculating features: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3755,7 +3755,7 @@ def feature_importance():
         })
         
     except Exception as e:
-        print(f"❌ Error getting feature importance: {e}")
+        print(f"[ERROR] Error getting feature importance: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -3828,7 +3828,7 @@ def predict():
         calculate_features = request.args.get('calculate_features', 'false').lower() == 'true'
         
         # Apply field name normalization BEFORE any processing
-        print(f"\n🔤 Before normalization for {model_type} model:")
+        print(f"\n Before normalization for {model_type} model:")
         print(f"   Input keys: {list(data.keys())}")
         
         normalized_data = normalize_field_names_for_model(data, model_type)
@@ -3836,7 +3836,7 @@ def predict():
         
         # For advanced or xgboost models with automatic feature calculation
         if model_type in ['advanced', 'xgboost'] and calculate_features:
-            print(f"🧮 Auto-calculating engineered features for {model_type} model...")
+            print(f"[CALC] Auto-calculating engineered features for {model_type} model...")
             normalized_data = calculate_engineered_features_from_basic(normalized_data)
         
         # Check if model is available
@@ -3852,7 +3852,7 @@ def predict():
                     "fallback_available": True,
                     "hint": "Use ?model_type=original or run training script"
                 }), 503
-            print(f"🧮 Calculating all 38 improved features...")
+            print(f"[CALC] Calculating all 38 improved features...")
             enhanced_data = calculate_improved_features(normalized_data)
             normalized_data = enhanced_data  # Replace with enhanced data
             model_to_use = improved_model
@@ -3866,7 +3866,7 @@ def predict():
                     "hint": "Use ?model_type=original or train advanced model"
                 }), 503
             if calculate_features:
-                print(f"🧮 Auto-calculating engineered features for advanced model...")
+                print(f"[CALC] Auto-calculating engineered features for advanced model...")
                 enhanced_data = calculate_engineered_features_from_basic(normalized_data)
                 normalized_data = enhanced_data
             model_to_use = advanced_model
@@ -3879,7 +3879,7 @@ def predict():
                     "fallback_available": True,
                 }), 503
             if calculate_features:
-                print(f"🧮 Auto-calculating engineered features for XGBoost model...")
+                print(f"[CALC] Auto-calculating engineered features for XGBoost model...")
                 enhanced_data = calculate_xgboost_features_from_basic(normalized_data)
                 normalized_data = enhanced_data
 
@@ -3909,7 +3909,7 @@ def predict():
         
         # Log incoming data for debugging
         print("\n" + "="*50)
-        print(f"📥 Received prediction request for {model_type.upper()} model:")
+        print(f"[RECV] Received prediction request for {model_type.upper()} model:")
         print(f"   Model Type: {model_type}")
         print(f"   Auto-calculate features: {calculate_features}")
         print(f"   Input features: {len(data)} -> Normalized: {len(normalized_data)}")
@@ -3929,7 +3929,7 @@ def predict():
             processed_data = preprocess_input_original(normalized_data)
         
         # Log processed data
-        print(f"\n📊 Processed data for {model_type.upper()} model:")
+        print(f"\n[DATA] Processed data for {model_type.upper()} model:")
         print(f"  Shape: {processed_data.shape}")
         print(f"  Features: {len(processed_data.columns)}")
         if hasattr(model_to_use, 'feature_names_in_'):
@@ -3943,7 +3943,6 @@ def predict():
                 feature_names = booster.feature_names
                 if feature_names:
                     print(f"  Expected features: {len(feature_names)}")
-                    print(f"  First few expected: {list(feature_names)[:10]}")
             except (AttributeError, TypeError):
                 pass
         print("="*50)
@@ -3964,7 +3963,7 @@ def predict():
         confidence = calculate_confidence(normalized_data, predicted_bikes, model_type)
         
         # Log prediction
-        print(f"\n🎯 {model_type.upper()} model prediction: {predicted_bikes:.1f} bikes (rounded: {predicted_bikes_rounded})")
+        print(f"\n[TARGET] {model_type.upper()} model prediction: {predicted_bikes:.1f} bikes (rounded: {predicted_bikes_rounded})")
         print(f"   Confidence: {confidence}%")
         print("="*50 + "\n")
         
@@ -4037,8 +4036,8 @@ def predict():
                     "Good biking conditions flag",
                     "Rush hour intensity"
                 ],
-                "expected_rmse": "≤ 80 bikes",
-                "expected_r2": "≥ 0.90",
+                "expected_rmse": " 80 bikes",
+                "expected_r2": " 0.90",
                 "auto_calculation_available": True,
                 "auto_calculation_used": calculate_features
             }
@@ -4070,8 +4069,8 @@ def predict():
                     "Good biking conditions flag",
                     "Rush hour intensity"
                 ],
-                "expected_rmse": "≤ 75 bikes",
-                "expected_r2": "≥ 0.92",
+                "expected_rmse": " 75 bikes",
+                "expected_r2": " 0.92",
                 "auto_calculation_available": True,
                 "auto_calculation_used": calculate_features,
                 "xgboost_specific": {
@@ -4115,7 +4114,7 @@ def predict():
         
     except KeyError as e:
         error_msg = f"Missing required field: {str(e)}"
-        print(f"❌ Validation error: {error_msg}")
+        print(f"[ERROR] Validation error: {error_msg}")
         
         # Get model-specific required fields
         required_fields = get_required_fields_for_model(model_type)
@@ -4130,7 +4129,7 @@ def predict():
         
     except ValueError as e:
         error_msg = f"Invalid data format: {str(e)}"
-        print(f"❌ Value error: {error_msg}")
+        print(f"[ERROR] Value error: {error_msg}")
         return jsonify({
             "success": False,
             "error": error_msg,
@@ -4139,7 +4138,7 @@ def predict():
         
     except Exception as e:
         error_msg = f"Prediction error: {str(e)}"
-        print(f"❌ Unexpected error: {error_msg}")
+        print(f"[ERROR] Unexpected error: {error_msg}")
         traceback.print_exc()
         return jsonify({
             "success": False,
@@ -4924,7 +4923,7 @@ def prediction_history():
             "message": f"Showing {len(limited_history)} predictions filtered by '{time_filter}'"
         })
     except Exception as e:
-        print(f"❌ Prediction history error: {e}")
+        print(f"[ERROR] Prediction history error: {e}")
         traceback.print_exc()
         return jsonify({
             "success": False,
@@ -4958,7 +4957,7 @@ def send_analytics_email():
     try:
         email_data = request.json
         
-        print(f"📧 Email request received")
+        print(f"[EMAIL] Email request received")
         print(f"   Recipients: {email_data.get('recipients', [])}")
         print(f"   Subject: {email_data.get('subject', 'No subject')}")
         print(f"   Attachments: PDF={email_data.get('includePDF', False)}, "
@@ -4978,21 +4977,21 @@ def send_analytics_email():
         
         # FIX: Check result correctly
         if result.get('success'):
-            print(f"✅ Email sent successfully")
+            print(f"[OK] Email sent successfully")
             return jsonify({
                 'success': True, 
                 'message': result.get('message', 'Email sent successfully'),
                 'attachments_count': result.get('attachments_count', 0)
             })
         else:
-            print(f"❌ Email sending failed: {result.get('error')}")
+            print(f"[ERROR] Email sending failed: {result.get('error')}")
             return jsonify({
                 'success': False, 
                 'error': result.get('error', 'Email sending failed')
             }), 500
             
     except Exception as e:
-        print(f"❌ Error in email endpoint: {str(e)}")
+        print(f"[ERROR] Error in email endpoint: {str(e)}")
         traceback.print_exc()
         return jsonify({
             'success': False, 
@@ -5063,7 +5062,7 @@ def export_chart(chart_type):
         return response
         
     except Exception as e:
-        print(f"❌ Chart export error: {e}")
+        print(f"[ERROR] Chart export error: {e}")
         traceback.print_exc()
         return jsonify({
             "success": False,
@@ -5149,7 +5148,7 @@ def export_all_charts():
         return response
         
     except Exception as e:
-        print(f"❌ All charts export error: {e}")
+        print(f"[ERROR] All charts export error: {e}")
         traceback.print_exc()
         return jsonify({
             "success": False,
@@ -5190,7 +5189,7 @@ def handle_export(export_type):
             return export_comprehensive_report(format_type, filters)
         
     except Exception as e:
-        print(f"❌ Export error: {e}")
+        print(f"[ERROR] Export error: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -5264,7 +5263,7 @@ def export_predictions_csv():
         return response
         
     except Exception as e:
-        print(f"❌ CSV export error: {e}")
+        print(f"[ERROR] CSV export error: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -5352,12 +5351,12 @@ def export_model_report():
         </head>
         <body>
             <div class="header">
-                <h1>🚲 Bike Rental Demand Model Report</h1>
+                <h1> Bike Rental Demand Model Report</h1>
                 <p>Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
             </div>
             
             <div class="section">
-                <h2>📊 Model Overview</h2>
+                <h2>[DATA] Model Overview</h2>
                 <div class="metric">Model Name: <span class="value">{metrics.get('model_name', 'Random Forest Regressor')}</span></div>
                 <div class="metric">Status: <span class="value">{metrics.get('model_status', 'Loaded')}</span></div>
                 <div class="metric">Features: <span class="value">{metrics.get('features_count', 14)}</span></div>
@@ -5365,7 +5364,7 @@ def export_model_report():
             </div>
             
             <div class="section">
-                <h2>📈 Performance Metrics</h2>
+                <h2>[CHART] Performance Metrics</h2>
                 <table>
                     <tr><th>Metric</th><th>Value</th><th>Interpretation</th></tr>
                     <tr><td>R² Score</td><td>{metrics.get('r2_score', 0.82):.3f}</td><td>{metrics.get('interpretation', {}).get('r2_interpretation', 'Excellent model fit (0.8-1.0)')}</td></tr>
@@ -5377,7 +5376,7 @@ def export_model_report():
             
             {f'''
             <div class="section">
-                <h2>🏆 Feature Importance</h2>
+                <h2> Feature Importance</h2>
                 <table>
                     <tr><th>Rank</th><th>Feature</th><th>Importance</th></tr>
                     {''.join([f'<tr><td>{i+1}</td><td>{feat["feature"]}</td><td>{feat["importance_percent"]}</td></tr>' 
@@ -5387,7 +5386,7 @@ def export_model_report():
             ''' if metrics.get('top_features') else ''}
             
             <div class="section">
-                <h2>⚙️ Model Configuration</h2>
+                <h2> Model Configuration</h2>
                 <div class="metric">Number of Trees: <span class="value">{metrics.get('n_estimators', 100)}</span></div>
                 <div class="metric">Max Depth: <span class="value">{metrics.get('max_depth', 'Unlimited')}</span></div>
                 <div class="metric">Random State: <span class="value">{metrics.get('random_state', 'Not set')}</span></div>
@@ -5487,7 +5486,7 @@ def export_via_email():
             }), 500
             
     except Exception as e:
-        print(f"❌ Email export error: {e}")
+        print(f"[ERROR] Email export error: {e}")
         traceback.print_exc()
         return jsonify({
             "success": False,
@@ -5610,7 +5609,7 @@ def analytics_hourly_patterns():
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"❌ Error getting hourly patterns: {e}")
+        print(f"[ERROR] Error getting hourly patterns: {e}")
         traceback.print_exc()
         return jsonify({
             "success": False,
@@ -5703,7 +5702,7 @@ def analytics_kpis():
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"❌ Error getting KPIs: {e}")
+        print(f"[ERROR] Error getting KPIs: {e}")
         return jsonify({
             "success": True,
             "kpis": {
@@ -5794,7 +5793,7 @@ def analytics_insights():
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"❌ Error getting insights: {e}")
+        print(f"[ERROR] Error getting insights: {e}")
         return jsonify({
             "success": True,
             "insights": generate_default_insights(),
@@ -5896,7 +5895,7 @@ def analytics_feature_importance():
         })
         
     except Exception as e:
-        print(f"❌ Error getting feature importance: {e}")
+        print(f"[ERROR] Error getting feature importance: {e}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -6049,7 +6048,7 @@ def analytics_model_performance():
         })
         
     except Exception as e:
-        print(f"❌ Error getting model performance: {e}")
+        print(f"[ERROR] Error getting model performance: {e}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -6155,7 +6154,7 @@ def analytics_date_range():
         })
         
     except Exception as e:
-        print(f"❌ Error processing date range: {e}")
+        print(f"[ERROR] Error processing date range: {e}")
         return jsonify({
             "success": False,
             "error": str(e)

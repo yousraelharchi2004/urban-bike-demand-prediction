@@ -24,7 +24,7 @@ class ModelManager:
             else:
                 model_path = f'models/best_model_{model_name.lower().replace(" ", "_")}.pkl'
             
-            print(f"🔄 Loading model from: {model_path}")
+            print(f" Loading model from: {model_path}")
             model_package = joblib.load(model_path)
             
             self.current_model = model_package['model']
@@ -33,14 +33,14 @@ class ModelManager:
             self.test_r2 = model_package.get('test_r2', 0)
             self.test_rmse = model_package.get('test_rmse', 0)
             
-            print(f"✅ {self.model_name} loaded successfully!")
+            print(f" {self.model_name} loaded successfully!")
             print(f"   Test R²: {self.test_r2:.4f}")
             print(f"   Test RMSE: {self.test_rmse:.2f}")
             
             return True
             
         except Exception as e:
-            print(f"❌ Error loading model: {e}")
+            print(f" Error loading model: {e}")
             # Fall back to original model
             return self.load_original_model()
     
@@ -50,10 +50,10 @@ class ModelManager:
             from app.utils import load_model
             self.current_model = load_model('original')
             self.model_name = 'Random Forest (Original)'
-            print(f"✅ Loaded original Random Forest model as fallback")
+            print(f" Loaded original Random Forest model as fallback")
             return True
         except Exception as e:
-            print(f"❌ Could not load any model: {e}")
+            print(f" Could not load any model: {e}")
             return False
     
     def preprocess_input(self, input_data, model_type='improved'):

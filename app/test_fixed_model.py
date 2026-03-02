@@ -49,4 +49,4 @@ test_df = test_df[features]
 
 # Make prediction
 prediction = model.predict(test_df)
-print(f"\n🎯 Prediction: {prediction[0]:.0f} bikes")
+print(f"\n Prediction: {prediction[0]:.0f} bikes")

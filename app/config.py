@@ -19,5 +19,5 @@ def configure_warnings():
     # Show all other warnings
     warnings.simplefilter('always', category=DeprecationWarning)
     
-    print(f"📦 Scikit-learn version: {sklearn.__version__}")
-    print("⚠️  Configured to ignore sklearn version mismatch warnings")
+    print(f" Scikit-learn version: {sklearn.__version__}")
+    print("  Configured to ignore sklearn version mismatch warnings")
