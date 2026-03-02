@@ -4,11 +4,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import os
-from dotenv import load_dotenv
 import json
 from datetime import datetime
-
-load_dotenv()
 
 class EmailService:
     def __init__(self):

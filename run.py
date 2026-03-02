@@ -25,6 +25,10 @@ import os
 import sys
 import webbrowser
 from threading import Timer
+from dotenv import load_dotenv
+
+# Load environment variables from project root .env
+load_dotenv()
 
 def check_dependencies():
     """Check if all required files and folders exist"""
@@ -63,7 +67,7 @@ def open_browser():
     try:
         Timer(1.5, lambda: webbrowser.open('http://127.0.0.1:5000')).start()
         print("🌐 Opening browser automatically...")
-    except:
+    except Exception:
         print("📱 Please open your browser manually to: http://127.0.0.1:5000")
 
 def print_system_info():
@@ -85,21 +89,21 @@ def print_system_info():
         import importlib.metadata
         flask_version = importlib.metadata.version("flask")
         print(f"  ✅ Flask: {flask_version}")
-    except:
+    except Exception:
         print("  ❌ Flask not installed")
     
     try:
         import importlib.metadata
         pandas_version = importlib.metadata.version("pandas")
         print(f"  ✅ Pandas: {pandas_version}")
-    except:
+    except Exception:
         print("  ❌ Pandas not installed")
     
     try:
         import importlib.metadata
         sklearn_version = importlib.metadata.version("scikit-learn")
         print(f"  ✅ Scikit-learn: {sklearn_version}")
-    except:
+    except Exception:
         print("  ❌ Scikit-learn not installed")
 
 def show_model_metrics():
@@ -193,7 +197,8 @@ def main():
         open_browser()
         
         # Run the app
-        app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=True)
+        debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes')
+        app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=debug_mode)
         
     except Exception as e:
         print(f"\n❌ Failed to start application: {e}")
@@ -204,6 +209,10 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+# Create app instance for gunicorn: gunicorn run:app
+from app import create_app
+app = create_app()
 
 if __name__ == '__main__':
     main()

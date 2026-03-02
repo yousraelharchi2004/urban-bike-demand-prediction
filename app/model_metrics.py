@@ -6,6 +6,7 @@ Model evaluation and performance metrics for the Bike Demand Prediction System
 import numpy as np
 import pandas as pd
 import joblib
+import pickle
 import os
 
 def calculate_model_metrics():
@@ -130,7 +131,7 @@ def get_top_features(model=None, top_n=5):
                 return None
             try:
                 model = joblib.load(model_path)
-            except:
+            except (FileNotFoundError, ValueError, EOFError, pickle.UnpicklingError, Exception):
                 return None
         
         if model and hasattr(model, 'feature_names_in_') and hasattr(model, 'feature_importances_'):
@@ -150,7 +151,7 @@ def get_top_features(model=None, top_n=5):
             
             return top_features
         return None
-    except:
+    except Exception:
         return None
 
 def generate_performance_report():
@@ -299,7 +300,7 @@ def is_model_available():
         # Try to load the model to ensure it's not corrupted
         joblib.load(model_path)
         return True
-    except:
+    except Exception:
         return False
 
 # Quick test if run directly

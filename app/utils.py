@@ -729,7 +729,7 @@ def preprocess_with_advanced_features(input_data, model=None):
             else:
                 expected_features = get_advanced_feature_list()
                 print(f"📋 Using default feature list: {len(expected_features)} features")
-        except:
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
             expected_features = get_advanced_feature_list()
             print(f"📋 Using default feature list: {len(expected_features)} features")
     
@@ -1239,5 +1239,209 @@ def get_model_feature_names(model_type='original'):
         return get_engineered_feature_list()
     elif model_type == 'advanced' or model_type == 'xgboost':
         return get_advanced_feature_list()
+    elif model_type == 'unified' or model_type == 'ensemble':
+        return load_unified_feature_names()
     else:
         return []
+
+
+# ============================================================================
+# UNIFIED PIPELINE SUPPORT
+# ============================================================================
+
+_unified_cache = {}
+
+def load_unified_pipeline():
+    """Load models and artifacts from the unified pipeline.
+    Returns dict with model, scaler, feature_names, config, or None if not found.
+    """
+    if _unified_cache.get('loaded'):
+        return _unified_cache
+
+    base = os.path.join(os.getcwd(), 'models', 'unified_pipeline')
+    if not os.path.isdir(base):
+        base = os.path.join(os.path.dirname(__file__), '..', 'models', 'unified_pipeline')
+    if not os.path.isdir(base):
+        logger.warning("Unified pipeline directory not found")
+        return None
+
+    try:
+        config_path = os.path.join(base, 'pipeline_config.json')
+        with open(config_path) as f:
+            config = json.load(f)
+
+        feature_path = os.path.join(base, 'feature_names.json')
+        with open(feature_path) as f:
+            feature_names = json.load(f)
+
+        scaler = joblib.load(os.path.join(base, 'scaler.pkl'))
+
+        # Load best model
+        best_model_name = config.get('best_model', 'stacking_ensemble')
+        model_file = os.path.join(base, f'{best_model_name}.pkl')
+        if not os.path.exists(model_file):
+            model_file = os.path.join(base, 'stacking_ensemble.pkl')
+        model = joblib.load(model_file)
+
+        # Load demand cache for lag features
+        demand_cache = []
+        cache_path = os.path.join(base, 'demand_cache.json')
+        if os.path.exists(cache_path):
+            with open(cache_path) as f:
+                demand_cache = json.load(f).get('last_168_values', [])
+
+        # Load lag medians
+        lag_medians = {}
+        lag_path = os.path.join(base, 'lag_medians.json')
+        if os.path.exists(lag_path):
+            with open(lag_path) as f:
+                lag_medians = json.load(f)
+
+        _unified_cache.update({
+            'loaded': True,
+            'model': model,
+            'scaler': scaler,
+            'feature_names': feature_names,
+            'config': config,
+            'demand_cache': demand_cache,
+            'lag_medians': lag_medians,
+            'model_name': best_model_name,
+            'base_dir': base,
+        })
+
+        logger.info(f"Loaded unified pipeline: {best_model_name} with {len(feature_names)} features")
+        return _unified_cache
+
+    except Exception as e:
+        logger.error(f"Failed to load unified pipeline: {e}")
+        return None
+
+
+def load_unified_feature_names():
+    """Return feature names from unified pipeline, or empty list."""
+    pipeline = load_unified_pipeline()
+    if pipeline:
+        return pipeline['feature_names']
+    return []
+
+
+def preprocess_unified(input_data: dict) -> np.ndarray:
+    """Preprocess input data for the unified pipeline model.
+    Builds a feature vector matching the training feature order.
+    """
+    pipeline = load_unified_pipeline()
+    if not pipeline:
+        raise ValueError("Unified pipeline not loaded")
+
+    feature_names = pipeline['feature_names']
+    scaler = pipeline['scaler']
+    lag_medians = pipeline['lag_medians']
+    demand_cache = pipeline['demand_cache']
+    config = pipeline['config']
+    scale_cols = config.get('scale_cols', [])
+
+    # Map input to standardized names
+    hour = float(input_data.get('Hour', input_data.get('hour', 12)))
+    temp = float(input_data.get('Temperature(°C)', input_data.get('temperature', 20)))
+    humidity = float(input_data.get('Humidity(%)', input_data.get('humidity', 50)))
+    wind = float(input_data.get('Wind speed (m/s)', input_data.get('wind_speed', 2.5)))
+    vis = float(input_data.get('Visibility (10m)', input_data.get('visibility', 2000)))
+    dew = float(input_data.get('Dew point temperature(°C)', input_data.get('dew_point', 10)))
+    solar = float(input_data.get('Solar Radiation (MJ/m2)', input_data.get('solar_radiation', 1.5)))
+    rain = float(input_data.get('Rainfall(mm)', input_data.get('rainfall', 0)))
+    snow = float(input_data.get('Snowfall (cm)', input_data.get('snowfall', 0)))
+
+    # Season
+    season_spring = float(input_data.get('Seasons_Spring', input_data.get('season_Spring', 0)))
+    season_summer = float(input_data.get('Seasons_Summer', input_data.get('season_Summer', 0)))
+    season_winter = float(input_data.get('Seasons_Winter', input_data.get('season_Winter', 0)))
+    season_autumn = float(input_data.get('Seasons_Autumn', input_data.get('season_Autumn', 0)))
+    if season_spring == 0 and season_summer == 0 and season_winter == 0 and season_autumn == 0:
+        season_summer = 1
+
+    # Holiday / Functioning
+    is_holiday = float(input_data.get('is_holiday', 0))
+    if 'Holiday_No Holiday' in input_data:
+        is_holiday = 1.0 - float(input_data['Holiday_No Holiday'])
+    is_functioning = float(input_data.get('is_functioning_day', input_data.get('Functioning Day_Yes', 1)))
+
+    day_of_week = int(input_data.get('day_of_week', datetime.now().weekday()))
+
+    # Build feature dict
+    feat = {}
+    feat['Hour'] = hour
+    feat['Temperature(°C)'] = temp
+    feat['Humidity(%)'] = humidity
+    feat['Wind speed (m/s)'] = wind
+    feat['Visibility (10m)'] = vis
+    feat['Dew point temperature(°C)'] = dew
+    feat['Solar Radiation (MJ/m2)'] = solar
+    feat['Rainfall(mm)'] = rain
+    feat['Snowfall (cm)'] = snow
+
+    # Time features
+    feat['hour_sin'] = float(np.sin(2 * np.pi * hour / 24))
+    feat['hour_cos'] = float(np.cos(2 * np.pi * hour / 24))
+    feat['hour_squared'] = hour ** 2
+    month = int(input_data.get('month', datetime.now().month))
+    feat['month'] = month
+    feat['month_sin'] = float(np.sin(2 * np.pi * month / 12))
+    feat['month_cos'] = float(np.cos(2 * np.pi * month / 12))
+    feat['day_of_week'] = day_of_week
+    feat['dow_sin'] = float(np.sin(2 * np.pi * day_of_week / 7))
+    feat['dow_cos'] = float(np.cos(2 * np.pi * day_of_week / 7))
+    feat['is_weekend'] = 1 if day_of_week >= 5 else 0
+
+    feat['is_peak_hour'] = 1 if (7 <= hour <= 9) or (17 <= hour <= 19) else 0
+    feat['rush_hour_intensity'] = (
+        1.0 if hour in (7, 8, 17, 18)
+        else 0.6 if hour in (6, 9, 16, 19)
+        else 0.3 if hour in (10, 15, 20)
+        else 0.0
+    )
+
+    feat['temp_hour'] = temp * hour
+    feat['temp_humidity'] = temp * humidity
+    feat['comfort_index'] = temp - humidity / 10
+    feat['has_precipitation'] = 1 if rain > 0 or snow > 0 else 0
+
+    # Lag features from demand cache or medians
+    if demand_cache and len(demand_cache) >= 168:
+        feat['demand_lag_24h'] = demand_cache[-24] if len(demand_cache) >= 24 else lag_medians.get('demand_lag_24h', 500)
+        feat['demand_lag_168h'] = demand_cache[-168]
+        feat['demand_rolling_3h_mean'] = float(np.mean(demand_cache[-4:-1])) if len(demand_cache) >= 4 else lag_medians.get('demand_rolling_3h_mean', 500)
+        feat['demand_rolling_24h_mean'] = float(np.mean(demand_cache[-25:-1])) if len(demand_cache) >= 25 else lag_medians.get('demand_rolling_24h_mean', 500)
+    else:
+        for lag_col in ['demand_lag_24h', 'demand_lag_168h', 'demand_rolling_3h_mean', 'demand_rolling_24h_mean']:
+            feat[lag_col] = lag_medians.get(lag_col, 500)
+
+    # Season dummies
+    for name in ['season_Autumn', 'season_Spring', 'season_Summer', 'season_Winter']:
+        if name == 'season_Spring':
+            feat[name] = season_spring
+        elif name == 'season_Summer':
+            feat[name] = season_summer
+        elif name == 'season_Winter':
+            feat[name] = season_winter
+        elif name == 'season_Autumn':
+            feat[name] = season_autumn
+
+    feat['is_holiday'] = is_holiday
+    feat['is_functioning_day'] = is_functioning
+
+    # Build array in correct feature order
+    row = []
+    for fn in feature_names:
+        row.append(feat.get(fn, 0.0))
+
+    row_array = np.array([row])
+
+    # Apply scaling to correct columns
+    row_df = pd.DataFrame(row_array, columns=feature_names)
+    if scale_cols:
+        cols_to_scale = [c for c in scale_cols if c in feature_names]
+        if cols_to_scale:
+            col_indices = [feature_names.index(c) for c in cols_to_scale]
+            row_df[cols_to_scale] = scaler.transform(row_df[cols_to_scale])
+
+    return row_df.values

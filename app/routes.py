@@ -13,7 +13,6 @@ from app.utils import (
 from app.model_metrics import calculate_model_metrics, generate_performance_report
 from app.model_manager import model_manager
 from models.model_manager import predict_rf, predict_xgb
-from sqlalchemy import func
 from datetime import datetime, timedelta
 import traceback
 import numpy as np
@@ -27,7 +26,6 @@ import tempfile
 import csv
 import io
 import re
-from dotenv import load_dotenv
 import math
 import pickle
 
@@ -454,9 +452,6 @@ def get_required_fields_for_model(model_type):
         return ['hour', 'temperature', 'day_of_week']
     else:
         return []
-
-# Load environment variables
-load_dotenv()
 
 main = Blueprint('main', __name__)
 
@@ -1148,7 +1143,7 @@ class EmailService:
         self.sender_email = EMAIL_CONFIG['sender_email']
         self.sender_password = EMAIL_CONFIG['sender_password']
         
-        print(f"📧 Email Service Initialized")
+        print("Email Service Initialized")
         print(f"   SMTP Server: {self.smtp_server}:{self.smtp_port}")
         print(f"   Sender Email: {self.sender_email}")
         print(f"   Password Set: {'Yes' if self.sender_password else 'No'}")
@@ -1160,18 +1155,18 @@ class EmailService:
         """Test SMTP connection"""
         try:
             if not self.sender_email or not self.sender_password:
-                print("⚠️ Email credentials not configured")
+                print("Email credentials not configured")
                 return False
-            
+
             with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10) as server:
                 server.ehlo()
                 server.starttls()
                 server.ehlo()
-                print(f"✅ SMTP connection test successful to {self.smtp_server}:{self.smtp_port}")
+                print(f"SMTP connection test successful to {self.smtp_server}:{self.smtp_port}")
                 return True
-                
+
         except Exception as e:
-            print(f"❌ SMTP connection test failed: {str(e)}")
+            print(f"SMTP connection test failed: {str(e)}")
             return False
     
     def send_analytics_report(self, email_data):
@@ -1854,7 +1849,7 @@ class EmailService:
                 try:
                     with open(email_log_file, 'r') as f:
                         logs = json.load(f)
-                except:
+                except (FileNotFoundError, json.JSONDecodeError):
                     logs = []
             
             logs.append(log_entry)
@@ -2053,7 +2048,7 @@ def debug_improved_model():
                         try:
                             booster = value.get_booster()
                             result["feature_names"] = booster.feature_names[:10] if booster.feature_names else []
-                        except:
+                        except (AttributeError, TypeError):
                             pass
         
         elif hasattr(model_data, 'predict'):
@@ -2339,7 +2334,7 @@ def filter_predictions_by_date_range(predictions, start_date=None, end_date=None
             elif 'timestamp_readable' in pred:
                 try:
                     pred_time = datetime.strptime(pred['timestamp_readable'], "%Y-%m-%d %H:%M:%S")
-                except:
+                except ValueError:
                     pred_time = datetime.strptime(pred['timestamp_readable'], "%Y-%m-%dT%H:%M:%S")
             else:
                 continue
@@ -3603,7 +3598,7 @@ def dashboard_metrics():
         try:
             metrics_data = calculate_model_metrics()
             overall_accuracy = metrics_data.get('r2_score', 0.824) * 100
-        except:
+        except Exception:
             overall_accuracy = 92.4
         
         # Count available models
@@ -3803,9 +3798,31 @@ def predict():
         
         # Get model type from query parameter
         model_type = request.args.get('model_type', 'original').lower()
-        # Add 'xgboost' to valid model types
-        if model_type not in ['original', 'improved', 'advanced', 'xgboost']:
+        if model_type not in ['original', 'improved', 'advanced', 'xgboost', 'unified', 'ensemble']:
             model_type = 'original'
+
+        # Handle unified/ensemble model type
+        if model_type in ('unified', 'ensemble'):
+            try:
+                from app.utils import load_unified_pipeline, preprocess_unified
+                pipeline = load_unified_pipeline()
+                if pipeline is None:
+                    return jsonify({"success": False, "error": "Unified pipeline not found. Run train_unified_pipeline.py first."}), 404
+                processed = preprocess_unified(data)
+                prediction = pipeline['model'].predict(processed)
+                predicted_bikes = max(0, float(prediction[0]))
+                result = {
+                    "success": True,
+                    "predicted_bikes": round(predicted_bikes),
+                    "predicted_bikes_raw": predicted_bikes,
+                    "model_type": "unified_ensemble",
+                    "model_name": pipeline.get('model_name', 'stacking_ensemble'),
+                    "features_used": len(pipeline['feature_names']),
+                }
+                save_prediction_to_history(data, predicted_bikes, 'unified')
+                return jsonify(result)
+            except Exception as e:
+                return jsonify({"success": False, "error": f"Unified prediction failed: {str(e)}"}), 500
         
         # Check if we should calculate features automatically
         calculate_features = request.args.get('calculate_features', 'false').lower() == 'true'
@@ -3927,7 +3944,7 @@ def predict():
                 if feature_names:
                     print(f"  Expected features: {len(feature_names)}")
                     print(f"  First few expected: {list(feature_names)[:10]}")
-            except:
+            except (AttributeError, TypeError):
                 pass
         print("="*50)
         
@@ -4355,9 +4372,9 @@ def list_models():
                     advanced_info = json.load(f)
                     advanced_metrics = advanced_info.get('performance', {})
                     advanced_features = advanced_info.get('feature_names', [])
-        except:
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
             pass
-    
+
     # Get XGBoost model info
     xgboost_info = {}
     if xgboost_model:
@@ -4365,9 +4382,9 @@ def list_models():
             if os.path.exists('models/xgboost_model_info.json'):
                 with open('models/xgboost_model_info.json', 'r') as f:
                     xgboost_info = json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             pass
-    
+
     models_info = {
         'original': {
             'available': original_model is not None,
@@ -4493,9 +4510,9 @@ def metrics():
                 with open('models/advanced_model_info.json', 'r') as f:
                     advanced_info = json.load(f)
                     advanced_metrics = advanced_info.get('performance', {})
-            except:
+            except (FileNotFoundError, json.JSONDecodeError, KeyError):
                 pass
-        
+
         # Get XGBoost model metrics if available
         xgboost_metrics = {}
         if xgboost_model and os.path.exists('models/xgboost_model_info.json'):
@@ -4503,7 +4520,7 @@ def metrics():
                 with open('models/xgboost_model_info.json', 'r') as f:
                     xgboost_info = json.load(f)
                     xgboost_metrics = xgboost_info.get('performance', {})
-            except:
+            except (FileNotFoundError, json.JSONDecodeError):
                 pass
         
         return jsonify({
@@ -4590,7 +4607,7 @@ def api_status():
         
         try:
             history = get_prediction_history()
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             history = []
         
         email_configured = bool(EMAIL_CONFIG['sender_email'] and EMAIL_CONFIG['sender_password'])
@@ -4614,9 +4631,9 @@ def api_status():
                 if os.path.exists('models/advanced_model_info.json'):
                     with open('models/advanced_model_info.json', 'r') as f:
                         advanced_info = json.load(f)
-            except:
+            except (FileNotFoundError, json.JSONDecodeError):
                 pass
-        
+
         # Get XGBoost model info
         xgboost_info = {}
         if xgboost_model:
@@ -4624,9 +4641,9 @@ def api_status():
                 if os.path.exists('models/xgboost_model_info.json'):
                     with open('models/xgboost_model_info.json', 'r') as f:
                         xgboost_info = json.load(f)
-            except:
+            except (FileNotFoundError, json.JSONDecodeError):
                 pass
-        
+
         return jsonify({
             "status": "success",
             "models": {
@@ -4777,7 +4794,7 @@ def model_info():
                 if feature_names:
                     info["feature_names"] = list(feature_names)
                     info["features_count"] = len(feature_names)
-            except:
+            except (AttributeError, TypeError):
                 pass
         
         # Add model-specific info
@@ -5935,7 +5952,7 @@ def analytics_model_performance():
                             'stability': 0.92,
                             'speed': 0.85
                         }
-            except:
+            except (FileNotFoundError, json.JSONDecodeError, KeyError):
                 models_metrics['advanced'] = {
                     'name': 'Advanced RF (100+ features)',
                     'accuracy': 0.92,
@@ -5963,7 +5980,7 @@ def analytics_model_performance():
                             'stability': 0.90,
                             'speed': 0.80
                         }
-            except:
+            except (FileNotFoundError, json.JSONDecodeError, KeyError):
                 models_metrics['xgboost'] = {
                     'name': 'XGBoost Regressor',
                     'accuracy': 0.94,

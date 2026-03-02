@@ -1,3 +1,7 @@
+// Debug flag - set to true during development, false in production
+const DEBUG = false;
+function dbg(...args) { if (DEBUG) console.log(...args); }
+
 // DOM Elements
 const form = document.getElementById('prediction-form');
 const resultContent = document.getElementById('result-content');
@@ -134,7 +138,7 @@ function updatePredictionResults(data, responseTime) {
     if (predictionCount) {
         predictionCount.textContent = prediction;
         
-        // Animate the count
+        // Animate the counter
         animateCounter(predictionCount, 0, prediction, 1000);
     }
     
@@ -200,19 +204,34 @@ function animateCounter(element, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-// Select model function
+// Select model function - FIXED AND ENHANCED
 function selectModel(modelName) {
+    dbg('selectModel:', modelName);
+    
+    // Update global variable
     selectedModel = modelName;
+    dbg('New selectedModel:', selectedModel);
+    
+    // Store in sessionStorage for persistence
+    try {
+        sessionStorage.setItem('selectedModel', modelName);
+        dbg('Saved to sessionStorage');
+    } catch(e) {
+
+    }
     
     // Update model option indicators
     document.querySelectorAll('.model-option').forEach(option => {
         const indicator = option.querySelector('.selection-indicator');
-        if (option.getAttribute('data-model') === modelName) {
-            indicator.classList.add('active');
+        const optionModel = option.getAttribute('data-model');
+        
+        if (optionModel === modelName) {
             option.classList.add('active');
+            if (indicator) indicator.classList.add('active');
+
         } else {
-            indicator.classList.remove('active');
             option.classList.remove('active');
+            if (indicator) indicator.classList.remove('active');
         }
     });
     
@@ -221,20 +240,32 @@ function selectModel(modelName) {
     
     // Refresh metrics to show the selected model's performance
     fetchModelPerformanceMetrics();
-    
+
+    // Update predict button text
+    const predictBtnText = document.getElementById('predict-btn-text');
+    if (predictBtnText) {
+        predictBtnText.textContent = `Generate Prediction (${formatModelName(modelName)})`;
+    }
+
+    // Update AI Insights to reflect selected model
+    if (typeof updateAllInsights === 'function') {
+        updateAllInsights();
+    }
+
     showNotification(`${formatModelName(modelName)} selected`, 'info');
 }
 
 // Update UI based on selected model
 function updateModelUI() {
     const modelName = formatModelName(selectedModel);
+
     
     // Update predict button color
     const colors = {
-        'original': 'linear-gradient(135deg, #4361ee, #3a56d4)',
-        'improved': 'linear-gradient(135deg, #7209b7, #3a0ca3)',
-        'advanced': 'linear-gradient(135deg, #06d6a0, #1b9e5c)',
-        'xgboost': 'linear-gradient(135deg, #f72585, #b5179e)'
+        'original': 'linear-gradient(135deg, #4f46e5, #4338ca)',
+        'improved': 'linear-gradient(135deg, #7c3aed, #5b21b6)',
+        'advanced': 'linear-gradient(135deg, #0891b2, #0e7490)',
+        'xgboost': 'linear-gradient(135deg, #db2777, #be185d)'
     };
     
     if (predictBtn) {
@@ -258,18 +289,18 @@ function updateModelUI() {
 
 // Update model performance metrics
 function updateModelPerformanceMetrics(metrics) {
-    console.log('📊 ========== METRICS UPDATE START ==========');
-    console.log('📊 Raw metrics received:', metrics);
-    console.log('📊 Selected model:', selectedModel);
+    
+    dbg(metrics);
+    dbg(selectedModel);
     
     // Check if metrics exists
     if (!metrics) {
-        console.log('❌ No metrics data available');
+        
         return;
     }
     
     // Log all available keys in metrics
-    console.log('📊 Available keys in metrics:', Object.keys(metrics));
+    dbg(Object.keys(metrics));
     
     // Determine which model's metrics to show based on selected model
     let r2Value = null;
@@ -282,13 +313,13 @@ function updateModelPerformanceMetrics(metrics) {
             r2Value = metrics.advanced_model_metrics.test_r2;
             rmseValue = metrics.advanced_model_metrics.test_rmse;
             maeValue = metrics.advanced_model_metrics.test_mae;
-            console.log('📊 Using advanced model metrics:', {r2Value, rmseValue, maeValue});
+            dbg({r2Value, rmseValue, maeValue});
         } else {
             // Fallback values from your test output
             r2Value = 0.911;
             rmseValue = 192.4;
             maeValue = 116.6;
-            console.log('📊 Using fallback advanced metrics');
+            
         }
     } else if (selectedModel === 'xgboost') {
         // Show XGBoost metrics
@@ -296,13 +327,13 @@ function updateModelPerformanceMetrics(metrics) {
             r2Value = metrics.xgboost_model_metrics.test_r2;
             rmseValue = metrics.xgboost_model_metrics.test_rmse;
             maeValue = metrics.xgboost_model_metrics.test_mae;
-            console.log('📊 Using XGBoost model metrics:', {r2Value, rmseValue, maeValue});
+            dbg({r2Value, rmseValue, maeValue});
         } else {
             // Fallback values from your test output
             r2Value = 0.94;
             rmseValue = 153.3;
             maeValue = 90.9;
-            console.log('📊 Using fallback XGBoost metrics');
+            
         }
     } else if (selectedModel === 'improved') {
         // Show improved model metrics
@@ -310,13 +341,13 @@ function updateModelPerformanceMetrics(metrics) {
             r2Value = metrics.improved_model_metrics.r2 || 0.899;
             rmseValue = metrics.improved_model_metrics.rmse || 194.6;
             maeValue = metrics.improved_model_metrics.mae || 116.6;
-            console.log('📊 Using improved model metrics:', {r2Value, rmseValue, maeValue});
+            dbg({r2Value, rmseValue, maeValue});
         } else {
             // Fallback values
             r2Value = 0.899;
             rmseValue = 194.6;
             maeValue = 116.6;
-            console.log('📊 Using fallback improved metrics');
+            
         }
     } else {
         // Show base/original model metrics
@@ -330,7 +361,7 @@ function updateModelPerformanceMetrics(metrics) {
             rmseValue = 112.5;
             maeValue = 87.2;
         }
-        console.log('📊 Using base model metrics:', {r2Value, rmseValue, maeValue});
+        dbg({r2Value, rmseValue, maeValue});
     }
     
     // Get DOM elements
@@ -342,71 +373,71 @@ function updateModelPerformanceMetrics(metrics) {
     // Update R² Score
     if (r2Element && r2Value !== null) {
         r2Element.textContent = typeof r2Value === 'number' ? r2Value.toFixed(3) : r2Value;
-        console.log(`✅ R² updated to "${r2Element.textContent}"`);
+        
     }
     
     // Update RMSE
     if (rmseElement && rmseValue !== null) {
         rmseElement.textContent = typeof rmseValue === 'number' ? rmseValue.toFixed(1) : rmseValue;
-        console.log(`✅ RMSE updated to "${rmseElement.textContent}"`);
+        
     }
     
     // Update MAE
     if (maeElement && maeValue !== null) {
         maeElement.textContent = typeof maeValue === 'number' ? maeValue.toFixed(1) : maeValue;
-        console.log(`✅ MAE updated to "${maeElement.textContent}"`);
+        
     }
     
     // Update Accuracy Gap (1 - R²)
     if (gapElement && r2Value !== null) {
         const gap = ((1 - r2Value) * 100).toFixed(1) + '%';
         gapElement.textContent = gap;
-        console.log(`✅ Accuracy Gap updated to "${gap}"`);
+        
     }
     
-    console.log('📊 ========== METRICS UPDATE END ==========');
+    
 }
 
 // Fetch model performance metrics from API
 async function fetchModelPerformanceMetrics() {
-    console.log('📡 ========== FETCHING METRICS ==========');
+    
     
     try {
-        console.log('📡 Making request to /metrics...');
+        
         const response = await fetch('/metrics');
-        console.log('📡 Response status:', response.status);
+        dbg(response.status);
         
         if (response.ok) {
             const data = await response.json();
-            console.log('📡 RAW API RESPONSE:', data);
+            dbg(data);
             
             if (data.metrics) {
-                console.log('📡 Metrics object found');
+                
                 updateModelPerformanceMetrics(data.metrics);
                 return data.metrics;
             } else if (data.success && data.metrics) {
-                console.log('📡 Metrics in success wrapper');
+                
                 updateModelPerformanceMetrics(data.metrics);
                 return data.metrics;
             } else {
-                console.warn('📡 No metrics found in response');
+                
             }
         }
     } catch (error) {
-        console.error('❌ Error fetching model performance metrics:', error);
+        console.error('Metrics fetch error:', error);
     }
     
-    console.log('📡 ========== FETCH COMPLETE ==========');
+    
     return null;
 }
 
-// Form submission handler
+// Form submission handler - FIXED AND ENHANCED
 if (form) {
-    console.log('✅ Form found, adding event listener');
+    
     
     form.addEventListener('submit', async function(event) {
         event.preventDefault();
-        console.log('🎯 Form submitted!');
+        
         
         const startTime = performance.now();
         
@@ -414,6 +445,25 @@ if (form) {
         showLoading();
         
         try {
+            // Get the selected model - CRITICAL FIX
+            dbg(selectedModel);
+            
+            // Double-check by looking at active model in DOM
+            const activeModelElement = document.querySelector('.model-option.active');
+            const activeModelFromDOM = activeModelElement ? activeModelElement.getAttribute('data-model') : null;
+            dbg(activeModelFromDOM);
+            
+            // Use the selected model from global variable, but verify with DOM
+            let modelToUse = selectedModel;
+            if (activeModelFromDOM && activeModelFromDOM !== selectedModel) {
+                
+                
+                modelToUse = activeModelFromDOM;
+                selectedModel = modelToUse; // Update global variable
+            }
+            
+            dbg(modelToUse);
+            
             // Collect form data with CORRECT field names matching the backend
             const formData = {};
             
@@ -444,7 +494,7 @@ if (form) {
                 formData['day_of_week'] = parseInt(document.getElementById('day_of_week')?.value || 0);
             }
             
-            console.log('📤 Form data to send:', formData);
+            dbg(formData);
             
             // Validate inputs
             const validationErrors = validateForm(formData);
@@ -454,15 +504,21 @@ if (form) {
                 return;
             }
             
-            // Make prediction request with selected model
-            let url = `/predict?model_type=${selectedModel}`;
-            if (selectedModel === 'advanced' || selectedModel === 'xgboost') {
+            // Make prediction request with selected model - FIXED URL CONSTRUCTION
+            let url = `/predict?model_type=${modelToUse}`;
+            dbg(url);
+            
+            // Add calculate_features parameter for models that need it
+            if (modelToUse === 'advanced' || modelToUse === 'xgboost') {
                 url += '&calculate_features=true';
-                console.log(`🧮 Auto-calculation enabled for ${selectedModel} model`);
-            } else if (selectedModel === 'improved') {
-                console.log(`📊 Improved model will calculate all 38 features on backend`);
+                
+            } else if (modelToUse === 'improved') {
+
+                // No need for calculate_features parameter as it's handled differently
             }
-            console.log(`📡 Making request to: ${url}`);
+            
+            dbg(url);
+            dbg(JSON.stringify(formData, null, 2));
             
             const response = await fetch(url, {
                 method: 'POST',
@@ -473,13 +529,20 @@ if (form) {
             });
             
             const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
-            const data = await response.json();
+            dbg(response.status);
+            dbg(responseTime + 's');
             
-            console.log('📥 Response received:', data);
+            const data = await response.json();
+            dbg(data);
             
             hideLoading();
             
             if (data.success) {
+                // Add model_type to data if not present
+                if (!data.model_type) {
+                    data.model_type = modelToUse;
+                }
+                
                 // Update UI with results
                 updatePredictionResults(data, responseTime);
                 
@@ -492,19 +555,21 @@ if (form) {
                 console.error('Prediction error details:', data);
             }
             
+            
+            
         } catch (error) {
             hideLoading();
             showNotification(`Network error: ${error.message}`, 'error');
-            console.error('Fetch error details:', error);
+            console.error('Fetch error:', error);
         }
     });
 } else {
-    console.error('❌ Form not found! Check if element with id="prediction-form" exists');
+    console.error('Form #prediction-form not found');
 }
 
 // Update dashboard metrics
 async function updateDashboardMetrics() {
-    console.log('📊 updateDashboardMetrics called');
+    
     
     try {
         // Get elements by their specific IDs
@@ -513,7 +578,7 @@ async function updateDashboardMetrics() {
         const avgErrorEl = document.getElementById('avg-error');
         const modelsAvailableEl = document.getElementById('models-available');
         
-        console.log('Found elements:', {
+        dbg('elements:', {
             modelAccuracy: !!modelAccuracyEl,
             predictionsToday: !!predictionsTodayEl,
             avgError: !!avgErrorEl,
@@ -528,19 +593,19 @@ async function updateDashboardMetrics() {
             el.style.display = 'none';
         });
         
-        console.log('📡 Fetching from /api/dashboard-metrics...');
+        
         const response = await fetch('/api/dashboard-metrics');
-        console.log('Response status:', response.status);
+        dbg('status:', response.status);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Dashboard metrics data received:', data);
+        dbg('dashboard:', data);
         
         if (data.success && data.metrics) {
-            console.log('✅ Updating metrics with:', data.metrics);
+            dbg(data.metrics);
             
             // Update Model Accuracy
             if (modelAccuracyEl) {
@@ -550,7 +615,7 @@ async function updateDashboardMetrics() {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
                     valueEl.textContent = data.metrics.model_accuracy + '%';
-                    console.log('✅ Updated model accuracy to:', data.metrics.model_accuracy + '%');
+                    dbg(data.metrics.model_accuracy + '%');
                 }
             }
             
@@ -562,7 +627,7 @@ async function updateDashboardMetrics() {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
                     valueEl.textContent = data.metrics.predictions_today;
-                    console.log('✅ Updated predictions today to:', data.metrics.predictions_today);
+                    dbg(data.metrics.predictions_today);
                 }
             }
             
@@ -574,7 +639,7 @@ async function updateDashboardMetrics() {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
                     valueEl.textContent = '±' + data.metrics.avg_error + ' bikes';
-                    console.log('✅ Updated avg error to:', '±' + data.metrics.avg_error + ' bikes');
+                    dbg('±' + data.metrics.avg_error + ' bikes');
                 }
             }
             
@@ -586,14 +651,14 @@ async function updateDashboardMetrics() {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
                     valueEl.textContent = data.metrics.models_available;
-                    console.log('✅ Updated models available to:', data.metrics.models_available);
+                    dbg(data.metrics.models_available);
                 }
             }
         } else {
-            console.warn('⚠️ Dashboard metrics API returned unsuccessful response');
+            
         }
     } catch (error) {
-        console.error('❌ Error updating dashboard metrics:', error);
+        console.error('Dashboard metrics error:', error);
         // Show fallback values
         document.querySelectorAll('.metric-loading').forEach(el => {
             el.style.display = 'none';
@@ -631,12 +696,46 @@ async function loadAvailableModels() {
     return false;
 }
 
-// Initialize page
+// Initialize page - FIXED WITH MODEL RESTORATION
 async function initPage() {
-    console.log('🚀 Initializing page...');
     
-    // Set default model selection
-    selectModel('original');
+    
+    // Restore selected model from sessionStorage
+    try {
+        const savedModel = sessionStorage.getItem('selectedModel');
+        dbg(savedModel);
+        
+        if (savedModel && ['original', 'improved', 'advanced', 'xgboost'].includes(savedModel)) {
+            dbg(savedModel);
+            selectedModel = savedModel;
+        } else {
+            
+            selectedModel = 'original';
+        }
+    } catch(e) {
+        
+        selectedModel = 'original';
+    }
+    
+    // Force reattach event listeners to model options to ensure clicks work
+    
+    document.querySelectorAll('.model-option').forEach(option => {
+        // Remove any existing listeners by cloning (optional, but safe)
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+        
+        // Add new click listener
+        newOption.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const model = this.getAttribute('data-model');
+            dbg(model);
+            selectModel(model);
+        });
+    });
+    
+    // Set default model selection (this will trigger UI update)
+    selectModel(selectedModel);
     
     // Load available models
     await loadAvailableModels();
@@ -645,136 +744,70 @@ async function initPage() {
     await fetchModelPerformanceMetrics();
     
     // Update dashboard metrics
-    console.log('📊 Calling updateDashboardMetrics...');
+    
     await updateDashboardMetrics();
     
     // Set up periodic refresh (every 60 seconds)
     setInterval(updateDashboardMetrics, 60000);
     setInterval(fetchModelPerformanceMetrics, 60000);
-    
-    console.log('✅ Page initialization complete');
+
+    // Initialize dynamic AI Insights
+    attachInsightListeners();
+    updateAllInsights();
 }
 
 // Initialize when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM Content Loaded, initializing...');
+    
     initPage().catch(error => {
         console.error('Error during initialization:', error);
     });
 });
 
-// Model Manager function
+// Model Manager data
+const MODEL_INFO = [
+    { key: 'original', name: 'Standard Model', color: '#4f46e5', features: '14 basic features', r2: '0.820', rmse: '112.5', mae: '87.2', detail: 'Quick predictions with basic weather data' },
+    { key: 'improved', name: 'Improved Model', color: '#7c3aed', features: '38 engineered features', r2: '0.899', rmse: '194.6', mae: '116.6', detail: 'Peak hours, weather severity, comfort index' },
+    { key: 'advanced', name: 'Advanced Model', color: '#0891b2', features: '36 advanced features', r2: '0.911', rmse: '192.4', mae: '116.6', detail: 'Cyclical encoding, temp categories, rush intensity' },
+    { key: 'xgboost', name: 'XGBoost', color: '#db2777', features: '36 advanced features', r2: '0.940', rmse: '153.3', mae: '90.9', detail: 'Gradient boosting with regularization' },
+];
+
 function openModelManager() {
     const modal = document.createElement('div');
     modal.id = 'simple-model-manager';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    `;
-    
-    modal.innerHTML = `
-        <div style="
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        ">
-            <h2 style="margin-top: 0; color: #2c3e50;">
-                <i class="fas fa-cogs"></i> Available Models
-            </h2>
-            <div style="margin: 20px 0;">
-                <!-- Standard Model -->
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #4361ee;">
-                    <h3 style="margin-top: 0; color: #4361ee;">Standard Model</h3>
-                    <p><strong>Features:</strong> 14 basic features</p>
-                    <p><strong>R² Score:</strong> 0.820</p>
-                    <p><strong>RMSE:</strong> 112.5</p>
-                    <p><strong>MAE:</strong> 87.2</p>
-                    <p><strong>Use Case:</strong> Quick predictions with basic weather data</p>
-                    <button onclick="selectModel('original'); document.getElementById('simple-model-manager').remove()" 
-                            style="background: #4361ee; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        ${selectedModel === 'original' ? '✓ Current' : 'Use This Model'}
-                    </button>
-                </div>
-                
-                <!-- Improved Model -->
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #7209b7;">
-                    <h3 style="margin-top: 0; color: #7209b7;">Improved Model</h3>
-                    <p><strong>Features:</strong> 38 engineered features</p>
-                    <p><strong>R² Score:</strong> 0.899</p>
-                    <p><strong>RMSE:</strong> 194.6</p>
-                    <p><strong>MAE:</strong> 116.6</p>
-                    <p><strong>Key Features:</strong> hour², peak hours, weather severity, comfort index</p>
-                    <button onclick="selectModel('improved'); document.getElementById('simple-model-manager').remove()" 
-                            style="background: #7209b7; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        ${selectedModel === 'improved' ? '✓ Current' : 'Use This Model'}
-                    </button>
-                </div>
-                
-                <!-- Advanced Model -->
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #06d6a0;">
-                    <h3 style="margin-top: 0; color: #06d6a0;">Advanced Model</h3>
-                    <p><strong>Features:</strong> 36 advanced features</p>
-                    <p><strong>R² Score:</strong> 0.911</p>
-                    <p><strong>RMSE:</strong> 192.4</p>
-                    <p><strong>MAE:</strong> 116.6</p>
-                    <p><strong>Key Features:</strong> hour_sin/cos, temp categories, time of day, rush intensity</p>
-                    <button onclick="selectModel('advanced'); document.getElementById('simple-model-manager').remove()" 
-                            style="background: #06d6a0; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        ${selectedModel === 'advanced' ? '✓ Current' : 'Use This Model'}
-                    </button>
-                </div>
-                
-                <!-- XGBoost Model -->
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid #f72585;">
-                    <h3 style="margin-top: 0; color: #f72585;">XGBoost Model</h3>
-                    <p><strong>Features:</strong> 36 advanced features</p>
-                    <p><strong>R² Score:</strong> 0.94</p>
-                    <p><strong>RMSE:</strong> 153.3</p>
-                    <p><strong>MAE:</strong> 90.9</p>
-                    <p><strong>Algorithm:</strong> Gradient Boosting</p>
-                    <p><strong>Key Features:</strong> Same as advanced but with boosting</p>
-                    <button onclick="selectModel('xgboost'); document.getElementById('simple-model-manager').remove()" 
-                            style="background: #f72585; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        ${selectedModel === 'xgboost' ? '✓ Current' : 'Use This Model'}
-                    </button>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 20px;">
-                <button onclick="document.getElementById('simple-model-manager').remove()" 
-                        style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-                    Close
+    modal.className = 'model-manager-overlay';
+
+    const cards = MODEL_INFO.map(m => {
+        const isCurrent = selectedModel === m.key;
+        return `
+            <div class="model-manager-card ${isCurrent ? 'current' : ''}" style="border-left-color: ${m.color}; ${isCurrent ? 'border-color: ' + m.color + ';' : ''}">
+                <h3 style="color: ${m.color};">${m.name}</h3>
+                <p><strong>Features:</strong> ${m.features}</p>
+                <p><strong>R²:</strong> ${m.r2} | <strong>RMSE:</strong> ${m.rmse} | <strong>MAE:</strong> ${m.mae}</p>
+                <p><strong>Details:</strong> ${m.detail}</p>
+                <button class="mm-btn" style="background: ${m.color};"
+                        onclick="selectModel('${m.key}'); document.getElementById('simple-model-manager').remove()">
+                    ${isCurrent ? 'Current Model' : 'Use This Model'}
                 </button>
-            </div>
-        </div>
-    `;
-    
+            </div>`;
+    }).join('');
+
+    modal.innerHTML = `
+        <div class="model-manager-panel">
+            <h2><i class="fas fa-cogs"></i> Available Models</h2>
+            ${cards}
+            <button class="model-manager-close" onclick="document.getElementById('simple-model-manager').remove()">Close</button>
+        </div>`;
+
     document.body.appendChild(modal);
-    
     modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
+        if (e.target === modal) modal.remove();
     });
 }
 
-// Close modal
 function closeModelManager() {
     const modal = document.getElementById('simple-model-manager');
-    if (modal) {
-        modal.remove();
-    }
+    if (modal) modal.remove();
 }
 
 // Load sample data - ENHANCED VERSION
@@ -863,7 +896,7 @@ function loadSampleData() {
     ];
     
     const sample = samples[Math.floor(Math.random() * samples.length)];
-    console.log('📋 Loading sample data:', sample);
+    dbg(sample);
     
     try {
         // Update numeric fields with validation
@@ -913,11 +946,8 @@ function loadSampleData() {
         // Show success notification with sample description
         showNotification(`Sample data loaded: ${sample.description}`, 'success');
         
-        // Auto-predict after loading sample (optional - uncomment to enable)
-        // setTimeout(() => document.getElementById('predict-btn').click(), 500);
-        
     } catch (error) {
-        console.error('❌ Error loading sample data:', error);
+        console.error('Sample data error:', error);
         showNotification('Failed to load sample data', 'error');
     }
 }
@@ -936,7 +966,7 @@ function updateFieldWithValidation(fieldId, value, min, max) {
         // Trigger input event for any listeners
         field.dispatchEvent(new Event('input', { bubbles: true }));
     } else {
-        console.warn(`⚠️ Field not found: ${fieldId}`);
+        dbg(`⚠️ Field not found: ${fieldId}`);
     }
 }
 
@@ -965,7 +995,7 @@ function updateSeasonSelector(season) {
     });
     
     if (!found) {
-        console.warn(`⚠️ Season "${season}" not found, defaulting to Summer`);
+        dbg(`⚠️ Season "${season}" not found, defaulting to Summer`);
         // Default to Summer if season not found
         seasonOptions.forEach(opt => {
             if (opt.getAttribute('data-value') === 'Summer') {
@@ -1217,7 +1247,7 @@ function copyPrediction() {
 
 // Export prediction - FIXED VERSION
 function exportPrediction(format = 'json') {
-    console.log('📤 Export function called with format:', format);
+    dbg(format);
     
     // Check if there's a prediction to export
     if (!currentPredictionData) {
@@ -1427,10 +1457,10 @@ Generated by UrbanFlow Intelligence
         URL.revokeObjectURL(url);
         
         showNotification(`Prediction exported as ${filename.split('.').pop().toUpperCase()} file`, 'success');
-        console.log(`✅ Export successful: ${filename}`);
+        
         
     } catch (error) {
-        console.error('❌ Export failed:', error);
+        console.error('Export failed:', error);
         showNotification('Failed to export prediction. Please try again.', 'error');
     }
 }
@@ -1468,7 +1498,7 @@ function exportPredictionWithFormat() {
             
             <button onclick="exportPrediction('json'); this.closest('div').closest('div').remove()" 
                     style="display: block; width: 100%; padding: 12px; margin: 8px 0; 
-                           background: #4361ee; color: white; border: none; 
+                           background: #4f46e5; color: white; border: none; 
                            border-radius: 8px; cursor: pointer; font-size: 16px;">
                 <i class="fas fa-code"></i> JSON (Detailed)
             </button>
@@ -1506,6 +1536,118 @@ function exportPredictionWithFormat() {
     });
 }
 
+// ===== Dynamic AI Insights =====
+function updateAllInsights() {
+    const hour = parseInt(document.getElementById('Hour')?.value || 14);
+    const temp = parseFloat(document.getElementById('Temperature(\uCE9C)')?.value || 22.5);
+    const humidity = parseFloat(document.getElementById('Humidity(%)')?.value || 60);
+    const rainfall = parseFloat(document.getElementById('Rainfall(mm)')?.value || 0);
+    const snowfall = parseFloat(document.getElementById('Snowfall (cm)')?.value || 0);
+    const wind = parseFloat(document.getElementById('Wind speed (m/s)')?.value || 2.5);
+    const visibility = parseInt(document.getElementById('Visibility (10m)')?.value || 2000);
+
+    updateModelInsight();
+    updateWeatherInsightFull(temp, humidity, rainfall, snowfall, wind, visibility);
+    updateTimeInsight(hour);
+    updateFeatureInsight();
+}
+
+function updateModelInsight() {
+    const el = document.querySelector('#model-insight .insight-content p');
+    if (!el) return;
+
+    const info = MODEL_INFO.find(m => m.key === selectedModel);
+    if (!info) return;
+
+    if (selectedModel === 'original') {
+        el.innerHTML = `Using <strong>${info.name}</strong> (R\u00B2 ${info.r2}). Try <strong>XGBoost</strong> for best accuracy.`;
+    } else {
+        const best = MODEL_INFO[MODEL_INFO.length - 1];
+        el.innerHTML = `Using <strong>${info.name}</strong> (R\u00B2 ${info.r2}). The <strong>${best.name}</strong> achieves R\u00B2 ${best.r2}.`;
+    }
+}
+
+function updateWeatherInsightFull(temp, humidity, rainfall, snowfall, wind, visibility) {
+    const el = document.querySelector('#weather-insight .insight-content p');
+    if (!el) return;
+
+    let conditions = [];
+    let suitability = 'high';
+
+    // Temperature
+    if (temp < 0) { conditions.push('freezing temperatures'); suitability = 'very low'; }
+    else if (temp < 5) { conditions.push('cold conditions'); suitability = 'low'; }
+    else if (temp < 15) { conditions.push('cool weather'); suitability = 'moderate'; }
+    else if (temp <= 25) { conditions.push('comfortable temperature'); }
+    else if (temp <= 33) { conditions.push('warm conditions'); suitability = 'moderate'; }
+    else { conditions.push('extreme heat'); suitability = 'low'; }
+
+    // Precipitation
+    if (rainfall > 10) { conditions.push('heavy rain'); suitability = 'very low'; }
+    else if (rainfall > 2) { conditions.push('light rain'); suitability = suitability === 'high' ? 'moderate' : suitability; }
+    if (snowfall > 0) { conditions.push('snowfall'); suitability = 'low'; }
+
+    // Wind
+    if (wind > 7) { conditions.push('strong wind'); suitability = suitability === 'high' ? 'moderate' : suitability; }
+
+    // Humidity
+    if (humidity > 85) { conditions.push('high humidity'); suitability = suitability === 'high' ? 'moderate' : suitability; }
+
+    // Visibility
+    if (visibility < 500) { conditions.push('poor visibility'); suitability = suitability === 'high' ? 'moderate' : suitability; }
+
+    const suitColors = { 'very low': '#ef4444', 'low': '#f77f00', 'moderate': '#f59e0b', 'high': '#10b981' };
+    const condStr = conditions.length > 0 ? conditions.join(', ') : 'optimal weather';
+    el.innerHTML = `<strong style="color:${suitColors[suitability]}">${suitability.charAt(0).toUpperCase() + suitability.slice(1)} biking suitability</strong> \u2014 ${condStr}. Temp ${temp}\u00B0C, humidity ${humidity}%.`;
+}
+
+function updateTimeInsight(hour) {
+    const el = document.querySelector('#time-insight .insight-content p');
+    if (!el) return;
+
+    let period, demand;
+    if (hour >= 0 && hour <= 5) { period = 'late night'; demand = 'very low'; }
+    else if (hour >= 6 && hour <= 9) { period = 'morning rush'; demand = 'high'; }
+    else if (hour >= 10 && hour <= 15) { period = 'midday'; demand = 'moderate'; }
+    else if (hour >= 16 && hour <= 19) { period = 'evening rush'; demand = 'very high'; }
+    else { period = 'evening'; demand = 'low-moderate'; }
+
+    const isPeak = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);
+    const peakNote = isPeak
+        ? ' This is a <strong>peak commute hour</strong> \u2014 expect 40-60% higher demand.'
+        : ' Off-peak hours typically show lower rental activity.';
+
+    el.innerHTML = `Hour ${hour}:00 falls in the <strong>${period}</strong> period with <strong>${demand} demand</strong>.${peakNote}`;
+}
+
+function updateFeatureInsight() {
+    const el = document.querySelector('#feature-insight .insight-content p');
+    if (!el) return;
+
+    const info = MODEL_INFO.find(m => m.key === selectedModel);
+    if (!info) return;
+
+    if (selectedModel === 'original') {
+        el.innerHTML = `<strong>14 core features</strong> from raw input data. Switch to Advanced or XGBoost models to use 35+ engineered features.`;
+    } else {
+        el.innerHTML = `<strong>${info.features}</strong> including peak hour detection, weather severity, cyclical encoding, and interaction terms.`;
+    }
+}
+
+// Wire up insight updates on form input changes
+function attachInsightListeners() {
+    const fields = ['Hour', 'Temperature(\uCE9C)', 'Humidity(%)', 'Rainfall(mm)', 'Snowfall (cm)', 'Wind speed (m/s)', 'Visibility (10m)'];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateAllInsights);
+    });
+    // Also update on slider changes
+    ['hour-slider', 'temp-slider'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateAllInsights);
+    });
+}
+
 // Export functions for global access
 window.loadSampleData = loadSampleData;
 window.loadSpecificSample = loadSpecificSample;
@@ -1519,5 +1661,5 @@ window.selectModel = selectModel;
 window.showNotification = showNotification;
 window.updateHourDescription = updateHourDescription;
 window.updateWeatherInsight = updateWeatherInsight;
+window.updateAllInsights = updateAllInsights;
 
-console.log('✅ script.js loaded successfully');

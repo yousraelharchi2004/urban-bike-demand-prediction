@@ -1,4 +1,7 @@
 // Professional Analytics Dashboard JavaScript
+const ANALYTICS_DEBUG = false;
+function analyticsDbg(...args) { if (ANALYTICS_DEBUG) console.log(...args); }
+
 class AnalyticsDashboard {
     constructor() {
         this.baseUrl = window.location.origin;
@@ -11,24 +14,24 @@ class AnalyticsDashboard {
         
         // Professional color scheme
         this.colors = {
-            primary: '#4361ee',
-            primaryDark: '#3a0ca3',
-            secondary: '#7209b7',
-            success: '#06d6a0',
-            warning: '#ffd166',
-            danger: '#ef476f',
-            info: '#4cc9f0',
-            dark: '#1a1a2e',
-            light: '#f8f9fa',
-            gray100: '#f8f9fa',
-            gray200: '#e9ecef',
-            gray300: '#dee2e6',
-            gray400: '#ced4da',
+            primary: '#4f46e5',
+            primaryDark: '#5b21b6',
+            secondary: '#7c3aed',
+            success: '#10b981',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            info: '#06b6d4',
+            dark: '#0f172a',
+            light: '#f1f5f9',
+            gray100: '#f1f5f9',
+            gray200: '#e2e8f0',
+            gray300: '#cbd5e1',
+            gray400: '#94a3b8',
             gray500: '#adb5bd',
             gray600: '#6c757d',
             gray700: '#495057',
-            gray800: '#343a40',
-            gray900: '#212529'
+            gray800: '#1e293b',
+            gray900: '#0f172a'
         };
         
         // Initialize theme
@@ -70,9 +73,7 @@ class AnalyticsDashboard {
     }
 
     async init() {
-        console.log('🚀 Initializing Professional Analytics Dashboard...');
-        
-        try {
+                try {
             // Show loading state (but preserve canvas elements)
             this.showLoadingState();
             
@@ -88,18 +89,17 @@ class AnalyticsDashboard {
             // Initialize event listeners
             this.initEventListeners();
             
-            console.log('✅ Professional Analytics Dashboard initialized!');
-            this.showNotification('Dashboard loaded successfully!', 'success');
+                        this.showNotification('Dashboard loaded successfully!', 'success');
             
         } catch (error) {
-            console.error('❌ Dashboard initialization error:', error);
+            console.error('Dashboard initialization error:', error);
             this.showError('Failed to initialize dashboard. Please refresh the page.');
             
             // Try to at least show the UI with fallback data
             try {
                 this.updateUI();
             } catch (uiError) {
-                console.error('❌ Could not update UI:', uiError);
+                console.error('Could not update UI:', uiError);
             }
         } finally {
             // Always hide loading state
@@ -141,9 +141,7 @@ class AnalyticsDashboard {
 
     async loadAllData() {
         try {
-            console.log('📊 Loading analytics data...');
-            
-            // Load KPIs with current time filter
+                        // Load KPIs with current time filter
             await this.loadKPIs();
             
             // Load feature importance
@@ -161,10 +159,8 @@ class AnalyticsDashboard {
             // Load prediction history
             await this.loadPredictionHistory();
             
-            console.log('📊 All analytics data loaded successfully');
-            
-        } catch (error) {
-            console.error('❌ Error loading analytics data:', error);
+                    } catch (error) {
+            console.error('Error loading analytics data:', error);
             this.data = {
                 kpis: null,
                 featureImportance: null,
@@ -188,13 +184,11 @@ class AnalyticsDashboard {
             const kpisResponse = await fetch(`${this.baseUrl}/api/analytics/kpis?${queryParams}`);
             if (kpisResponse.ok) {
                 this.data.kpis = await kpisResponse.json();
-                console.log('✅ KPIs loaded with filter:', this.currentTimeFilter);
-            } else {
+                            } else {
                 throw new Error(`KPIs API returned ${kpisResponse.status}`);
             }
         } catch (error) {
-            console.warn('⚠️ Could not load KPIs:', error);
-            this.data.kpis = null;
+                        this.data.kpis = null;
         }
     }
 
@@ -203,13 +197,11 @@ class AnalyticsDashboard {
             const featureResponse = await fetch(`${this.baseUrl}/api/analytics/feature-importance`);
             if (featureResponse.ok) {
                 this.data.featureImportance = await featureResponse.json();
-                console.log('✅ Feature importance loaded');
-            } else {
+                            } else {
                 throw new Error(`Feature API returned ${featureResponse.status}`);
             }
         } catch (error) {
-            console.warn('⚠️ Could not load feature importance:', error);
-            this.data.featureImportance = null;
+                        this.data.featureImportance = null;
         }
     }
 
@@ -218,13 +210,11 @@ class AnalyticsDashboard {
             const performanceResponse = await fetch(`${this.baseUrl}/api/analytics/model-performance`);
             if (performanceResponse.ok) {
                 this.data.modelPerformance = await performanceResponse.json();
-                console.log('✅ Model performance loaded');
-            } else {
+                            } else {
                 throw new Error(`Performance API returned ${performanceResponse.status}`);
             }
         } catch (error) {
-            console.warn('⚠️ Could not load model performance:', error);
-            this.data.modelPerformance = null;
+                        this.data.modelPerformance = null;
         }
     }
 
@@ -234,13 +224,11 @@ class AnalyticsDashboard {
             const patternsResponse = await fetch(`${this.baseUrl}/api/analytics/hourly-patterns?${queryParams}`);
             if (patternsResponse.ok) {
                 this.data.hourlyPatterns = await patternsResponse.json();
-                console.log('✅ Hourly patterns loaded with filter:', this.currentTimeFilter);
-            } else {
+                            } else {
                 throw new Error(`Patterns API returned ${patternsResponse.status}`);
             }
         } catch (error) {
-            console.warn('⚠️ Could not load hourly patterns:', error);
-            this.data.hourlyPatterns = null;
+                        this.data.hourlyPatterns = null;
         }
     }
 
@@ -250,13 +238,11 @@ class AnalyticsDashboard {
             const insightsResponse = await fetch(`${this.baseUrl}/api/analytics/insights?${queryParams}`);
             if (insightsResponse.ok) {
                 this.data.insights = await insightsResponse.json();
-                console.log('✅ Insights loaded with filter:', this.currentTimeFilter);
-            } else {
+                            } else {
                 throw new Error(`Insights API returned ${insightsResponse.status}`);
             }
         } catch (error) {
-            console.warn('⚠️ Could not load insights:', error);
-            this.data.insights = null;
+                        this.data.insights = null;
         }
     }
 
@@ -267,13 +253,11 @@ class AnalyticsDashboard {
             if (historyResponse.ok) {
                 const historyData = await historyResponse.json();
                 this.data.history = historyData;
-                console.log(`✅ History loaded: ${historyData.filtered_count} predictions`);
-            } else {
+                            } else {
                 throw new Error(`History API returned ${historyResponse.status}`);
             }
         } catch (error) {
-            console.warn('⚠️ Could not load history:', error);
-            this.data.history = {
+                        this.data.history = {
                 success: true,
                 total_predictions: 0,
                 filtered_count: 0,
@@ -456,15 +440,13 @@ class AnalyticsDashboard {
             if (data.success) {
                 this.data.history = data;
                 this.currentHistoryFilter = filter;
-                console.log(`✅ Filtered history loaded: ${data.filtered_count} predictions (filter: ${filter})`);
-                return data;
+                                return data;
             } else {
                 throw new Error(data.error || 'Failed to load history');
             }
             
         } catch (error) {
-            console.warn('⚠️ Could not load filtered history:', error);
-            throw error;
+                        throw error;
         }
     }
 
@@ -576,7 +558,7 @@ class AnalyticsDashboard {
             datasets: [{
                 label: 'Model Performance',
                 data: [87, 88, 86, 85, 92, 96],
-                backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
                 borderColor: this.colors.primary,
                 pointBackgroundColor: this.colors.primary,
                 borderWidth: 2,
@@ -658,7 +640,7 @@ class AnalyticsDashboard {
                 datasets: [{
                     label: 'Bike Demand Pattern',
                     data: hourlyDemand,
-                    backgroundColor: 'rgba(6, 214, 160, 0.1)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderColor: this.colors.success,
                     borderWidth: 3,
                     fill: true,
@@ -737,10 +719,8 @@ class AnalyticsDashboard {
                 }
             }
             
-            console.log('✅ Charts updated with filtered data');
-            
-        } catch (error) {
-            console.error('❌ Error updating charts with filtered data:', error);
+                    } catch (error) {
+            console.error('Error updating charts with filtered data:', error);
         }
     }
 
@@ -1044,21 +1024,8 @@ class AnalyticsDashboard {
                     if (!overlay) {
                         overlay = document.createElement('div');
                         overlay.className = 'chart-loading-overlay';
-                        overlay.style.cssText = `
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            right: 0;
-                            bottom: 0;
-                            background: rgba(255, 255, 255, 0.9);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            z-index: 10;
-                            border-radius: var(--radius-lg);
-                        `;
                         overlay.innerHTML = `
-                            <div class="loading-state" style="padding: 20px;">
+                            <div class="loading-state">
                                 <i class="fas fa-spinner fa-spin fa-2x"></i>
                                 <p>Loading chart...</p>
                             </div>
@@ -1091,9 +1058,7 @@ class AnalyticsDashboard {
     }
 
     async refreshDashboard() {
-        console.log('🔄 Refreshing dashboard...');
-        
-        // Disable refresh button and show loading
+                // Disable refresh button and show loading
         const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) {
             refreshBtn.disabled = true;
@@ -1117,18 +1082,17 @@ class AnalyticsDashboard {
             // Update UI
             this.updateUI();
             
-            console.log('✅ Dashboard refreshed!');
-            this.showNotification('Dashboard refreshed successfully!', 'success');
+                        this.showNotification('Dashboard refreshed successfully!', 'success');
             
         } catch (error) {
-            console.error('❌ Refresh failed:', error);
+            console.error('Refresh failed:', error);
             this.showNotification('Refresh failed. Showing previous data.', 'error');
             
             // Restore UI with existing data
             try {
                 this.updateUI();
             } catch (uiError) {
-                console.error('❌ Could not update UI:', uiError);
+                console.error('Could not update UI:', uiError);
             }
         } finally {
             // Re-enable refresh button
@@ -1485,91 +1449,13 @@ class AnalyticsDashboard {
     }
 
     showError(message, details = '') {
-        console.error('❌ Dashboard Error:', message, details);
-        
-        // Create error notification
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'notification error';
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            padding: 16px 24px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 9999;
-            border-left: 4px solid #ef476f;
-            animation: slideIn 0.3s ease;
-        `;
-        errorDiv.innerHTML = `
-            <i class="fas fa-exclamation-circle" style="color: #ef476f"></i>
-            <div>
-                <strong>${message}</strong>
-                ${details ? `<p style="margin-top: 4px; font-size: 0.9rem;">${details}</p>` : ''}
-            </div>
-        `;
-        
-        document.body.appendChild(errorDiv);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            errorDiv.style.opacity = '0';
-            errorDiv.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.parentNode.removeChild(errorDiv);
-                }
-            }, 300);
-        }, 5000);
+        console.error('Dashboard Error:', message, details);
+        const fullMessage = details ? `${message} - ${details}` : message;
+        showNotification(fullMessage, 'error');
     }
 
     showNotification(message, type = 'info') {
-        // Remove existing notifications
-        document.querySelectorAll('.notification').forEach(n => n.remove());
-        
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.style.cssText = `
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            padding: 16px 24px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 9999;
-            border-left: 4px solid #4361ee;
-            animation: slideIn 0.3s ease;
-        `;
-        
-        if (type === 'success') notification.style.borderLeftColor = '#06d6a0';
-        if (type === 'error') notification.style.borderLeftColor = '#ef476f';
-        if (type === 'warning') notification.style.borderLeftColor = '#ffd166';
-        
-        notification.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                            type === 'warning' ? 'exclamation-triangle' : 
-                            type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-            <span>${message}</span>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
+        showNotification(message, type);
     }
 }
 
@@ -1584,38 +1470,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
     } catch (error) {
         console.error('Failed to initialize dashboard:', error);
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'notification';
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            padding: 16px 24px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 9999;
-            border-left: 4px solid #ef476f;
-        `;
-        errorDiv.innerHTML = `
-            <i class="fas fa-exclamation-circle" style="color: #ef476f"></i>
-            <span>Failed to load analytics dashboard. Please check console.</span>
-        `;
-        document.body.appendChild(errorDiv);
+        showNotification('Failed to load analytics dashboard. Please check console.', 'error');
     }
 });
 
 // Global refresh function
 function refreshDashboard() {
-    console.log('Refresh button clicked');
+    analyticsDbg('Refresh button clicked');
     if (window.dashboard) {
-        console.log('Dashboard instance found');
+        analyticsDbg('Dashboard instance found');
         window.dashboard.refreshDashboard();
     } else {
-        console.log('No dashboard instance, reloading page');
+        analyticsDbg('No dashboard instance, reloading page');
         location.reload();
     }
 }
@@ -1706,311 +1572,279 @@ async function exportChartWithFormat(chartId, format = 'png') {
 
 // Notification system
 function showNotification(message, type = 'info') {
+    document.querySelectorAll('.notification').forEach(n => n.remove());
+
     const notification = document.createElement('div');
-    notification.className = 'notification';
-    if (type === 'success') notification.style.borderLeftColor = '#06d6a0';
-    if (type === 'error') notification.style.borderLeftColor = '#ef476f';
-    if (type === 'warning') notification.style.borderLeftColor = '#ffd166';
-    if (type === 'info') notification.style.borderLeftColor = '#4cc9f0';
-    
+    notification.className = `notification ${type}`;
+
+    const iconMap = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle',
+    };
+
     notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <i class="fas fa-${iconMap[type] || 'info-circle'}"></i>
         <span>${message}</span>
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
         setTimeout(() => {
-            notification.remove();
+            if (notification.parentNode) notification.remove();
         }, 300);
     }, 3000);
 }
 
-// Add CSS animations and styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
+// ========== EMAIL MODAL FUNCTIONS ==========
+
+function openEmailModal(context = 'full') {
+    const modal = document.getElementById('emailModal');
+    const subject = document.getElementById('emailSubject');
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+
+    switch (context) {
+        case 'charts':
+            subject.value = `UrbanFlow Charts Report - ${dateStr}`;
+            document.getElementById('includePDF').checked = false;
+            document.getElementById('includeCSV').checked = false;
+            document.getElementById('includeCharts').checked = true;
+            break;
+        case 'scheduled':
+            subject.value = 'UrbanFlow Weekly Analytics Report';
+            document.getElementById('includePDF').checked = true;
+            document.getElementById('includeCSV').checked = true;
+            document.getElementById('includeCharts').checked = true;
+            document.getElementById('scheduleReport').checked = true;
+            break;
+        default:
+            subject.value = `UrbanFlow Analytics Report - ${dateStr}`;
+            document.getElementById('includePDF').checked = true;
+            document.getElementById('includeCSV').checked = true;
+            document.getElementById('includeCharts').checked = false;
+            document.getElementById('scheduleReport').checked = false;
+    }
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEmailModal() {
+    const modal = document.getElementById('emailModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    document.getElementById('recipientsError').style.display = 'none';
+}
+
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateEmails(emailString) {
+    const emails = emailString.split(',').map(e => e.trim()).filter(e => e);
+    return emails.length > 0 && emails.every(validateEmail);
+}
+
+async function sendAnalyticsEmailFromForm() {
+    const recipients = document.getElementById('emailRecipients').value;
+    const subject = document.getElementById('emailSubject').value;
+    const message = document.getElementById('emailMessage').value;
+    const includePDF = document.getElementById('includePDF').checked;
+    const includeCSV = document.getElementById('includeCSV').checked;
+    const includeCharts = document.getElementById('includeCharts').checked;
+    const scheduleReport = document.getElementById('scheduleReport').checked;
+
+    if (!validateEmails(recipients)) {
+        document.getElementById('recipientsError').style.display = 'block';
+        return;
+    }
+    document.getElementById('recipientsError').style.display = 'none';
+
+    const sendBtn = document.querySelector('.email-btn-send');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+    try {
+        if (window.dashboard && window.dashboard.sendAnalyticsEmail) {
+            await window.dashboard.sendAnalyticsEmail({
+                recipients: recipients.split(',').map(e => e.trim()),
+                subject, message, includePDF, includeCSV, includeCharts,
+                schedule: scheduleReport ? 'weekly' : 'once',
+            });
+            showNotification('Analytics report email sent successfully!', 'success');
+            closeEmailModal();
+        } else {
+            setTimeout(() => {
+                showNotification('Email sent successfully! (Demo mode)', 'success');
+                closeEmailModal();
+            }, 1500);
         }
-        to {
-            transform: translateX(0);
-            opacity: 1;
+    } catch (error) {
+        showNotification('Failed to send email: ' + error.message, 'error');
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
+    }
+}
+
+// ========== DATE RANGE MODAL FUNCTIONS ==========
+
+function openDateRangeModal() {
+    const modal = document.getElementById('dateRangeModal');
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today;
+    document.getElementById('endDate').max = today;
+    document.getElementById('startDate').max = today;
+
+    updateDateRangeSummary();
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDateRangeModal() {
+    const modal = document.getElementById('dateRangeModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function updateDateRangeSummary() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const summary = document.getElementById('dateRangeSummary');
+    if (!startDate || !endDate || !summary) return;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    summary.innerHTML = `
+        <h4>Selected Range</h4>
+        <p><strong>From:</strong> ${formatDateReadable(start)}</p>
+        <p><strong>To:</strong> ${formatDateReadable(end)}</p>
+        <p><strong>Duration:</strong> ${daysDiff} day${daysDiff !== 1 ? 's' : ''}</p>
+        <p><i class="fas fa-info-circle"></i> Will analyze all predictions within this date range.</p>
+    `;
+}
+
+function formatDateReadable(date) {
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+    });
+}
+
+function applyPresetRange(days, months) {
+    const endDate = new Date();
+    const startDate = new Date();
+    if (days) startDate.setDate(startDate.getDate() - days);
+    else if (months) startDate.setMonth(startDate.getMonth() - months);
+
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    updateDateRangeSummary();
+}
+
+async function applyCustomDateRangeFromModal() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (!startDate || !endDate) {
+        showNotification('Please select both start and end dates', 'error');
+        return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+
+    if (start > end) {
+        showNotification('Start date must be before end date', 'error');
+        return;
+    }
+    if (start > today || end > today) {
+        showNotification('Dates cannot be in the future', 'error');
+        return;
+    }
+
+    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    if (daysDiff > 365) {
+        showNotification('Date range cannot exceed 365 days', 'error');
+        return;
+    }
+
+    closeDateRangeModal();
+
+    if (window.dashboard) {
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.classList.contains('custom-range-btn')) btn.classList.add('active');
+        });
+
+        const customRangeInfo = document.getElementById('customRangeInfo');
+        if (customRangeInfo) {
+            customRangeInfo.innerHTML = `
+                <div class="custom-range-info">
+                    <i class="fas fa-calendar-check"></i>
+                    ${startDate} to ${endDate} (${daysDiff} days)
+                    <button class="btn-clear-range" onclick="clearCustomDateRange()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
         }
+
+        await window.dashboard.applyCustomDateRange(start, end);
+        showNotification(`Applied custom date range: ${startDate} to ${endDate}`, 'success');
     }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+}
+
+async function exportLastWeek() {
+    if (window.dashboard) {
+        showNotification("Exporting last week's data...", 'info');
+        await exportAllData();
     }
-    
-    .empty-state {
-        padding: 40px 20px;
-        text-align: center;
-        color: var(--gray-600);
-    }
-    
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 16px;
-        color: var(--gray-300);
-    }
-    
-    .empty-state p {
-        margin: 8px 0;
-    }
-    
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 60px 20px;
-        color: var(--gray-500);
-        text-align: center;
-    }
-    
-    .loading-state i {
-        font-size: 2.5rem;
-        margin-bottom: 16px;
-        color: var(--primary);
-        animation: spin 1s linear infinite;
-    }
-    
-    .refresh-btn {
-        position: relative;
-    }
-    
-    .refresh-btn.refreshing i {
-        animation: spin 1s linear infinite;
-    }
-    
-    .refresh-btn.refreshing::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.5);
-        border-radius: var(--radius-md);
-    }
-    
-    .kpi-trend {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.85rem;
-        margin-top: 4px;
-    }
-    
-    .kpi-trend.positive {
-        color: var(--success);
-    }
-    
-    .kpi-trend.negative {
-        color: var(--danger);
-    }
-    
-    .chart-loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-        border-radius: var(--radius-lg);
-    }
-    
-    /* Time filter styles */
-    .time-filter-container {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-    
-    .time-btn {
-        padding: 8px 16px;
-        border: 2px solid var(--gray-300);
-        background: white;
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        font-weight: 500;
-        color: var(--gray-700);
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .time-btn:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-    
-    .time-btn.active {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: white;
-    }
-    
-    .time-btn i {
-        font-size: 0.9rem;
-    }
-    
-    /* Custom date range styles */
-    .custom-range-picker {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-left: 20px;
-    }
-    
-    .custom-range-picker input[type="date"] {
-        padding: 6px 12px;
-        border: 2px solid var(--gray-300);
-        border-radius: var(--radius-sm);
-        font-family: inherit;
-    }
-    
-    .custom-range-picker input[type="date"]:focus {
-        outline: none;
-        border-color: var(--primary);
-    }
-    
-    .custom-range-picker .btn-apply {
-        padding: 6px 12px;
-        background: var(--success);
-        color: white;
-        border: none;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        font-weight: 500;
-        transition: background 0.2s;
-    }
-    
-    .custom-range-picker .btn-apply:hover {
-        background: var(--success-dark);
-    }
-    
-    .custom-range-picker .btn-apply i {
-        margin-right: 4px;
-    }
-    
-    .custom-range-info {
-        margin-top: 8px;
-        padding: 8px 12px;
-        background: rgba(67, 97, 238, 0.1);
-        border-radius: var(--radius-sm);
-        font-size: 0.9rem;
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .custom-range-display {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .custom-range-display i {
-        font-size: 0.9rem;
-    }
-    
-    .custom-range-display .btn-clear-range {
-        background: none;
-        border: none;
-        color: var(--gray-500);
-        cursor: pointer;
-        padding: 2px 6px;
-        border-radius: var(--radius-xs);
-        transition: color 0.2s;
-    }
-    
-    .custom-range-display .btn-clear-range:hover {
-        color: var(--danger);
-        background: rgba(239, 71, 111, 0.1);
-    }
-    
-    /* Export button styles */
-    .export-dropdown {
-        position: relative;
-        display: inline-block;
-    }
-    
-    .export-dropdown-content {
-        display: none;
-        position: absolute;
-        background-color: white;
-        min-width: 200px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        border-radius: var(--radius-md);
-        z-index: 1000;
-        padding: 8px 0;
-        border: 1px solid var(--gray-200);
-    }
-    
-    .export-dropdown:hover .export-dropdown-content {
-        display: block;
-    }
-    
-    .export-dropdown-content a {
-        color: var(--gray-700);
-        padding: 10px 16px;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        transition: background-color 0.2s;
-    }
-    
-    .export-dropdown-content a:hover {
-        background-color: var(--gray-100);
-        color: var(--primary);
-    }
-    
-    .export-dropdown-content a i {
-        width: 20px;
-        text-align: center;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .time-filter-container {
-            flex-direction: column;
-            align-items: stretch;
+}
+
+// ========== ANALYTICS PAGE INITIALIZATION ==========
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Date range input listeners
+    document.getElementById('startDate')?.addEventListener('change', updateDateRangeSummary);
+    document.getElementById('endDate')?.addEventListener('change', updateDateRangeSummary);
+
+    // Preset button listeners
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const days = this.getAttribute('data-days');
+            const months = this.getAttribute('data-months');
+            applyPresetRange(days ? parseInt(days) : null, months ? parseInt(months) : null);
+        });
+    });
+
+    // Close modals with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const emailModal = document.getElementById('emailModal');
+            const dateModal = document.getElementById('dateRangeModal');
+            if (emailModal && emailModal.classList.contains('active')) closeEmailModal();
+            if (dateModal && dateModal.classList.contains('active')) closeDateRangeModal();
         }
-        
-        .time-btn {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        .custom-range-picker {
-            flex-direction: column;
-            margin-left: 0;
-            width: 100%;
-        }
-        
-        .custom-range-picker input[type="date"] {
-            width: 100%;
-        }
-        
-        .export-dropdown-content {
-            min-width: 180px;
-            right: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
+    });
+
+    // Close modals on backdrop click
+    document.getElementById('emailModal')?.addEventListener('click', function (e) {
+        if (e.target === this) closeEmailModal();
+    });
+    document.getElementById('dateRangeModal')?.addEventListener('click', function (e) {
+        if (e.target === this) closeDateRangeModal();
+    });
+});
