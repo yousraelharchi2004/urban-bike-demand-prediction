@@ -22,6 +22,8 @@ _state = {
     'improved_model': None,
     'advanced_model': None,
     'xgboost_model': None,
+    'lightgbm_model': None,
+    'stacking_model': None,
     'advanced_model_features': None,
     'xgboost_model_features': None,
     'model_loaded': False,
@@ -117,7 +119,16 @@ def init_models():
     if isinstance(raw, dict) and 'feature_names' in raw:
         _state['xgboost_model_features'] = raw['feature_names']
 
+    # LightGBM
+    model, _ = _try_load(paths_for('lightgbm_model.pkl'), 'lightgbm')
+    _state['lightgbm_model'] = model
+
+    # Stacking Ensemble
+    model, _ = _try_load(paths_for('stacking_model.pkl'), 'stacking')
+    _state['stacking_model'] = model
+
     _state['model_loaded'] = True
-    loaded = sum(1 for k in ('original_model', 'improved_model', 'advanced_model', 'xgboost_model')
+    loaded = sum(1 for k in ('original_model', 'improved_model', 'advanced_model',
+                              'xgboost_model', 'lightgbm_model', 'stacking_model')
                  if _state[k] is not None)
-    logger.info(f"Models initialized: {loaded}/4 loaded")
+    logger.info(f"Models initialized: {loaded}/6 loaded")

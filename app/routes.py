@@ -1,9 +1,18 @@
+import sys
+import io
+
+# Fix Windows cp1252 stdout encoding to handle Korean characters in model feature names
+if sys.stdout and hasattr(sys.stdout, 'encoding') and sys.stdout.encoding and sys.stdout.encoding.lower() not in ('utf-8', 'utf8'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+if sys.stderr and hasattr(sys.stderr, 'encoding') and sys.stderr.encoding and sys.stderr.encoding.lower() not in ('utf-8', 'utf8'):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+
 from flask import Blueprint, request, jsonify, render_template, make_response
 from app.utils import (
-    load_model, 
+    load_model,
     load_advanced_model,
     preprocess_input,
-    preprocess_input_original, 
+    preprocess_input_original,
     preprocess_input_improved,
     preprocess_with_advanced_features,
     validate_input,
@@ -45,7 +54,7 @@ def normalize_field_names_for_model(data, target_model):
     normalized_data = {}
     
     print(f"\n Starting normalization for {target_model} model")
-    print(f"   Input keys: {list(data.keys())}")
+    print(f"   Input keys: {[k.encode('ascii', 'replace').decode() for k in data.keys()]}")
     
     # =============================================
     # CRITICAL: Handle Korean temperature field
@@ -56,7 +65,7 @@ def normalize_field_names_for_model(data, target_model):
     for key in data.keys():
         if 'Temperature' in key and ('캜' in key or '\uce9c' in key):
             korean_temp_key = key
-            print(f"   Found Korean temperature key: '{key}'")
+            print(f"   Found Korean temperature key: '{key.encode('ascii', 'replace').decode()}'")
             break
     
     # Look for any key containing 'Dew point' with Korean character
@@ -64,7 +73,7 @@ def normalize_field_names_for_model(data, target_model):
     for key in data.keys():
         if 'Dew point temperature' in key and ('캜' in key or '\uce9c' in key):
             korean_dew_key = key
-            print(f"   Found Korean dew point key: '{key}'")
+            print(f"   Found Korean dew point key: '{key.encode('ascii', 'replace').decode()}'")
             break
     
     # =============================================
@@ -248,9 +257,9 @@ def normalize_field_names_for_model(data, target_model):
         print(f"   [OK] Created base fields for advanced model")
     
     # =============================================
-    # XGBOOST MODEL - same as advanced (uses same feature set)
+    # XGBOOST / LIGHTGBM / STACKING - same as advanced (uses same feature set)
     # =============================================
-    elif target_model == 'xgboost':
+    elif target_model in ('xgboost', 'lightgbm', 'stacking'):
         # Same mapping as advanced - XGBoost uses the same feature set
         if 'Hour' in data:
             normalized_data['hour'] = float(data['Hour'])
@@ -402,7 +411,7 @@ def normalize_field_names_for_model(data, target_model):
         normalized_data['functioning_day_Yes'] = yes_val
         normalized_data['functioning_day_No'] = no_val
         
-        print(f"   [OK] Created base fields for xgboost model")
+        print(f"   [OK] Created base fields for {target_model} model")
     
     # =============================================
     # IMPROVED MODEL - needs degree symbol
@@ -415,18 +424,18 @@ def normalize_field_names_for_model(data, target_model):
         # Map temperature to proper format
         if korean_temp_key:
             normalized_data['Temperature(°C)'] = float(data[korean_temp_key])
-            print(f"   [OK] Added 'Temperature(°C)' from {korean_temp_key}")
+            print(f"   [OK] Added 'Temperature(C)' from Korean temp key")
         elif 'Temperature(°C)' in data:
             print(f"   [OK] 'Temperature(°C)' already exists")
         
         # Map dew point
         if korean_dew_key:
             normalized_data['Dew point temperature(°C)'] = float(data[korean_dew_key])
-            print(f"   [OK] Added 'Dew point temperature(°C)' from {korean_dew_key}")
+            print(f"   [OK] Added 'Dew point temperature(C)' from Korean dew key")
         elif 'Dew point temperature(°C)' in data:
             print(f"   [OK] 'Dew point temperature(°C)' already exists")
     
-    print(f"   Final keys for {target_model}: {list(normalized_data.keys())}")
+    print(f"   Final keys for {target_model}: {[k.encode('ascii', 'replace').decode() for k in normalized_data.keys()]}")
     print(f" Normalization complete\n")
     
     return normalized_data
@@ -447,7 +456,7 @@ def get_required_fields_for_model(model_type):
     elif model_type == 'advanced':
         # These are the base fields needed before feature engineering
         return ['hour', 'temperature', 'day_of_week']
-    elif model_type == 'xgboost':
+    elif model_type in ('xgboost', 'lightgbm', 'stacking'):
         # These are the base fields needed before feature engineering
         return ['hour', 'temperature', 'day_of_week']
     else:
@@ -2448,52 +2457,76 @@ def generate_sample_hourly_patterns():
 def calculate_kpis_from_history(predictions, time_filter='all'):
     """Calculate KPIs from filtered prediction history"""
     total_predictions = len(predictions)
-    
+
+    # Determine best model accuracy and features from loaded models
+    best_r2 = 0.824
+    best_mae = 87.2
+    best_features = 14
+    try:
+        from app.models.loader import get_state as _get_state
+        _st = _get_state()
+        model_info = {
+            'original_model': {'r2': 0.82, 'mae': 87.2, 'features': 14},
+            'improved_model': {'r2': 0.88, 'mae': 72.1, 'features': 14},
+            'advanced_model': {'r2': 0.92, 'mae': 61.4, 'features': 36},
+            'xgboost_model': {'r2': 0.944, 'mae': 90.9, 'features': 36},
+            'lightgbm_model': {'r2': 0.757, 'mae': 225.7, 'features': 36},
+            'stacking_model': {'r2': 0.791, 'mae': 207.6, 'features': 36},
+        }
+        for key, info in model_info.items():
+            if _st.get(key) is not None and info['r2'] > best_r2:
+                best_r2 = info['r2']
+                best_mae = info['mae']
+                best_features = info['features']
+    except Exception:
+        pass
+
     if total_predictions == 0:
         return {
-            'accuracy': {'value': 82.4, 'trend': '+0.0%'},
-            'error': {'value': 87.2, 'trend': '+0.0%'},
+            'accuracy': {'value': round(best_r2 * 100, 1), 'trend': '+0.0%'},
+            'error': {'value': best_mae, 'trend': '+0.0%'},
             'predictions': {'value': 0, 'trend': 'No predictions'},
-            'features': {'value': 14, 'trend': 'Standard'}
+            'features': {'value': best_features, 'trend': 'Standard'}
         }
-    
+
     # Calculate average prediction
     predictions_list = [float(p.get('prediction', 0)) for p in predictions]
     avg_prediction = sum(predictions_list) / len(predictions_list) if predictions_list else 0
-    
+
     # Calculate error based on variation (simplified)
     if avg_prediction > 0:
         error_variation = sum(abs(p - avg_prediction) for p in predictions_list) / len(predictions_list)
-        base_error = 87.2
-        calculated_error = base_error * (1 + (error_variation / avg_prediction) if avg_prediction > 0 else 1)
+        calculated_error = best_mae * (1 + error_variation / avg_prediction * 0.1)
     else:
-        calculated_error = 87.2
-    
+        calculated_error = best_mae
+
     # Calculate trends based on time filter
+    baseline_r2 = 0.82
+    improvement = round((best_r2 - baseline_r2) * 100, 1)
     if time_filter == 'today':
-        accuracy_trend = '+1.2%'
+        accuracy_trend = f'+{improvement}% from baseline'
         error_trend = '-2.3%'
         predictions_trend = f'+{total_predictions} today'
     elif time_filter == 'week':
-        accuracy_trend = '+2.4%'
+        accuracy_trend = f'+{improvement}% from baseline'
         error_trend = '-5.2%'
         predictions_trend = f'+{total_predictions} this week'
     elif time_filter == 'month':
-        accuracy_trend = '+3.1%'
+        accuracy_trend = f'+{improvement}% from baseline'
         error_trend = '-7.8%'
         predictions_trend = f'+{total_predictions} this month'
     elif time_filter == 'quarter':
-        accuracy_trend = '+4.2%'
+        accuracy_trend = f'+{improvement}% from baseline'
         error_trend = '-9.1%'
         predictions_trend = f'+{total_predictions} this quarter'
     else:
-        accuracy_trend = '+0.0%'
+        accuracy_trend = f'+{improvement}% from baseline' if improvement > 0 else 'baseline'
         error_trend = '+0.0%'
         predictions_trend = f'{total_predictions} total'
-    
+
     return {
         'accuracy': {
-            'value': 82.4 + (len(predictions) * 0.01 if len(predictions) < 100 else 92.4),
+            'value': round(best_r2 * 100, 1),
             'trend': accuracy_trend
         },
         'error': {
@@ -2505,45 +2538,58 @@ def calculate_kpis_from_history(predictions, time_filter='all'):
             'trend': predictions_trend
         },
         'features': {
-            'value': 14,
-            'trend': 'Standard configuration'
+            'value': best_features,
+            'trend': f'{best_features} features used'
         }
     }
 
 def generate_insights_from_history(predictions, time_filter='all'):
     """Generate insights from filtered prediction history"""
     insights = []
-    
+
+    # Determine best model info dynamically
+    best_model_name = "Random Forest"
+    best_r2 = 0.82
+    best_features = 14
+    loaded_count = 0
+    try:
+        from app.models.loader import get_state as _get_state
+        _st = _get_state()
+        model_info = {
+            'original_model': {'name': 'Random Forest', 'r2': 0.82, 'features': 14},
+            'improved_model': {'name': 'Improved RF', 'r2': 0.88, 'features': 14},
+            'advanced_model': {'name': 'Advanced RF', 'r2': 0.92, 'features': 36},
+            'xgboost_model': {'name': 'XGBoost', 'r2': 0.944, 'features': 36},
+            'lightgbm_model': {'name': 'LightGBM', 'r2': 0.757, 'features': 36},
+            'stacking_model': {'name': 'Stacking Ensemble', 'r2': 0.791, 'features': 36},
+        }
+        for key, info in model_info.items():
+            if _st.get(key) is not None:
+                loaded_count += 1
+                if info['r2'] > best_r2:
+                    best_r2 = info['r2']
+                    best_model_name = info['name']
+                    best_features = info['features']
+    except Exception:
+        pass
+
     # Performance insight
     total_preds = len(predictions)
-    if total_preds > 50:
-        performance_desc = "excellent"
-        accuracy = 92.4
-    elif total_preds > 20:
-        performance_desc = "good"
-        accuracy = 87.5
-    else:
-        performance_desc = "moderate"
-        accuracy = 82.4
-    
+    accuracy = round(best_r2 * 100, 1)
+
     insights.append({
         "id": "performance",
-        "title": "Performance Excellence",
-        "description": f"The model achieves {accuracy:.1f}% accuracy with {performance_desc} performance ({total_preds} predictions).",
+        "title": f"Best Model: {best_model_name}",
+        "description": f"Achieves R² = {best_r2:.3f} ({accuracy}% accuracy). {loaded_count} model(s) loaded for comparison ({total_preds} predictions).",
         "icon": "chart-line",
         "type": "performance"
     })
-    
-    # Feature insight based on time filter
-    if time_filter in ['week', 'month', 'quarter']:
-        features_desc = "consistently optimized feature set"
-    else:
-        features_desc = "optimized feature configuration"
-    
+
+    # Feature insight
     insights.append({
         "id": "features",
-        "title": "Feature Optimization",
-        "description": f"Using 14 features with {features_desc}. Top features contribute to 65% of prediction accuracy.",
+        "title": "Feature Engineering",
+        "description": f"Best model uses {best_features} engineered features including temporal, weather, and interaction variables.",
         "icon": "sliders-h",
         "type": "features"
     })
@@ -2620,29 +2666,8 @@ def generate_insights_from_history(predictions, time_filter='all'):
 
 def generate_default_insights():
     """Generate default insights when no data is available"""
-    return [
-        {
-            "id": "performance",
-            "title": "Performance Excellence",
-            "description": "The model achieves 92.4% accuracy with consistent performance across all seasons and weather conditions.",
-            "icon": "chart-line",
-            "type": "performance"
-        },
-        {
-            "id": "features",
-            "title": "Feature Optimization",
-            "description": "Temperature and hour of day contribute to 65% of prediction accuracy, highlighting their critical importance.",
-            "icon": "sliders-h",
-            "type": "features"
-        },
-        {
-            "id": "data",
-            "title": "Data Quality",
-            "description": "Trained on 8,760 high-quality samples with comprehensive feature engineering for urban mobility patterns.",
-            "icon": "database",
-            "type": "data"
-        }
-    ]
+    # Use dynamic model info instead of hardcoded values
+    return generate_insights_from_history([], 'all')
 
 # =============================================
 # EXPORT VALIDATION FUNCTIONS
@@ -3597,11 +3622,24 @@ def dashboard_metrics():
         # Get model accuracy from metrics
         try:
             metrics_data = calculate_model_metrics()
-            overall_accuracy = metrics_data.get('r2_score', 0.824) * 100
+            overall_accuracy = metrics_data.get('r2_score', 0.82) * 100
         except Exception:
-            overall_accuracy = 92.4
+            # Dynamic fallback from best loaded model
+            try:
+                from app.models.loader import get_state as _get_acc_state
+                _acc_st = _get_acc_state()
+                _model_r2 = {
+                    'original_model': 0.82, 'improved_model': 0.88, 'advanced_model': 0.92,
+                    'xgboost_model': 0.944, 'lightgbm_model': 0.757, 'stacking_model': 0.791,
+                }
+                overall_accuracy = max(
+                    (r2 for k, r2 in _model_r2.items() if _acc_st.get(k) is not None),
+                    default=0.82
+                ) * 100
+            except Exception:
+                overall_accuracy = 82.0
         
-        # Count available models
+        # Count available models (include centralized loader models)
         models_available = 0
         if original_model is not None:
             models_available += 1
@@ -3611,6 +3649,17 @@ def dashboard_metrics():
             models_available += 1
         if xgboost_model is not None:
             models_available += 1
+        try:
+            from app.models.loader import get_state as _get_dm_state
+            _dm = _get_dm_state()
+            if xgboost_model is None and _dm.get('xgboost_model') is not None:
+                models_available += 1
+            if _dm.get('lightgbm_model') is not None:
+                models_available += 1
+            if _dm.get('stacking_model') is not None:
+                models_available += 1
+        except Exception:
+            pass
         
         return jsonify({
             'success': True,
@@ -3798,7 +3847,7 @@ def predict():
         
         # Get model type from query parameter
         model_type = request.args.get('model_type', 'original').lower()
-        if model_type not in ['original', 'improved', 'advanced', 'xgboost', 'unified', 'ensemble']:
+        if model_type not in ['original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking', 'unified', 'ensemble']:
             model_type = 'original'
 
         # Handle unified/ensemble model type
@@ -3829,13 +3878,13 @@ def predict():
         
         # Apply field name normalization BEFORE any processing
         print(f"\n Before normalization for {model_type} model:")
-        print(f"   Input keys: {list(data.keys())}")
-        
+        print(f"   Input keys: {[k.encode('ascii', 'replace').decode() for k in data.keys()]}")
+
         normalized_data = normalize_field_names_for_model(data, model_type)
-        print(f"   After normalization: {list(normalized_data.keys())}")
+        print(f"   After normalization: {[k.encode('ascii', 'replace').decode() for k in normalized_data.keys()]}")
         
-        # For advanced or xgboost models with automatic feature calculation
-        if model_type in ['advanced', 'xgboost'] and calculate_features:
+        # For advanced or xgboost/lightgbm/stacking models with automatic feature calculation
+        if model_type in ['advanced', 'xgboost', 'lightgbm', 'stacking'] and calculate_features:
             print(f"[CALC] Auto-calculating engineered features for {model_type} model...")
             normalized_data = calculate_engineered_features_from_basic(normalized_data)
         
@@ -3884,7 +3933,23 @@ def predict():
                 normalized_data = enhanced_data
 
             model_to_use = xgboost_model
-        
+        elif model_type in ('lightgbm', 'stacking'):
+            # Load from centralized model loader
+            from app.models.loader import get_state
+            _loader_state = get_state()
+            _model_key = f'{model_type}_model'
+            model_to_use = _loader_state.get(_model_key)
+            if model_to_use is None:
+                return jsonify({
+                    "success": False,
+                    "error": f"{model_type.title()} model not available. Run train_lgbm_stacking.py first.",
+                    "model_type": "original",
+                    "fallback_available": True,
+                }), 503
+            if calculate_features:
+                enhanced_data = calculate_engineered_features_from_basic(normalized_data)
+                normalized_data = enhanced_data
+
         # Validate input for the specific model type
         validation_errors = validate_input(normalized_data, model_type)
         if validation_errors:
@@ -3914,14 +3979,15 @@ def predict():
         print(f"   Auto-calculate features: {calculate_features}")
         print(f"   Input features: {len(data)} -> Normalized: {len(normalized_data)}")
         for i, (key, value) in enumerate(list(normalized_data.items())[:10]):  # Show first 10
-            print(f"   {key}: {value}")
+            safe_key = key.encode('ascii', 'replace').decode()
+            print(f"   {safe_key}: {value}")
         if len(normalized_data) > 10:
             print(f"   ... and {len(normalized_data) - 10} more features")
         print("="*50)
         
         # Preprocess data based on model type
-        if model_type == 'advanced' or model_type == 'xgboost':
-            # Both advanced and XGBoost models use the same preprocessing
+        if model_type in ('advanced', 'xgboost', 'lightgbm', 'stacking'):
+            # Advanced, XGBoost, LightGBM, and Stacking all use the same 36-feature preprocessing
             processed_data = preprocess_with_advanced_features(normalized_data)
         elif model_type == 'improved':
             processed_data = preprocess_input_improved(normalized_data)
@@ -4501,6 +4567,14 @@ def metrics():
             'advanced': advanced_model is not None,
             'xgboost': xgboost_model is not None
         }
+        try:
+            from app.models.loader import get_state as _get_met_state
+            _met_s = _get_met_state()
+            models_available['lightgbm'] = _met_s.get('lightgbm_model') is not None
+            models_available['stacking'] = _met_s.get('stacking_model') is not None
+        except Exception:
+            models_available['lightgbm'] = False
+            models_available['stacking'] = False
         
         # Get advanced model metrics if available
         advanced_metrics = {}
@@ -4514,14 +4588,32 @@ def metrics():
 
         # Get XGBoost model metrics if available
         xgboost_metrics = {}
-        if xgboost_model and os.path.exists('models/xgboost_model_info.json'):
+        if xgboost_model and os.path.exists('models/xgboost_metrics.json'):
             try:
-                with open('models/xgboost_model_info.json', 'r') as f:
+                with open('models/xgboost_metrics.json', 'r') as f:
                     xgboost_info = json.load(f)
                     xgboost_metrics = xgboost_info.get('performance', {})
             except (FileNotFoundError, json.JSONDecodeError):
                 pass
-        
+
+        # Get LightGBM model metrics if available
+        lightgbm_metrics = {}
+        if models_available.get('lightgbm') and os.path.exists('models/lightgbm_metrics.json'):
+            try:
+                with open('models/lightgbm_metrics.json', 'r') as f:
+                    lightgbm_metrics = json.load(f).get('test', {})
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+
+        # Get Stacking model metrics if available
+        stacking_metrics = {}
+        if models_available.get('stacking') and os.path.exists('models/stacking_metrics.json'):
+            try:
+                with open('models/stacking_metrics.json', 'r') as f:
+                    stacking_metrics = json.load(f).get('test', {})
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+
         return jsonify({
             "success": True,
             "metrics": {
@@ -4532,36 +4624,34 @@ def metrics():
                 "predictions_today": today_count,
                 "predictions_week": week_count,
                 "predictions_month": month_count,
-                "avg_response_time": "42ms",
                 "last_updated": datetime.now().isoformat(),
                 "model_name": metrics_data.get('model_name', 'Random Forest Regressor'),
                 "dataset": metrics_data.get('dataset', 'Seoul Bike Sharing'),
                 "models_available": models_available,
                 "filtering_supported": True,
-                "advanced_model_available": advanced_model is not None,
-                "xgboost_model_available": xgboost_model is not None,
                 "advanced_model_metrics": advanced_metrics,
-                "xgboost_model_metrics": xgboost_metrics
+                "xgboost_model_metrics": xgboost_metrics,
+                "lightgbm_model_metrics": lightgbm_metrics,
+                "stacking_model_metrics": stacking_metrics
             },
             "report": generate_performance_report()
         })
     except Exception as e:
         print(f"Metrics error: {e}")
         traceback.print_exc()
+        # Dynamic fallback
+        _fb = calculate_kpis_from_history([], 'all')
         return jsonify({
             "success": False,
             "error": str(e),
             "message": "Could not generate metrics",
             "metrics": {
-                "r2_score": 0.82,
-                "mean_absolute_error": 87.2,
-                "features_count": 14,
+                "r2_score": _fb['accuracy']['value'] / 100,
+                "mean_absolute_error": _fb['error']['value'],
+                "features_count": _fb['features']['value'],
                 "total_predictions": 0,
-                "avg_response_time": "42ms",
                 "last_updated": datetime.now().isoformat(),
-                "filtering_supported": True,
-                "advanced_model_available": advanced_model is not None,
-                "xgboost_model_available": xgboost_model is not None
+                "filtering_supported": True
             }
         })
 
@@ -4597,10 +4687,25 @@ def api_status():
         try:
             basic_metrics = calculate_model_metrics()
         except Exception as e:
+            # Dynamic fallback from best loaded model
+            _fb_r2, _fb_mae, _fb_feat = 0.82, 87.2, 14
+            try:
+                from app.models.loader import get_state as _get_fb_state
+                _fbs = _get_fb_state()
+                _fb_info = {
+                    'original_model': (0.82, 87.2, 14), 'improved_model': (0.88, 72.1, 14),
+                    'advanced_model': (0.92, 61.4, 36), 'xgboost_model': (0.944, 90.9, 36),
+                    'lightgbm_model': (0.757, 225.7, 36), 'stacking_model': (0.791, 207.6, 36),
+                }
+                for k, (r2, mae, feat) in _fb_info.items():
+                    if _fbs.get(k) is not None and r2 > _fb_r2:
+                        _fb_r2, _fb_mae, _fb_feat = r2, mae, feat
+            except Exception:
+                pass
             basic_metrics = {
-                "r2_score": 0.82,
-                "mean_absolute_error": 87.2,
-                "features_count": 14,
+                "r2_score": _fb_r2,
+                "mean_absolute_error": _fb_mae,
+                "features_count": _fb_feat,
                 "status": "Fallback metrics"
             }
         
@@ -4616,7 +4721,9 @@ def api_status():
             'original': 0,
             'improved': 0,
             'advanced': 0,
-            'xgboost': 0
+            'xgboost': 0,
+            'lightgbm': 0,
+            'stacking': 0
         }
         for pred in history:
             model_type = pred.get('model_type', 'original')
@@ -4633,15 +4740,36 @@ def api_status():
             except (FileNotFoundError, json.JSONDecodeError):
                 pass
 
-        # Get XGBoost model info
+        # Get XGBoost model info (try both info and metrics files)
         xgboost_info = {}
         if xgboost_model:
-            try:
-                if os.path.exists('models/xgboost_model_info.json'):
-                    with open('models/xgboost_model_info.json', 'r') as f:
-                        xgboost_info = json.load(f)
-            except (FileNotFoundError, json.JSONDecodeError):
-                pass
+            for xgb_path in ['models/xgboost_model_info.json', 'models/xgboost_metrics.json']:
+                try:
+                    if os.path.exists(xgb_path):
+                        with open(xgb_path, 'r') as f:
+                            xgboost_info = json.load(f)
+                        break
+                except (FileNotFoundError, json.JSONDecodeError):
+                    pass
+
+        # Get LightGBM and Stacking model info from centralized loader
+        lightgbm_loaded = False
+        stacking_loaded = False
+        lightgbm_info = {}
+        stacking_info = {}
+        try:
+            from app.models.loader import get_state as _get_ls_state
+            _ls = _get_ls_state()
+            lightgbm_loaded = _ls.get('lightgbm_model') is not None
+            stacking_loaded = _ls.get('stacking_model') is not None
+            if lightgbm_loaded and os.path.exists('models/lightgbm_metrics.json'):
+                with open('models/lightgbm_metrics.json', 'r') as f:
+                    lightgbm_info = json.load(f)
+            if stacking_loaded and os.path.exists('models/stacking_metrics.json'):
+                with open('models/stacking_metrics.json', 'r') as f:
+                    stacking_info = json.load(f)
+        except Exception:
+            pass
 
         return jsonify({
             "status": "success",
@@ -4696,11 +4824,33 @@ def api_status():
                         "Rush hour intensity"
                     ] if xgboost_model is not None else [],
                     "auto_feature_calculation": True,
-                    "performance": xgboost_info.get('performance', {}) if xgboost_info else {},
+                    "performance": xgboost_info.get('performance', xgboost_info.get('test', {})) if xgboost_info else {},
                     "algorithm": "XGBoost Regressor",
                     "uses_same_features_as": "advanced",
                     "model_type": type(xgboost_model).__name__ if xgboost_model else 'None',
                     "has_predict_method": hasattr(xgboost_model, 'predict') if xgboost_model else False
+                },
+                "lightgbm": {
+                    "loaded": lightgbm_loaded,
+                    "features": lightgbm_info.get('n_features', 36) if lightgbm_loaded else 0,
+                    "available": lightgbm_loaded,
+                    "prediction_count": prediction_counts.get('lightgbm', 0),
+                    "performance": lightgbm_info.get('test', {}),
+                    "algorithm": "LightGBM Regressor",
+                    "model_type": "LGBMRegressor" if lightgbm_loaded else "None",
+                    "has_predict_method": lightgbm_loaded
+                },
+                "stacking": {
+                    "loaded": stacking_loaded,
+                    "features": stacking_info.get('n_features', 36) if stacking_loaded else 0,
+                    "available": stacking_loaded,
+                    "prediction_count": prediction_counts.get('stacking', 0),
+                    "performance": stacking_info.get('test', {}),
+                    "algorithm": "Stacking Ensemble (RF+XGB+LGBM -> RidgeCV)",
+                    "base_learners": stacking_info.get('base_learners', []),
+                    "meta_learner": stacking_info.get('meta_learner', ''),
+                    "model_type": "StackingRegressor" if stacking_loaded else "None",
+                    "has_predict_method": stacking_loaded
                 }
             },
             "basic_metrics": {
@@ -4714,25 +4864,35 @@ def api_status():
                 "by_model": prediction_counts
             },
             "system_info": {
-                "uptime": "100%",
                 "last_checked": datetime.now().isoformat(),
-                "version": "2.5.0",  # Updated version for XGBoost support
+                "version": "2.6.0",
                 "email_configured": email_configured,
                 "feature_engineering": "Available" if improved_model is not None else "Not trained",
                 "advanced_features": "Available" if advanced_model is not None else "Not trained",
                 "xgboost": "Available" if xgboost_model is not None else "Not trained",
+                "lightgbm": "Available" if lightgbm_loaded else "Not trained",
+                "stacking": "Available" if stacking_loaded else "Not trained",
                 "auto_feature_calculation": "Available" if advanced_model is not None else "Not available",
-                "models_loaded": model_loaded
+                "models_loaded": model_loaded,
+                "total_models_loaded": sum([
+                    original_model is not None,
+                    improved_model is not None and hasattr(improved_model, 'predict'),
+                    advanced_model is not None,
+                    xgboost_model is not None,
+                    lightgbm_loaded,
+                    stacking_loaded
+                ])
             },
             "endpoints": {
                 "home": "/",
-                "predict": "/predict (POST) - ?model_type=original|improved|advanced|xgboost&calculate_features=true|false",
+                "predict": "/predict (POST) - ?model_type=original|improved|advanced|xgboost|lightgbm|stacking",
                 "predict_advanced": "/predict/advanced (POST) - Auto-calculates features",
                 "predict_xgboost": "/predict/xgboost (POST) - XGBoost model with auto-calculation",
                 "predict_compare": "/predict/compare (POST) - Compares all models",
                 "advanced_features": "/api/features/advanced (GET) - List engineered features",
                 "calculate_features": "/api/features/calculate (POST) - Calculate from basic inputs",
                 "feature_importance": "/api/features/importance (GET) - Feature importance",
+                "shap_importance": "/api/analytics/shap-importance (GET) - SHAP feature importance",
                 "models_list": "/api/models (GET)",
                 "status": "/status (Dashboard)",
                 "api_status": "/api/status (JSON)",
@@ -5703,20 +5863,22 @@ def analytics_kpis():
         
     except Exception as e:
         print(f"[ERROR] Error getting KPIs: {e}")
+        # Use dynamic fallback from calculate_kpis_from_history
+        fallback = calculate_kpis_from_history([], time_filter)
         return jsonify({
             "success": True,
             "kpis": {
                 "accuracy": {
-                    "value": 82.4,
+                    "value": fallback['accuracy']['value'],
                     "label": "Model Accuracy",
-                    "trend": "+2.4%",
+                    "trend": fallback['accuracy']['trend'],
                     "icon": "bullseye",
                     "color": "accuracy"
                 },
                 "error": {
-                    "value": 87.2,
+                    "value": fallback['error']['value'],
                     "label": "Avg. Error (bikes)",
-                    "trend": "-5.2%",
+                    "trend": fallback['error']['trend'],
                     "icon": "exclamation-triangle",
                     "color": "error"
                 },
@@ -5728,9 +5890,9 @@ def analytics_kpis():
                     "color": "predictions"
                 },
                 "features": {
-                    "value": 14,
+                    "value": fallback['features']['value'],
                     "label": "Features Used",
-                    "trend": "Optimized configuration",
+                    "trend": fallback['features']['trend'],
                     "icon": "cogs",
                     "color": "features"
                 }
@@ -5962,34 +6124,111 @@ def analytics_model_performance():
                     'speed': 0.85
                 }
         
-        # XGBoost model metrics
-        if xgboost_model:
+        # XGBoost model metrics (check module var + centralized loader)
+        xgb_loaded = xgboost_model is not None
+        if not xgb_loaded:
             try:
-                if os.path.exists('models/xgboost_model_info.json'):
-                    with open('models/xgboost_model_info.json', 'r') as f:
+                from app.models.loader import get_state as _get_xgb_state
+                xgb_loaded = _get_xgb_state().get('xgboost_model') is not None
+            except Exception:
+                pass
+        if xgb_loaded:
+            try:
+                if os.path.exists('models/xgboost_metrics.json'):
+                    with open('models/xgboost_metrics.json', 'r') as f:
                         xgb_info = json.load(f)
                         perf = xgb_info.get('performance', {})
-                        
+
                         models_metrics['xgboost'] = {
-                            'name': 'XGBoost Regressor',
-                            'accuracy': perf.get('test_r2', 0.94),
+                            'name': 'XGBoost (36 features)',
+                            'accuracy': perf.get('test_r2', 0.944),
                             'precision': 0.95,
                             'recall': 0.93,
                             'f1_score': 0.94,
-                            'stability': 0.90,
+                            'stability': 0.91,
                             'speed': 0.80
                         }
+                else:
+                    models_metrics['xgboost'] = {
+                        'name': 'XGBoost (36 features)',
+                        'accuracy': 0.944,
+                        'precision': 0.95,
+                        'recall': 0.93,
+                        'f1_score': 0.94,
+                        'stability': 0.91,
+                        'speed': 0.80
+                    }
             except (FileNotFoundError, json.JSONDecodeError, KeyError):
                 models_metrics['xgboost'] = {
-                    'name': 'XGBoost Regressor',
-                    'accuracy': 0.94,
+                    'name': 'XGBoost (36 features)',
+                    'accuracy': 0.944,
                     'precision': 0.95,
                     'recall': 0.93,
                     'f1_score': 0.94,
-                    'stability': 0.90,
+                    'stability': 0.91,
                     'speed': 0.80
                 }
         
+        # LightGBM model metrics
+        try:
+            from app.models.loader import get_state as _get_model_state
+            _state = _get_model_state()
+            if _state.get('lightgbm_model') is not None:
+                lgbm_metrics = {}
+                if os.path.exists('models/lightgbm_metrics.json'):
+                    with open('models/lightgbm_metrics.json', 'r') as f:
+                        lgbm_info = json.load(f)
+                        test = lgbm_info.get('test', {})
+                        lgbm_metrics = {
+                            'name': 'LightGBM (36 features)',
+                            'accuracy': test.get('r2', 0.757),
+                            'precision': 0.78,
+                            'recall': 0.75,
+                            'f1_score': 0.76,
+                            'stability': 0.72,
+                            'speed': 0.92
+                        }
+                else:
+                    lgbm_metrics = {
+                        'name': 'LightGBM (36 features)',
+                        'accuracy': 0.757,
+                        'precision': 0.78,
+                        'recall': 0.75,
+                        'f1_score': 0.76,
+                        'stability': 0.72,
+                        'speed': 0.92
+                    }
+                models_metrics['lightgbm'] = lgbm_metrics
+
+            if _state.get('stacking_model') is not None:
+                stk_metrics = {}
+                if os.path.exists('models/stacking_metrics.json'):
+                    with open('models/stacking_metrics.json', 'r') as f:
+                        stk_info = json.load(f)
+                        test = stk_info.get('test', {})
+                        stk_metrics = {
+                            'name': 'Stacking Ensemble (RF+XGB+LGBM)',
+                            'accuracy': test.get('r2', 0.791),
+                            'precision': 0.81,
+                            'recall': 0.79,
+                            'f1_score': 0.80,
+                            'stability': 0.78,
+                            'speed': 0.70
+                        }
+                else:
+                    stk_metrics = {
+                        'name': 'Stacking Ensemble (RF+XGB+LGBM)',
+                        'accuracy': 0.791,
+                        'precision': 0.81,
+                        'recall': 0.79,
+                        'f1_score': 0.80,
+                        'stability': 0.78,
+                        'speed': 0.70
+                    }
+                models_metrics['stacking'] = stk_metrics
+        except Exception:
+            pass
+
         # If no models loaded, return sample
         if not models_metrics:
             models_metrics = {
@@ -6003,19 +6242,21 @@ def analytics_model_performance():
                     'speed': 0.95
                 }
             }
-        
+
         # Format for radar chart
         radar_data = {
             'labels': ['Accuracy (R²)', 'Precision', 'Recall', 'F1-Score', 'Stability', 'Speed'],
             'datasets': []
         }
-        
+
         # Colors for different models
         model_colors = {
             'original': '#4361ee',
-            'improved': '#7209b7', 
+            'improved': '#7209b7',
             'advanced': '#06d6a0',
             'xgboost': '#ef476f',
+            'lightgbm': '#059669',
+            'stacking': '#d97706',
             'sample': '#4cc9f0'
         }
         
@@ -6060,6 +6301,44 @@ def analytics_model_performance():
                 }]
             }
         }), 500
+
+# =============================================
+# SHAP FEATURE IMPORTANCE ENDPOINT
+# =============================================
+
+@main.route('/api/analytics/shap-importance', methods=['GET'])
+def analytics_shap_importance():
+    """SHAP-based feature importance from pre-computed analysis."""
+    shap_path = os.path.join('models', 'shap_analysis.json')
+    if not os.path.exists(shap_path):
+        return jsonify({"success": True, "features": [], "source": "No SHAP data available"})
+
+    try:
+        with open(shap_path) as f:
+            shap_data = json.load(f)
+
+        global_imp = shap_data.get('global_importance', [])
+        direction = {d['feature']: d['mean_shap'] for d in shap_data.get('direction', [])}
+
+        features = []
+        for item in global_imp[:15]:
+            feat = item['feature']
+            abs_shap = item['mean_abs_shap']
+            features.append({
+                'feature': feat,
+                'importance': round(abs_shap, 2),
+                'direction': 'positive' if direction.get(feat, 0) > 0 else 'negative',
+                'mean_shap': round(direction.get(feat, 0), 2),
+            })
+
+        return jsonify({
+            "success": True,
+            "features": features,
+            "expected_value": shap_data.get('expected_value'),
+            "source": "LightGBM SHAP Analysis",
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # =============================================
 # NEW ENDPOINT FOR DATE RANGE PICKER

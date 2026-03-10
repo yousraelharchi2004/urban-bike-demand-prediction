@@ -146,6 +146,9 @@ class AnalyticsDashboard {
             
             // Load feature importance
             await this.loadFeatureImportance();
+
+            // Load SHAP importance
+            await this.loadShapImportance();
             
             // Load model performance
             await this.loadModelPerformance();
@@ -164,6 +167,7 @@ class AnalyticsDashboard {
             this.data = {
                 kpis: null,
                 featureImportance: null,
+                shapImportance: null,
                 modelPerformance: null,
                 hourlyPatterns: null,
                 insights: null,
@@ -202,6 +206,19 @@ class AnalyticsDashboard {
             }
         } catch (error) {
                         this.data.featureImportance = null;
+        }
+    }
+
+    async loadShapImportance() {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/analytics/shap-importance`);
+            if (response.ok) {
+                this.data.shapImportance = await response.json();
+            } else {
+                throw new Error(`SHAP API returned ${response.status}`);
+            }
+        } catch (error) {
+            this.data.shapImportance = null;
         }
     }
 
@@ -459,7 +476,10 @@ class AnalyticsDashboard {
 
         // Create Feature Importance Chart
         this.createFeatureImportanceChart();
-        
+
+        // Create SHAP Importance Chart
+        this.createShapImportanceChart();
+
         // Create Performance Radar Chart
         this.createPerformanceRadarChart();
         
@@ -547,6 +567,89 @@ class AnalyticsDashboard {
         
         // Update insight text
         this.updateFeatureInsight();
+    }
+
+    createShapImportanceChart() {
+        const ctx = document.getElementById('shapImportanceChart');
+        if (!ctx) return;
+
+        let features = [];
+        let shapValues = [];
+        let barColors = [];
+        let chartTitle = 'SHAP Feature Importance';
+
+        if (this.data.shapImportance?.success && this.data.shapImportance.features.length > 0) {
+            const shapData = this.data.shapImportance.features;
+            features = shapData.map(f => f.feature);
+            shapValues = shapData.map(f => f.mean_shap);
+            barColors = shapValues.map(v => v >= 0 ? '#059669' : '#ef4444');
+            chartTitle = `SHAP Analysis (${this.data.shapImportance.source})`;
+
+            // Update insight
+            const topPositive = shapData.find(f => f.direction === 'positive');
+            const topNegative = shapData.find(f => f.direction === 'negative');
+            const insightEl = document.getElementById('shapInsight');
+            if (insightEl) {
+                let text = '';
+                if (topPositive) text += `"${topPositive.feature}" increases demand. `;
+                if (topNegative) text += `"${topNegative.feature}" decreases demand.`;
+                insightEl.innerHTML = `<p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> ${text}</p>`;
+            }
+        } else {
+            features = ['No SHAP data'];
+            shapValues = [0];
+            barColors = ['#94a3b8'];
+            const insightEl = document.getElementById('shapInsight');
+            if (insightEl) {
+                insightEl.innerHTML = '<p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> SHAP analysis not available. Run SHAP on a trained model to see directional feature impact.</p>';
+            }
+        }
+
+        this.charts.shapImportance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: features,
+                datasets: [{
+                    label: 'Mean SHAP Value',
+                    data: shapValues,
+                    backgroundColor: barColors,
+                    borderColor: barColors,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: chartTitle,
+                        font: { size: 16 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const val = context.raw;
+                                const dir = val >= 0 ? 'increases' : 'decreases';
+                                return `${dir} demand by ${Math.abs(val).toFixed(1)} bikes`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Mean SHAP Value (impact on prediction)' },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    y: {
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
     }
 
     createPerformanceRadarChart() {
@@ -1013,7 +1116,7 @@ class AnalyticsDashboard {
         }
         
         // For charts, DON'T overwrite the canvas elements - just show overlay
-        const chartIds = ['featureImportanceChart', 'performanceRadarChart', 'hourlyPatternChart'];
+        const chartIds = ['featureImportanceChart', 'shapImportanceChart', 'performanceRadarChart', 'hourlyPatternChart'];
         chartIds.forEach(chartId => {
             const canvas = document.getElementById(chartId);
             if (canvas) {

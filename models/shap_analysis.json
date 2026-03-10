@@ -1,0 +1,107 @@
+{
+  "global_importance": [
+    {
+      "feature": "Humidity%",
+      "mean_abs_shap": 319.6932678222656
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_abs_shap": 139.11143493652344
+    },
+    {
+      "feature": "functioning_day_No",
+      "mean_abs_shap": 137.5042724609375
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_abs_shap": 100.07084655761719
+    },
+    {
+      "feature": "dew_point",
+      "mean_abs_shap": 91.2188491821289
+    },
+    {
+      "feature": "rainfall",
+      "mean_abs_shap": 85.77458953857422
+    },
+    {
+      "feature": "Wind_speed_m/s",
+      "mean_abs_shap": 75.62689971923828
+    },
+    {
+      "feature": "day_of_week",
+      "mean_abs_shap": 57.555381774902344
+    },
+    {
+      "feature": "hour_sin",
+      "mean_abs_shap": 54.61225128173828
+    },
+    {
+      "feature": "temperature",
+      "mean_abs_shap": 42.9941520690918
+    },
+    {
+      "feature": "functioning_day_Yes",
+      "mean_abs_shap": 34.9680061340332
+    },
+    {
+      "feature": "season_Summer",
+      "mean_abs_shap": 31.432092666625977
+    },
+    {
+      "feature": "holiday_Holiday",
+      "mean_abs_shap": 21.51999282836914
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_abs_shap": 19.04449462890625
+    },
+    {
+      "feature": "temp_squared",
+      "mean_abs_shap": 16.306591033935547
+    }
+  ],
+  "direction": [
+    {
+      "feature": "Humidity%",
+      "mean_shap": -319.6932678222656
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_shap": 138.143798828125
+    },
+    {
+      "feature": "functioning_day_No",
+      "mean_shap": -105.88028717041016
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_shap": 100.07084655761719
+    },
+    {
+      "feature": "dew_point",
+      "mean_shap": -89.41314697265625
+    },
+    {
+      "feature": "rainfall",
+      "mean_shap": -85.77458953857422
+    },
+    {
+      "feature": "Wind_speed_m/s",
+      "mean_shap": -75.2936782836914
+    },
+    {
+      "feature": "day_of_week",
+      "mean_shap": -54.46978759765625
+    },
+    {
+      "feature": "hour_sin",
+      "mean_shap": -34.781551361083984
+    },
+    {
+      "feature": "temperature",
+      "mean_shap": -41.93757247924805
+    }
+  ],
+  "expected_value": 704.8974609375
+}

@@ -81,7 +81,9 @@ function formatModelName(modelName) {
         'original': 'Standard Model',
         'improved': 'Improved Model',
         'advanced': 'Advanced Model',
-        'xgboost': 'XGBoost'
+        'xgboost': 'XGBoost',
+        'lightgbm': 'LightGBM',
+        'stacking': 'Stacking Ensemble'
     };
     return names[modelName] || modelName;
 }
@@ -252,38 +254,118 @@ function selectModel(modelName) {
         updateAllInsights();
     }
 
+    // Show model-colored notification
+    const notifColors = {
+        'original': '#4f46e5', 'improved': '#7c3aed', 'advanced': '#0891b2',
+        'xgboost': '#db2777', 'lightgbm': '#059669', 'stacking': '#d97706'
+    };
     showNotification(`${formatModelName(modelName)} selected`, 'info');
+    // Tint the notification border to model color
+    const notif = document.querySelector('.notification');
+    if (notif) notif.style.borderLeftColor = notifColors[modelName] || notifColors.original;
 }
 
 // Update UI based on selected model
 function updateModelUI() {
     const modelName = formatModelName(selectedModel);
 
-    
-    // Update predict button color
-    const colors = {
-        'original': 'linear-gradient(135deg, #4f46e5, #4338ca)',
-        'improved': 'linear-gradient(135deg, #7c3aed, #5b21b6)',
-        'advanced': 'linear-gradient(135deg, #0891b2, #0e7490)',
-        'xgboost': 'linear-gradient(135deg, #db2777, #be185d)'
+    // Model color map (solid + gradient)
+    const modelColors = {
+        'original':  { solid: '#4f46e5', gradient: 'linear-gradient(135deg, #4f46e5, #4338ca)' },
+        'improved':  { solid: '#7c3aed', gradient: 'linear-gradient(135deg, #7c3aed, #5b21b6)' },
+        'advanced':  { solid: '#0891b2', gradient: 'linear-gradient(135deg, #0891b2, #0e7490)' },
+        'xgboost':   { solid: '#db2777', gradient: 'linear-gradient(135deg, #db2777, #be185d)' },
+        'lightgbm':  { solid: '#059669', gradient: 'linear-gradient(135deg, #059669, #047857)' },
+        'stacking':  { solid: '#d97706', gradient: 'linear-gradient(135deg, #d97706, #b45309)' }
     };
-    
+
+    const mc = modelColors[selectedModel] || modelColors.original;
+
+    // Set CSS custom property so all themed elements pick it up
+    document.documentElement.style.setProperty('--model-color', mc.solid);
+    document.documentElement.style.setProperty('--model-gradient', mc.gradient);
+
+    // Update predict button color
     if (predictBtn) {
-        predictBtn.style.background = colors[selectedModel] || colors.original;
+        predictBtn.style.background = mc.gradient;
     }
-    
+
     // Update model indicator
     const modelIndicator = document.getElementById('model-indicator');
     if (modelIndicator) {
         modelIndicator.textContent = modelName;
         modelIndicator.className = `model-indicator ${selectedModel}`;
     }
-    
+
     // Update model badge in results
     const modelTypeBadge = document.getElementById('model-type-badge');
     if (modelTypeBadge) {
         modelTypeBadge.textContent = modelName;
         modelTypeBadge.className = `model-badge ${selectedModel}`;
+    }
+
+    // Prediction count number
+    const countNumber = document.getElementById('prediction-count');
+    if (countNumber) {
+        countNumber.style.color = mc.solid;
+    }
+
+    // Result header icon
+    const resultHeaderIcon = document.querySelector('.result-header h3 i');
+    if (resultHeaderIcon) {
+        resultHeaderIcon.style.color = mc.solid;
+    }
+
+    // Result card top border accent
+    const resultCard = document.querySelector('.result-card');
+    if (resultCard) {
+        resultCard.style.borderTop = `4px solid ${mc.solid}`;
+    }
+
+    // Insights card top border accent
+    const insightsCard = document.querySelector('.insights-card');
+    if (insightsCard) {
+        insightsCard.style.borderTop = `4px solid ${mc.solid}`;
+    }
+
+    // Insights header icon
+    const insightsIcon = document.querySelector('.insights-card h3 i');
+    if (insightsIcon) {
+        insightsIcon.style.color = mc.solid;
+    }
+
+    // Metric values in breakdown
+    document.querySelectorAll('.prediction-breakdown .metric-value').forEach(el => {
+        el.style.color = mc.solid;
+    });
+
+    // Confidence badge
+    const confBadge = document.getElementById('confidence-badge');
+    if (confBadge) {
+        confBadge.style.background = mc.solid;
+    }
+
+    // Bike count left border
+    const bikeCount = document.querySelector('.bike-count');
+    if (bikeCount) {
+        bikeCount.style.borderRightColor = mc.solid;
+    }
+
+    // Action buttons hover color
+    document.querySelectorAll('.action-btn-small').forEach(btn => {
+        btn.onmouseenter = () => { btn.style.borderColor = mc.solid; btn.style.color = mc.solid; };
+        btn.onmouseleave = () => { btn.style.borderColor = ''; btn.style.color = ''; };
+    });
+
+    // Form section headers (h3 icons)
+    document.querySelectorAll('.form-section h3 i').forEach(icon => {
+        icon.style.color = mc.solid;
+    });
+
+    // Result placeholder icon
+    const placeholderIcon = document.querySelector('.result-placeholder i');
+    if (placeholderIcon) {
+        placeholderIcon.style.color = mc.solid;
     }
 }
 
@@ -335,6 +417,28 @@ function updateModelPerformanceMetrics(metrics) {
             maeValue = 90.9;
             
         }
+    } else if (selectedModel === 'lightgbm') {
+        // Show LightGBM metrics
+        if (metrics.lightgbm_model_metrics && Object.keys(metrics.lightgbm_model_metrics).length > 0) {
+            r2Value = metrics.lightgbm_model_metrics.test_r2;
+            rmseValue = metrics.lightgbm_model_metrics.test_rmse;
+            maeValue = metrics.lightgbm_model_metrics.test_mae;
+        } else {
+            r2Value = 0.757;
+            rmseValue = 302.6;
+            maeValue = 225.7;
+        }
+    } else if (selectedModel === 'stacking') {
+        // Show Stacking Ensemble metrics
+        if (metrics.stacking_model_metrics && Object.keys(metrics.stacking_model_metrics).length > 0) {
+            r2Value = metrics.stacking_model_metrics.test_r2;
+            rmseValue = metrics.stacking_model_metrics.test_rmse;
+            maeValue = metrics.stacking_model_metrics.test_mae;
+        } else {
+            r2Value = 0.791;
+            rmseValue = 280.5;
+            maeValue = 207.6;
+        }
     } else if (selectedModel === 'improved') {
         // Show improved model metrics
         if (metrics.improved_model_metrics && Object.keys(metrics.improved_model_metrics).length > 0) {
@@ -347,7 +451,7 @@ function updateModelPerformanceMetrics(metrics) {
             r2Value = 0.899;
             rmseValue = 194.6;
             maeValue = 116.6;
-            
+
         }
     } else {
         // Show base/original model metrics
@@ -705,7 +809,7 @@ async function initPage() {
         const savedModel = sessionStorage.getItem('selectedModel');
         dbg(savedModel);
         
-        if (savedModel && ['original', 'improved', 'advanced', 'xgboost'].includes(savedModel)) {
+        if (savedModel && ['original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking'].includes(savedModel)) {
             dbg(savedModel);
             selectedModel = savedModel;
         } else {
@@ -770,6 +874,8 @@ const MODEL_INFO = [
     { key: 'improved', name: 'Improved Model', color: '#7c3aed', features: '38 engineered features', r2: '0.899', rmse: '194.6', mae: '116.6', detail: 'Peak hours, weather severity, comfort index' },
     { key: 'advanced', name: 'Advanced Model', color: '#0891b2', features: '36 advanced features', r2: '0.911', rmse: '192.4', mae: '116.6', detail: 'Cyclical encoding, temp categories, rush intensity' },
     { key: 'xgboost', name: 'XGBoost', color: '#db2777', features: '36 advanced features', r2: '0.940', rmse: '153.3', mae: '90.9', detail: 'Gradient boosting with regularization' },
+    { key: 'lightgbm', name: 'LightGBM', color: '#059669', features: '36 advanced features', r2: '0.757', rmse: '302.6', mae: '225.7', detail: 'Leaf-wise gradient boosting, fast & memory efficient' },
+    { key: 'stacking', name: 'Stacking Ensemble', color: '#d97706', features: '36 advanced features', r2: '0.791', rmse: '280.5', mae: '207.6', detail: 'RF + XGBoost + LightGBM with RidgeCV meta-learner' },
 ];
 
 function openModelManager() {

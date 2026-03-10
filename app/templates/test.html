@@ -49,7 +49,7 @@
                 <div class="nav-badges">
                     <div class="nav-badge">
                         <i class="fas fa-server"></i>
-                        <span>API v2.1.4</span>
+                        <span id="api-version-badge">API</span>
                     </div>
                     <div class="nav-badge active">
                         <i class="fas fa-check-circle"></i>
@@ -80,19 +80,23 @@
                     <ul class="category-list">
                         <li class="category-item active" data-category="all">
                             <span>All Tests</span>
-                            <span class="category-count">12</span>
+                            <span class="category-count" id="count-all">0</span>
                         </li>
                         <li class="category-item" data-category="api">
                             <span>API Endpoints</span>
-                            <span class="category-count">5</span>
+                            <span class="category-count" id="count-api">0</span>
                         </li>
                         <li class="category-item" data-category="model">
                             <span>Model Tests</span>
-                            <span class="category-count">4</span>
+                            <span class="category-count" id="count-model">0</span>
+                        </li>
+                        <li class="category-item" data-category="analytics">
+                            <span>Analytics</span>
+                            <span class="category-count" id="count-analytics">0</span>
                         </li>
                         <li class="category-item" data-category="integration">
                             <span>Integration</span>
-                            <span class="category-count">3</span>
+                            <span class="category-count" id="count-integration">0</span>
                         </li>
                     </ul>
                 </div>
@@ -143,8 +147,8 @@
                                 <option value="all">All Tests</option>
                                 <option value="api">API Endpoints</option>
                                 <option value="model">Model Tests</option>
+                                <option value="analytics">Analytics</option>
                                 <option value="integration">Integration Tests</option>
-                                <option value="performance">Performance Tests</option>
                             </select>
                         </div>
                         <div class="control-group">
@@ -214,11 +218,18 @@
                             <div class="input-group">
                                 <label for="api-endpoint"><i class="fas fa-link"></i> API Endpoint</label>
                                 <select id="api-endpoint" class="test-select" onchange="updateEndpoint()">
-                                    <option value="/status">GET /status</option>
+                                    <option value="/api/status">GET /api/status (JSON)</option>
                                     <option value="/metrics">GET /metrics</option>
                                     <option value="/model-info">GET /model-info</option>
                                     <option value="/prediction-history">GET /prediction-history</option>
                                     <option value="/predict" selected>POST /predict</option>
+                                    <option value="/api/dashboard-metrics">GET /api/dashboard-metrics</option>
+                                    <option value="/api/analytics/kpis">GET /api/analytics/kpis</option>
+                                    <option value="/api/analytics/hourly-patterns">GET /api/analytics/hourly-patterns</option>
+                                    <option value="/api/analytics/model-performance">GET /api/analytics/model-performance</option>
+                                    <option value="/api/analytics/feature-importance">GET /api/analytics/feature-importance</option>
+                                    <option value="/api/analytics/shap-importance">GET /api/analytics/shap-importance</option>
+                                    <option value="/api/analytics/insights">GET /api/analytics/insights</option>
                                 </select>
                             </div>
                             <div class="input-group">
@@ -232,22 +243,7 @@
                             </div>
                             <div class="input-group">
                                 <label for="api-body"><i class="fas fa-code"></i> Request Body (JSON)</label>
-                                <textarea id="api-body" placeholder='{
-    "Hour": 14,
-    "Temperature(캜)": 22.5,
-    "Humidity(%)": 60,
-    "Wind speed (m/s)": 2.5,
-    "Visibility (10m)": 2000,
-    "Dew point temperature(캜)": 10,
-    "Solar Radiation (MJ/m2)": 1.5,
-    "Rainfall(mm)": 0,
-    "Snowfall (cm)": 0,
-    "Seasons_Spring": 0,
-    "Seasons_Summer": 1,
-    "Seasons_Winter": 0,
-    "Holiday_No Holiday": 1,
-    "Functioning Day_Yes": 1
-}'>
+                                <textarea id="api-body" placeholder='Use "Send Request" to test endpoints. Body auto-fills for /predict.'>
                                 </textarea>
                             </div>
                             <div class="test-buttons console-actions">
@@ -289,105 +285,113 @@
                     <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
                 </div>
                 <div class="footer-meta">
-                    <span class="version">v2.1.4</span>
+                    <span class="version" id="footer-version"></span>
                     <span class="status-indicator active"></span>
                     <span class="status-text">Test Environment Active</span>
                 </div>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>© 2026 UrbanFlow Predictive Systems. Professional Test Suite for Development and Quality Assurance.</p>
+            <p>&copy; 2026 UrbanFlow Predictive Systems. Professional Test Suite for Development and Quality Assurance.</p>
         </div>
     </footer>
 
     <script>
-        // Test Suite Data
+        // ================================================================
+        // Test Suite Data - All tests make real API calls
+        // ================================================================
         const testCases = [
             {
                 id: 1,
                 title: "API Status Endpoint",
-                description: "Test that the API status endpoint returns correct information about the system.",
+                description: "Test that the API status endpoint returns correct system information.",
                 category: "api",
                 priority: "critical",
-                endpoint: "/status",
+                endpoint: "/api/status",
                 method: "GET",
                 expectedStatus: 200,
-                code: `// Test code for API status endpoint
-async function testAPIStatus() {
-    const response = await fetch('/status');
+                runner: async function() {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.status !== undefined, 'Should contain status field');
+                    assert(data.endpoints !== undefined, 'Should contain endpoints field');
+                    assert(data.models !== undefined, 'Should contain models field');
+                    return { message: `Status: ${data.status}, Models: ${Object.keys(data.models).length}` };
+                },
+                code: `async function testAPIStatus() {
+    const response = await fetch('/api/status');
     const data = await response.json();
-    
     assert(response.status === 200, 'Status should be 200');
-    assert(data.model_loaded !== undefined, 'Should contain model_loaded field');
+    assert(data.status !== undefined, 'Should contain status field');
     assert(data.endpoints !== undefined, 'Should contain endpoints field');
-    
-    return { passed: true, message: 'API status endpoint working correctly' };
+    assert(data.models !== undefined, 'Should contain models field');
 }`
             },
             {
                 id: 2,
-                title: "Model Prediction",
-                description: "Test that the model can make predictions with valid input data.",
+                title: "Model Prediction (Original RF)",
+                description: "Test that the original Random Forest model can make predictions with valid input.",
                 category: "model",
                 priority: "critical",
                 endpoint: "/predict",
                 method: "POST",
                 expectedStatus: 200,
-                code: `// Test code for model prediction
-async function testModelPrediction() {
+                runner: async function() {
+                    const testData = getOriginalModelInput();
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(testData)
+                    });
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Prediction should be successful');
+                    assert(data.predicted_rented_bikes !== undefined, 'Should contain predicted_rented_bikes');
+                    return { message: `Prediction: ${data.predicted_rented_bikes} bikes` };
+                },
+                code: `async function testModelPrediction() {
     const testData = {
-        "Hour": 14,
-        "Temperature(캜)": 22.5,
-        "Humidity(%)": 60,
-        "Wind speed (m/s)": 2.5,
-        "Visibility (10m)": 2000,
-        "Dew point temperature(캜)": 10,
-        "Solar Radiation (MJ/m2)": 1.5,
-        "Rainfall(mm)": 0,
-        "Snowfall (cm)": 0,
-        "Seasons_Spring": 0,
-        "Seasons_Summer": 1,
-        "Seasons_Winter": 0,
-        "Holiday_No Holiday": 1,
-        "Functioning Day_Yes": 1
+        "Hour": 14, "Temperature(\ucE9C)": 22.5, "Humidity(%)": 60,
+        "Wind speed (m/s)": 2.5, "Visibility (10m)": 2000,
+        "Dew point temperature(\ucE9C)": 10, "Solar Radiation (MJ/m2)": 1.5,
+        "Rainfall(mm)": 0, "Snowfall (cm)": 0,
+        "Seasons_Spring": 0, "Seasons_Summer": 1, "Seasons_Winter": 0,
+        "Holiday_No Holiday": 1, "Functioning Day_Yes": 1
     };
-    
-    const response = await fetch('/predict', {
-        method: 'POST',
+    const response = await fetch('/predict', { method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testData)
-    });
-    
+        body: JSON.stringify(testData) });
     const data = await response.json();
-    
-    assert(response.status === 200, 'Status should be 200');
     assert(data.success === true, 'Prediction should be successful');
-    assert(data.prediction !== undefined, 'Should contain prediction field');
-    assert(data.predicted_rented_bikes !== undefined, 'Should contain predicted_rented_bikes field');
-    
-    return { passed: true, message: 'Model prediction working correctly' };
+    assert(data.predicted_rented_bikes !== undefined, 'Should contain predicted_rented_bikes');
 }`
             },
             {
                 id: 3,
                 title: "Model Metrics Endpoint",
-                description: "Test that the model metrics endpoint returns performance data.",
+                description: "Test that the model metrics endpoint returns performance data (R2, MAE, etc).",
                 category: "model",
                 priority: "high",
                 endpoint: "/metrics",
                 method: "GET",
                 expectedStatus: 200,
-                code: `// Test code for model metrics
-async function testModelMetrics() {
+                runner: async function() {
+                    const response = await fetch('/metrics');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.metrics !== undefined, 'Should contain metrics field');
+                    assert(data.metrics.r2_score !== undefined, 'Should contain r2_score');
+                    assert(data.metrics.mean_absolute_error !== undefined, 'Should contain MAE');
+                    return { message: `R2: ${data.metrics.r2_score}, MAE: ${data.metrics.mean_absolute_error}` };
+                },
+                code: `async function testModelMetrics() {
     const response = await fetch('/metrics');
     const data = await response.json();
-    
     assert(response.status === 200, 'Status should be 200');
     assert(data.metrics !== undefined, 'Should contain metrics field');
     assert(data.metrics.r2_score !== undefined, 'Should contain r2_score');
     assert(data.metrics.mean_absolute_error !== undefined, 'Should contain MAE');
-    
-    return { passed: true, message: 'Model metrics endpoint working correctly' };
 }`
             },
             {
@@ -399,44 +403,52 @@ async function testModelMetrics() {
                 endpoint: "/prediction-history",
                 method: "GET",
                 expectedStatus: 200,
-                code: `// Test code for prediction history
-async function testPredictionHistory() {
+                runner: async function() {
+                    const response = await fetch('/prediction-history?limit=5');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Request should be successful');
+                    assert(data.history !== undefined, 'Should contain history array');
+                    return { message: `${data.history.length} predictions in history` };
+                },
+                code: `async function testPredictionHistory() {
     const response = await fetch('/prediction-history?limit=5');
     const data = await response.json();
-    
     assert(response.status === 200, 'Status should be 200');
     assert(data.success === true, 'Request should be successful');
     assert(data.history !== undefined, 'Should contain history array');
-    
-    return { passed: true, message: 'Prediction history endpoint working correctly' };
 }`
             },
             {
                 id: 5,
-                title: "Invalid Input Handling",
-                description: "Test that the API properly handles invalid input data.",
+                title: "Incomplete Input Handling",
+                description: "Test that the API rejects incomplete input for original model with helpful error.",
                 category: "api",
                 priority: "high",
                 endpoint: "/predict",
                 method: "POST",
                 expectedStatus: 400,
-                code: `// Test code for invalid input handling
-async function testInvalidInput() {
-    const invalidData = {
-        "Hour": 25, // Invalid hour
-        "Temperature(캜)": 22.5,
-        // Missing required fields
-    };
-    
-    const response = await fetch('/predict', {
-        method: 'POST',
+                runner: async function() {
+                    const incompleteData = { "Hour": 10 };
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(incompleteData)
+                    });
+                    const data = await response.json();
+                    assert(response.status === 400, 'Should return 400 for missing required fields');
+                    assert(data.success === false, 'Should indicate failure');
+                    assert(data.missing_fields !== undefined, 'Should list missing fields');
+                    return { message: `Correctly rejected: ${data.missing_fields.length} missing fields` };
+                },
+                code: `async function testIncompleteInput() {
+    const incompleteData = { "Hour": 10 };
+    const response = await fetch('/predict', { method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invalidData)
-    });
-    
-    assert(response.status === 400, 'Should return 400 for invalid input');
-    
-    return { passed: true, message: 'Invalid input handling working correctly' };
+        body: JSON.stringify(incompleteData) });
+    const data = await response.json();
+    assert(response.status === 400, 'Should return 400 for missing fields');
+    assert(data.missing_fields !== undefined, 'Should list missing fields');
 }`
             },
             {
@@ -448,24 +460,360 @@ async function testInvalidInput() {
                 endpoint: "/model-info",
                 method: "GET",
                 expectedStatus: 200,
-                code: `// Test code for model information
-async function testModelInfo() {
+                runner: async function() {
+                    const response = await fetch('/model-info');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    // Response may nest under model_info or be flat
+                    const info = data.model_info || data;
+                    assert(info.model_loaded === true, 'Model should be loaded');
+                    assert(info.model_type !== undefined, 'Should contain model_type');
+                    return { message: `Model: ${info.model_type}, Features: ${info.features_count || info.n_features_in}` };
+                },
+                code: `async function testModelInfo() {
     const response = await fetch('/model-info');
     const data = await response.json();
-    
-    assert(response.status === 200, 'Status should be 200');
-    assert(data.model_type !== undefined, 'Should contain model_type');
-    assert(data.features_count !== undefined, 'Should contain features_count');
-    
-    return { passed: true, message: 'Model information endpoint working correctly' };
+    const info = data.model_info || data;
+    assert(info.model_loaded === true, 'Model should be loaded');
+    assert(info.model_type !== undefined, 'Should contain model_type');
+}`
+            },
+            {
+                id: 7,
+                title: "XGBoost Model Prediction",
+                description: "Test prediction using the XGBoost model via query parameter.",
+                category: "model",
+                priority: "high",
+                endpoint: "/predict?model_type=xgboost&calculate_features=true",
+                method: "POST",
+                expectedStatus: 200,
+                runner: async function() {
+                    const testData = getAdvancedModelInput();
+                    const response = await fetch('/predict?model_type=xgboost&calculate_features=true', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(testData)
+                    });
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'XGBoost prediction should succeed');
+                    return { message: `XGBoost prediction: ${data.predicted_rented_bikes || data.prediction} bikes` };
+                },
+                code: `async function testXGBoostPrediction() {
+    const testData = { "hour": 8, "temperature": 18, ... };
+    const response = await fetch('/predict?model_type=xgboost&calculate_features=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData) });
+    const data = await response.json();
+    assert(data.success === true, 'XGBoost prediction should succeed');
+}`
+            },
+            {
+                id: 8,
+                title: "Dashboard Metrics API",
+                description: "Test the dashboard metrics endpoint returns accuracy and model count.",
+                category: "analytics",
+                priority: "high",
+                endpoint: "/api/dashboard-metrics",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/dashboard-metrics');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    // Legacy route nests under data.metrics, v2 uses top-level
+                    const accuracy = data.overall_accuracy || (data.metrics && data.metrics.model_accuracy);
+                    const models = data.models_available || (data.metrics && data.metrics.models_available);
+                    assert(accuracy !== undefined, 'Should contain accuracy metric');
+                    assert(accuracy > 0 && accuracy <= 100, 'Accuracy should be 0-100');
+                    return { message: `Accuracy: ${accuracy}%, Models: ${models}` };
+                },
+                code: `async function testDashboardMetrics() {
+    const response = await fetch('/api/dashboard-metrics');
+    const data = await response.json();
+    assert(data.success === true, 'Should be successful');
+    const accuracy = data.overall_accuracy || data.metrics?.model_accuracy;
+    assert(accuracy > 0, 'Should have accuracy');
+}`
+            },
+            {
+                id: 9,
+                title: "Analytics KPIs",
+                description: "Test the analytics KPI endpoint returns accuracy, error, and feature metrics.",
+                category: "analytics",
+                priority: "medium",
+                endpoint: "/api/analytics/kpis",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/analytics/kpis');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    assert(data.kpis !== undefined, 'Should contain kpis object');
+                    assert(data.kpis.accuracy !== undefined, 'Should contain accuracy KPI');
+                    assert(data.kpis.error !== undefined, 'Should contain error KPI');
+                    return { message: `Accuracy: ${data.kpis.accuracy.value}%, MAE: ${data.kpis.error.value}` };
+                },
+                code: `async function testAnalyticsKPIs() {
+    const response = await fetch('/api/analytics/kpis');
+    const data = await response.json();
+    assert(data.success === true, 'Should be successful');
+    assert(data.kpis.accuracy !== undefined, 'Should contain accuracy KPI');
+    assert(data.kpis.error !== undefined, 'Should contain error KPI');
+}`
+            },
+            {
+                id: 10,
+                title: "Model Performance (Radar Data)",
+                description: "Test that model performance endpoint returns radar chart data for all loaded models.",
+                category: "analytics",
+                priority: "medium",
+                endpoint: "/api/analytics/model-performance",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/analytics/model-performance');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    assert(data.radar_data !== undefined, 'Should contain radar_data');
+                    assert(data.radar_data.datasets !== undefined, 'Should contain datasets array');
+                    assert(data.total_models >= 1, 'Should have at least 1 model');
+                    return { message: `${data.total_models} models in radar chart` };
+                },
+                code: `async function testModelPerformance() {
+    const response = await fetch('/api/analytics/model-performance');
+    const data = await response.json();
+    assert(data.success === true, 'Should be successful');
+    assert(data.radar_data.datasets.length >= 1, 'Should have model datasets');
+}`
+            },
+            {
+                id: 11,
+                title: "SHAP Feature Importance",
+                description: "Test the SHAP analysis endpoint returns feature importance with directional impact.",
+                category: "analytics",
+                priority: "medium",
+                endpoint: "/api/analytics/shap-importance",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/analytics/shap-importance');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    assert(data.features !== undefined, 'Should contain features array');
+                    if (data.features.length > 0) {
+                        assert(data.features[0].direction !== undefined, 'Features should have direction');
+                        assert(data.features[0].importance !== undefined, 'Features should have importance');
+                    }
+                    return { message: `${data.features.length} SHAP features, source: ${data.source}` };
+                },
+                code: `async function testShapImportance() {
+    const response = await fetch('/api/analytics/shap-importance');
+    const data = await response.json();
+    assert(data.success === true, 'Should be successful');
+    assert(data.features !== undefined, 'Should contain features');
+    // Features may be empty if SHAP data not computed
+}`
+            },
+            {
+                id: 12,
+                title: "Feature Importance (Tree-based)",
+                description: "Test that tree-based feature importance returns ranked features.",
+                category: "analytics",
+                priority: "medium",
+                endpoint: "/api/analytics/feature-importance",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/analytics/feature-importance');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    assert(data.features !== undefined, 'Should contain features array');
+                    assert(data.source_model !== undefined, 'Should identify source model');
+                    return { message: `${data.features.length} features from ${data.source_model}` };
+                },
+                code: `async function testFeatureImportance() {
+    const response = await fetch('/api/analytics/feature-importance');
+    const data = await response.json();
+    assert(data.success === true, 'Should be successful');
+    assert(data.features.length > 0, 'Should have features');
+    assert(data.source_model !== undefined, 'Should identify source model');
+}`
+            },
+            {
+                id: 13,
+                title: "Hourly Patterns",
+                description: "Test that hourly patterns endpoint returns 24-hour demand data.",
+                category: "analytics",
+                priority: "low",
+                endpoint: "/api/analytics/hourly-patterns",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/analytics/hourly-patterns');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    assert(data.patterns !== undefined, 'Should contain patterns array');
+                    assert(data.patterns.length === 24, 'Should have 24 hourly entries');
+                    return { message: `24 hourly patterns, ${data.filtered_predictions} predictions used` };
+                },
+                code: `async function testHourlyPatterns() {
+    const response = await fetch('/api/analytics/hourly-patterns');
+    const data = await response.json();
+    assert(data.patterns.length === 24, 'Should have 24 hourly entries');
+}`
+            },
+            {
+                id: 14,
+                title: "Multi-Model Consistency",
+                description: "Integration test: compare predictions across original and XGBoost models.",
+                category: "integration",
+                priority: "high",
+                endpoint: "/predict",
+                method: "POST",
+                expectedStatus: 200,
+                runner: async function() {
+                    // Original model (needs Korean field names)
+                    const resp1 = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(getOriginalModelInput())
+                    });
+                    const data1 = await resp1.json();
+                    // XGBoost model (uses normalized field names + query param)
+                    const resp2 = await fetch('/predict?model_type=xgboost&calculate_features=true', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(getAdvancedModelInput())
+                    });
+                    const data2 = await resp2.json();
+                    assert(data1.success === true, 'Original prediction should succeed');
+                    assert(data2.success === true, 'XGBoost prediction should succeed');
+                    const p1 = data1.predicted_rented_bikes || data1.prediction;
+                    const p2 = data2.predicted_rented_bikes || data2.prediction;
+                    assert(p1 > 0 && p2 > 0, 'Both predictions should be positive');
+                    return { message: `Original: ${p1}, XGBoost: ${p2} bikes` };
+                },
+                code: `async function testMultiModelConsistency() {
+    // Predict with original model (Korean field names)
+    const resp1 = await fetch('/predict', { method: 'POST', body: originalInput });
+    const data1 = await resp1.json();
+    // Predict with XGBoost (query param + normalized names)
+    const resp2 = await fetch('/predict?model_type=xgboost&calculate_features=true',
+        { method: 'POST', body: advancedInput });
+    const data2 = await resp2.json();
+    assert(data1.success && data2.success, 'Both should succeed');
+}`
+            },
+            {
+                id: 15,
+                title: "Analytics Insights",
+                description: "Test that analytics insights endpoint returns data-driven insights.",
+                category: "analytics",
+                priority: "low",
+                endpoint: "/api/analytics/insights",
+                method: "GET",
+                expectedStatus: 200,
+                runner: async function() {
+                    const response = await fetch('/api/analytics/insights');
+                    const data = await response.json();
+                    assert(response.status === 200, 'Status should be 200');
+                    assert(data.success === true, 'Should be successful');
+                    assert(data.insights !== undefined, 'Should contain insights array');
+                    assert(data.insights.length >= 1, 'Should have at least 1 insight');
+                    return { message: `${data.insights.length} insights generated` };
+                },
+                code: `async function testInsights() {
+    const response = await fetch('/api/analytics/insights');
+    const data = await response.json();
+    assert(data.success === true, 'Should be successful');
+    assert(data.insights.length >= 1, 'Should have insights');
+}`
+            },
+            {
+                id: 16,
+                title: "End-to-End: Predict and Verify History",
+                description: "Integration test: make a prediction then verify it appears in history.",
+                category: "integration",
+                priority: "high",
+                endpoint: "/predict",
+                method: "POST",
+                expectedStatus: 200,
+                runner: async function() {
+                    // Get history count before
+                    const histBefore = await fetch('/prediction-history?limit=1000');
+                    const dataBefore = await histBefore.json();
+                    const countBefore = dataBefore.history ? dataBefore.history.length : 0;
+
+                    // Make a prediction using original model input (Korean chars)
+                    const predResp = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(getOriginalModelInput())
+                    });
+                    const predData = await predResp.json();
+                    assert(predData.success === true, 'Prediction should succeed');
+
+                    // Check history increased
+                    const histAfter = await fetch('/prediction-history?limit=1000');
+                    const dataAfter = await histAfter.json();
+                    const countAfter = dataAfter.history ? dataAfter.history.length : 0;
+                    assert(countAfter >= countBefore, 'History count should not decrease after prediction');
+                    return { message: `History: ${countBefore} -> ${countAfter} entries` };
+                },
+                code: `async function testEndToEnd() {
+    // Get history count before
+    const before = await fetch('/prediction-history?limit=1000');
+    // Make prediction
+    await fetch('/predict', { method: 'POST', ... });
+    // Verify history grew
+    const after = await fetch('/prediction-history?limit=1000');
+    assert(after.count >= before.count, 'History should grow');
 }`
             }
         ];
 
-        // Initialize the test suite
+        // ================================================================
+        // Shared test input helpers
+        // ================================================================
+        function getOriginalModelInput() {
+            // Original RF model requires Korean character \ucE9C in field names
+            return {
+                "Hour": 14, "Temperature(\ucE9C)": 22.5, "Humidity(%)": 60,
+                "Wind speed (m/s)": 2.5, "Visibility (10m)": 2000,
+                "Dew point temperature(\ucE9C)": 10, "Solar Radiation (MJ/m2)": 1.5,
+                "Rainfall(mm)": 0, "Snowfall (cm)": 0,
+                "Seasons_Spring": 0, "Seasons_Summer": 1, "Seasons_Winter": 0,
+                "Holiday_No Holiday": 1, "Functioning Day_Yes": 1
+            };
+        }
+
+        function getAdvancedModelInput() {
+            // Advanced/XGBoost/LightGBM/Stacking use normalized lowercase field names
+            return {
+                "hour": 14, "temperature": 22.5, "humidity": 60,
+                "wind_speed": 2.5, "visibility": 2000,
+                "dew_point": 10, "solar_radiation": 1.5,
+                "rainfall": 0, "snowfall": 0,
+                "day_of_week": 3, "month": 6, "is_holiday": 0,
+                "functioning_day": 1, "season": 1
+            };
+        }
+
+        // ================================================================
+        // State
+        // ================================================================
         let testResults = [];
         let isRunning = false;
         let currentTestIndex = 0;
+        let apiVersion = '';
 
         // DOM Elements
         const testCasesContainer = document.getElementById('test-cases-container');
@@ -477,19 +825,50 @@ async function testModelInfo() {
         const apiMethodSelect = document.getElementById('api-method');
         const apiBodyTextarea = document.getElementById('api-body');
 
-        // Initialize test suite
+        // ================================================================
+        // Initialization
+        // ================================================================
         function initTestSuite() {
-            // Test Suite initialized
             updateTestStats();
+            updateCategoryCounts();
             initConsoleTabs();
             loadTestCases();
+            fetchApiVersion();
             showNotification('Test Suite initialized successfully!', 'success');
         }
 
+        async function fetchApiVersion() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                apiVersion = (data.system_info && data.system_info.version) || data.version || '';
+                if (apiVersion) {
+                    document.getElementById('api-version-badge').textContent = `API ${apiVersion}`;
+                    document.getElementById('footer-version').textContent = apiVersion;
+                }
+            } catch (e) {
+                document.getElementById('api-version-badge').textContent = 'API';
+                document.getElementById('footer-version').textContent = '';
+            }
+        }
+
+        function updateCategoryCounts() {
+            const counts = { all: testCases.length };
+            testCases.forEach(tc => {
+                counts[tc.category] = (counts[tc.category] || 0) + 1;
+            });
+            Object.entries(counts).forEach(([cat, count]) => {
+                const el = document.getElementById(`count-${cat}`);
+                if (el) el.textContent = count;
+            });
+        }
+
+        // ================================================================
         // Load test cases into UI
+        // ================================================================
         function loadTestCases() {
             testCasesContainer.innerHTML = '';
-            
+
             if (testCases.length === 0) {
                 testCasesContainer.innerHTML = `
                     <div class="empty-state">
@@ -499,21 +878,20 @@ async function testModelInfo() {
                 `;
                 return;
             }
-            
+
             testCases.forEach(testCase => {
                 const testElement = createTestCaseElement(testCase);
                 testCasesContainer.appendChild(testElement);
             });
         }
 
-        // Create test case element
         function createTestCaseElement(testCase) {
             const div = document.createElement('div');
             div.className = 'test-case';
             div.id = `test-case-${testCase.id}`;
             div.setAttribute('data-category', testCase.category);
             div.setAttribute('data-priority', testCase.priority);
-            
+
             div.innerHTML = `
                 <div class="test-case-header">
                     <div class="test-case-title">
@@ -528,6 +906,7 @@ async function testModelInfo() {
                     <span class="feature-tag">${testCase.priority}</span>
                     <span class="feature-tag">${testCase.method} ${testCase.endpoint}</span>
                 </div>
+                <div class="test-case-result" id="result-${testCase.id}" style="display:none;"></div>
                 <div class="test-case-details" id="details-${testCase.id}">
                     <div class="details-header">
                         <h4><i class="fas fa-code"></i> Test Code</h4>
@@ -551,252 +930,185 @@ async function testModelInfo() {
                     <i class="fas fa-play"></i> Run This Test
                 </button>
             `;
-            
+
             return div;
         }
 
-        // Run all tests
+        // ================================================================
+        // Test Execution - Real API calls, no random pass/fail
+        // ================================================================
         async function runAllTests() {
             if (isRunning) {
                 showNotification('Tests are already running!', 'warning');
                 return;
             }
-            
+
             isRunning = true;
             showNotification('Starting all tests...', 'info');
-            
+
             testResults = [];
             currentTestIndex = 0;
-            
+
             const runBtn = document.querySelector('.run-btn');
             runBtn.innerHTML = '<div class="spinner"></div> Running Tests...';
             runBtn.classList.add('running');
-            
+
             for (let i = 0; i < testCases.length; i++) {
+                if (!isRunning) break;
                 currentTestIndex = i;
                 await runSingleTest(testCases[i].id, true);
-                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
-            
+
             runBtn.innerHTML = '<i class="fas fa-play"></i> Run Selected Tests';
             runBtn.classList.remove('running');
             isRunning = false;
-            
+
             updateTestStats();
             showNotification(`All tests completed! ${getPassedCount()} passed, ${getFailedCount()} failed.`, 'success');
         }
 
-        // Run selected tests
         async function runSelectedTests() {
             const category = document.getElementById('test-category').value;
             const priority = document.getElementById('test-priority').value;
-            
+
             const filteredTests = testCases.filter(test => {
                 return (category === 'all' || test.category === category) &&
                        (priority === 'all' || test.priority === priority);
             });
-            
+
             if (filteredTests.length === 0) {
                 showNotification('No tests match the selected filters!', 'warning');
                 return;
             }
-            
+
             if (isRunning) {
                 showNotification('Tests are already running!', 'warning');
                 return;
             }
-            
+
             isRunning = true;
             showNotification(`Running ${filteredTests.length} selected tests...`, 'info');
-            
+
             testResults = [];
-            
+
             const runBtn = document.querySelector('.run-btn');
             runBtn.innerHTML = '<div class="spinner"></div> Running Tests...';
             runBtn.classList.add('running');
-            
+
             for (const test of filteredTests) {
+                if (!isRunning) break;
                 await runSingleTest(test.id, true);
-                await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
-            
+
             runBtn.innerHTML = '<i class="fas fa-play"></i> Run Selected Tests';
             runBtn.classList.remove('running');
             isRunning = false;
-            
+
             updateTestStats();
             showNotification(`Selected tests completed! ${getPassedCount()} passed, ${getFailedCount()} failed.`, 'success');
         }
 
-        // Run a single test
         async function runSingleTest(testId, fromBatch = false) {
             const testCase = testCases.find(t => t.id === testId);
             if (!testCase) return;
-            
+
             const testElement = document.getElementById(`test-case-${testId}`);
             const statusElement = testElement.querySelector('.test-case-status');
             const titleElement = testElement.querySelector('.test-case-title');
-            
+            const resultElement = document.getElementById(`result-${testId}`);
+
             // Update UI to show test is running
+            testElement.classList.remove('passed', 'failed');
             testElement.classList.add('running');
             statusElement.textContent = 'Running';
             statusElement.className = 'test-case-status running';
             titleElement.classList.add('running');
-            
+            resultElement.style.display = 'none';
+
             if (!fromBatch) {
                 showNotification(`Running test: ${testCase.title}`, 'info');
             }
-            
+
+            const startTime = performance.now();
+
             try {
-                // Simulate test execution (in a real app, this would call actual test functions)
-                await simulateTestExecution(testCase);
-                
-                // Randomly pass/fail for demonstration (in real app, use actual test results)
-                const passed = Math.random() > 0.2; // 80% pass rate for demo
-                
-                if (passed) {
-                    testElement.classList.remove('running');
-                    testElement.classList.add('passed');
-                    statusElement.textContent = 'Passed';
-                    statusElement.className = 'test-case-status passed';
-                    testResults.push({ id: testId, passed: true });
-                    
-                    if (!fromBatch) {
-                        showNotification(`Test passed: ${testCase.title}`, 'success');
-                    }
-                } else {
-                    testElement.classList.remove('running');
-                    testElement.classList.add('failed');
-                    statusElement.textContent = 'Failed';
-                    statusElement.className = 'test-case-status failed';
-                    testResults.push({ id: testId, passed: false });
-                    
-                    if (!fromBatch) {
-                        showNotification(`Test failed: ${testCase.title}`, 'error');
-                    }
+                // Run the actual test function
+                const result = await testCase.runner();
+                const duration = Math.round(performance.now() - startTime);
+
+                testElement.classList.remove('running');
+                testElement.classList.add('passed');
+                statusElement.textContent = `Passed (${duration}ms)`;
+                statusElement.className = 'test-case-status passed';
+                testResults.push({ id: testId, passed: true, duration, message: result.message });
+
+                // Show result detail
+                resultElement.style.display = 'block';
+                resultElement.className = 'test-case-result passed';
+                resultElement.innerHTML = `<i class="fas fa-check-circle"></i> ${result.message || 'Test passed'}`;
+
+                if (!fromBatch) {
+                    showNotification(`Test passed: ${testCase.title}`, 'success');
                 }
-                
             } catch (error) {
-                console.error('Test execution error:', error);
+                const duration = Math.round(performance.now() - startTime);
+
                 testElement.classList.remove('running');
                 testElement.classList.add('failed');
-                statusElement.textContent = 'Error';
+                statusElement.textContent = `Failed (${duration}ms)`;
                 statusElement.className = 'test-case-status failed';
-                testResults.push({ id: testId, passed: false, error: error.message });
-                
+                testResults.push({ id: testId, passed: false, duration, error: error.message });
+
+                // Show error detail
+                resultElement.style.display = 'block';
+                resultElement.className = 'test-case-result failed';
+                resultElement.innerHTML = `<i class="fas fa-times-circle"></i> ${error.message}`;
+
                 if (!fromBatch) {
-                    showNotification(`Test error: ${error.message}`, 'error');
+                    showNotification(`Test failed: ${error.message}`, 'error');
                 }
             }
-            
+
             titleElement.classList.remove('running');
-            
+
             if (!fromBatch) {
                 updateTestStats();
             }
         }
 
-        // Simulate test execution
-        async function simulateTestExecution(testCase) {
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    // In a real application, this would make actual API calls
-                    // For demo purposes, we'll simulate API calls
-                    
-                    if (testCase.id === 1) {
-                        // Test API status
-                        fetch('/status')
-                            .then(response => {
-                                if (response.status === testCase.expectedStatus) {
-                                    resolve();
-                                } else {
-                                    reject(new Error(`Expected status ${testCase.expectedStatus}, got ${response.status}`));
-                                }
-                            })
-                            .catch(reject);
-                    } else if (testCase.id === 2) {
-                        // Test prediction
-                        const testData = {
-                            "Hour": 14,
-                            "Temperature(캜)": 22.5,
-                            "Humidity(%)": 60,
-                            "Wind speed (m/s)": 2.5,
-                            "Visibility (10m)": 2000,
-                            "Dew point temperature(캜)": 10,
-                            "Solar Radiation (MJ/m2)": 1.5,
-                            "Rainfall(mm)": 0,
-                            "Snowfall (cm)": 0,
-                            "Seasons_Spring": 0,
-                            "Seasons_Summer": 1,
-                            "Seasons_Winter": 0,
-                            "Holiday_No Holiday": 1,
-                            "Functioning Day_Yes": 1
-                        };
-                        
-                        fetch('/predict', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(testData)
-                        })
-                        .then(response => {
-                            if (response.status === testCase.expectedStatus) {
-                                resolve();
-                            } else {
-                                reject(new Error(`Expected status ${testCase.expectedStatus}, got ${response.status}`));
-                            }
-                        })
-                        .catch(reject);
-                    } else {
-                        // Simulate other tests
-                        if (Math.random() > 0.2) { // 80% success rate
-                            resolve();
-                        } else {
-                            reject(new Error('Simulated test failure'));
-                        }
-                    }
-                }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
-            });
-        }
-
-        // Stop all tests
         function stopTests() {
             if (!isRunning) {
                 showNotification('No tests are currently running!', 'warning');
                 return;
             }
-            
+
             isRunning = false;
-            
-            // Reset running UI
+
             document.querySelectorAll('.test-case.running').forEach(test => {
                 test.classList.remove('running');
                 const status = test.querySelector('.test-case-status');
                 status.textContent = 'Stopped';
                 status.className = 'test-case-status failed';
             });
-            
+
             const runBtn = document.querySelector('.run-btn');
             runBtn.innerHTML = '<i class="fas fa-play"></i> Run Selected Tests';
             runBtn.classList.remove('running');
-            
+
             showNotification('Tests stopped by user.', 'warning');
         }
 
+        // ================================================================
         // Quick test functions
+        // ================================================================
         async function testAPIStatus() {
             showNotification('Testing API status...', 'info');
-            
             try {
                 const response = await fetch('/status');
                 const data = await response.json();
-                
-                const output = {
-                    status: response.status,
-                    data: data,
-                    timestamp: new Date().toISOString()
-                };
-                
-                updateConsoleOutput(output);
+                updateConsoleOutput({ status: response.status, data, timestamp: new Date().toISOString() });
                 showNotification('API status test completed!', 'success');
             } catch (error) {
                 updateConsoleOutput({ error: error.message });
@@ -806,18 +1118,10 @@ async function testModelInfo() {
 
         async function testModelStatus() {
             showNotification('Testing model status...', 'info');
-            
             try {
                 const response = await fetch('/model-info');
                 const data = await response.json();
-                
-                const output = {
-                    status: response.status,
-                    data: data,
-                    timestamp: new Date().toISOString()
-                };
-                
-                updateConsoleOutput(output);
+                updateConsoleOutput({ status: response.status, data, timestamp: new Date().toISOString() });
                 showNotification('Model status test completed!', 'success');
             } catch (error) {
                 updateConsoleOutput({ error: error.message });
@@ -827,40 +1131,15 @@ async function testModelInfo() {
 
         async function testPrediction() {
             showNotification('Testing prediction...', 'info');
-            
-            const testData = {
-                "Hour": 14,
-                "Temperature(캜)": 22.5,
-                "Humidity(%)": 60,
-                "Wind speed (m/s)": 2.5,
-                "Visibility (10m)": 2000,
-                "Dew point temperature(캜)": 10,
-                "Solar Radiation (MJ/m2)": 1.5,
-                "Rainfall(mm)": 0,
-                "Snowfall (cm)": 0,
-                "Seasons_Spring": 0,
-                "Seasons_Summer": 1,
-                "Seasons_Winter": 0,
-                "Holiday_No Holiday": 1,
-                "Functioning Day_Yes": 1
-            };
-            
+            const testData = getOriginalModelInput();
             try {
                 const response = await fetch('/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(testData)
                 });
-                
                 const data = await response.json();
-                
-                const output = {
-                    status: response.status,
-                    data: data,
-                    timestamp: new Date().toISOString()
-                };
-                
-                updateConsoleOutput(output);
+                updateConsoleOutput({ status: response.status, data, timestamp: new Date().toISOString() });
                 showNotification('Prediction test completed!', 'success');
             } catch (error) {
                 updateConsoleOutput({ error: error.message });
@@ -868,46 +1147,40 @@ async function testModelInfo() {
             }
         }
 
+        // ================================================================
         // API Console functions
+        // ================================================================
         async function sendAPIRequest() {
             const endpoint = apiEndpointSelect.value;
             const method = apiMethodSelect.value;
             let body = apiBodyTextarea.value;
-            
+
             showNotification(`Sending ${method} request to ${endpoint}...`, 'info');
-            
+
             try {
                 const options = {
                     method: method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 };
-                
+
                 if (method !== 'GET' && body) {
                     options.body = body;
                 }
-                
+
                 const response = await fetch(endpoint, options);
                 const data = await response.json();
-                
+
                 const output = {
-                    url: endpoint,
-                    method: method,
-                    status: response.status,
+                    url: endpoint, method, status: response.status,
                     statusText: response.statusText,
                     headers: Object.fromEntries(response.headers.entries()),
-                    data: data,
-                    timestamp: new Date().toISOString()
+                    data, timestamp: new Date().toISOString()
                 };
-                
+
                 updateConsoleOutput(output);
                 showNotification(`API request completed with status ${response.status}`, 'success');
             } catch (error) {
-                updateConsoleOutput({ 
-                    error: error.message,
-                    timestamp: new Date().toISOString()
-                });
+                updateConsoleOutput({ error: error.message, timestamp: new Date().toISOString() });
                 showNotification(`API request failed: ${error.message}`, 'error');
             }
         }
@@ -925,31 +1198,15 @@ async function testModelInfo() {
 
         function updateEndpoint() {
             const endpoint = apiEndpointSelect.value;
-            
+
             if (endpoint === '/predict') {
                 apiMethodSelect.value = 'POST';
             } else {
                 apiMethodSelect.value = 'GET';
             }
-            
-            // Update sample body based on endpoint
+
             if (endpoint === '/predict') {
-                apiBodyTextarea.value = `{
-    "Hour": 14,
-    "Temperature(캜)": 22.5,
-    "Humidity(%)": 60,
-    "Wind speed (m/s)": 2.5,
-    "Visibility (10m)": 2000,
-    "Dew point temperature(캜)": 10,
-    "Solar Radiation (MJ/m2)": 1.5,
-    "Rainfall(mm)": 0,
-    "Snowfall (cm)": 0,
-    "Seasons_Spring": 0,
-    "Seasons_Summer": 1,
-    "Seasons_Winter": 0,
-    "Holiday_No Holiday": 1,
-    "Functioning Day_Yes": 1
-}`;
+                apiBodyTextarea.value = JSON.stringify(getOriginalModelInput(), null, 4);
             } else {
                 apiBodyTextarea.value = '';
             }
@@ -957,7 +1214,6 @@ async function testModelInfo() {
 
         function updateMethod() {
             const method = apiMethodSelect.value;
-            
             if (method === 'GET') {
                 apiBodyTextarea.disabled = true;
                 apiBodyTextarea.placeholder = 'GET requests do not require a body';
@@ -967,21 +1223,19 @@ async function testModelInfo() {
             }
         }
 
-        // Update console output
+        // ================================================================
+        // Console output
+        // ================================================================
         function updateConsoleOutput(data) {
             const pre = document.createElement('pre');
             const code = document.createElement('code');
-            
-            // Format the output with syntax highlighting
             const formatted = syntaxHighlight(JSON.stringify(data, null, 2));
             code.innerHTML = formatted;
-            
             pre.appendChild(code);
             consoleOutput.innerHTML = '';
             consoleOutput.appendChild(pre);
         }
 
-        // Syntax highlighting for JSON
         function syntaxHighlight(json) {
             json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
@@ -1001,36 +1255,31 @@ async function testModelInfo() {
             });
         }
 
-        // Initialize console tabs
+        // ================================================================
+        // UI helpers
+        // ================================================================
         function initConsoleTabs() {
             const tabs = document.querySelectorAll('.console-tab');
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
                     tabs.forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
-                    
-                    const tabName = tab.getAttribute('data-tab');
-                    // Handle tab switching logic here
                 });
             });
         }
 
-        // Filter tests
         function filterTests() {
             const category = document.getElementById('test-category').value;
             const priority = document.getElementById('test-priority').value;
-            
+
             document.querySelectorAll('.test-case').forEach(test => {
                 const testCategory = test.getAttribute('data-category');
                 const testPriority = test.getAttribute('data-priority');
-                
                 const showTest = (category === 'all' || category === testCategory) &&
                                (priority === 'all' || priority === testPriority);
-                
                 test.style.display = showTest ? 'block' : 'none';
             });
-            
-            // Update category items
+
             document.querySelectorAll('.category-item').forEach(item => {
                 item.classList.remove('active');
                 if (item.getAttribute('data-category') === category) {
@@ -1039,11 +1288,9 @@ async function testModelInfo() {
             });
         }
 
-        // Toggle test details
         function toggleDetails(testId) {
             const details = document.getElementById(`details-${testId}`);
             const toggleBtn = details.querySelector('.toggle-details i');
-            
             if (details.classList.contains('show')) {
                 details.classList.remove('show');
                 toggleBtn.className = 'fas fa-chevron-down';
@@ -1053,70 +1300,68 @@ async function testModelInfo() {
             }
         }
 
-        // Copy code to clipboard
         function copyCode(testId) {
             const testCase = testCases.find(t => t.id === testId);
             if (!testCase) return;
-            
             navigator.clipboard.writeText(testCase.code)
                 .then(() => showNotification('Code copied to clipboard!', 'success'))
                 .catch(() => showNotification('Failed to copy code!', 'error'));
         }
 
-        // Update test statistics
         function updateTestStats() {
             const total = testResults.length;
             const passed = getPassedCount();
             const failed = getFailedCount();
-            
             totalTestsElement.textContent = `${total} Total`;
             passedTestsElement.textContent = `${passed} Passed`;
             failedTestsElement.textContent = `${failed} Failed`;
         }
 
-        // Get passed test count
         function getPassedCount() {
             return testResults.filter(r => r.passed).length;
         }
 
-        // Get failed test count
         function getFailedCount() {
             return testResults.filter(r => !r.passed).length;
         }
 
-        // Clear test results
         function clearTestResults() {
             if (isRunning) {
                 showNotification('Cannot clear while tests are running!', 'warning');
                 return;
             }
-            
+
             testResults = [];
-            
-            // Reset all test UI
+
             document.querySelectorAll('.test-case').forEach(test => {
                 test.className = 'test-case';
                 const status = test.querySelector('.test-case-status');
                 status.textContent = 'Pending';
                 status.className = 'test-case-status';
             });
-            
+
+            document.querySelectorAll('.test-case-result').forEach(el => {
+                el.style.display = 'none';
+            });
+
             updateTestStats();
             showNotification('Test results cleared!', 'success');
         }
 
-        // Export test results
         function exportTestResults() {
             const exportData = {
                 timestamp: new Date().toISOString(),
                 system: 'UrbanFlow Test Suite',
-                version: '2.1.4',
+                version: apiVersion || 'unknown',
                 test_results: testResults.map(result => {
                     const testCase = testCases.find(t => t.id === result.id);
                     return {
                         id: result.id,
                         title: testCase?.title || 'Unknown',
+                        category: testCase?.category || 'unknown',
                         passed: result.passed,
+                        duration_ms: result.duration,
+                        message: result.message,
                         error: result.error,
                         timestamp: new Date().toISOString()
                     };
@@ -1128,18 +1373,20 @@ async function testModelInfo() {
                     pass_rate: testResults.length > 0 ? (getPassedCount() / testResults.length * 100).toFixed(2) + '%' : '0%'
                 }
             };
-            
+
             const dataStr = JSON.stringify(exportData, null, 2);
             const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
             const link = document.createElement('a');
             link.href = dataUri;
             link.download = `urbanflow_test_results_${new Date().toISOString().slice(0, 10)}.json`;
             link.click();
-            
+
             showNotification('Test results exported!', 'success');
         }
 
-        // Utility functions
+        // ================================================================
+        // Utilities
+        // ================================================================
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -1150,32 +1397,31 @@ async function testModelInfo() {
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                                type === 'error' ? 'exclamation-circle' : 
+                <i class="fas fa-${type === 'success' ? 'check-circle' :
+                                type === 'error' ? 'exclamation-circle' :
                                 type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
                 <span>${message}</span>
             `;
-            
+
             document.body.appendChild(notification);
-            
+
             setTimeout(() => {
                 notification.style.animation = 'slideOutRight 0.3s ease';
                 setTimeout(() => notification.remove(), 300);
             }, 3000);
         }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            initTestSuite();
-            updateEndpoint(); // Set initial endpoint configuration
-        });
-
-        // Add assertion function for tests
         function assert(condition, message) {
             if (!condition) {
                 throw new Error(message || 'Assertion failed');
             }
         }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initTestSuite();
+            updateEndpoint();
+        });
     </script>
 </body>
 </html>

@@ -1,0 +1,52 @@
+{
+  "model": "LightGBM",
+  "train": {
+    "rmse": 106.04654994744295,
+    "mae": 65.12382542874467,
+    "r2": 0.9735432221620957
+  },
+  "test": {
+    "rmse": 302.5944820703279,
+    "mae": 225.69893211298185,
+    "r2": 0.7565945598689503
+  },
+  "feature_names": [
+    "hour",
+    "temperature",
+    "Humidity%",
+    "Wind_speed_m/s",
+    "visibility",
+    "dew_point",
+    "Solar_Radiation_MJ/m2",
+    "rainfall",
+    "snowfall",
+    "hour_sin",
+    "hour_cos",
+    "hour_squared",
+    "day_of_week",
+    "is_weekend",
+    "temp_hour_interaction",
+    "temp_squared",
+    "is_peak_hour",
+    "rush_hour_intensity",
+    "good_biking_conditions",
+    "season_Autumn",
+    "season_Spring",
+    "season_Summer",
+    "season_Winter",
+    "holiday_Holiday",
+    "holiday_No Holiday",
+    "functioning_day_No",
+    "functioning_day_Yes",
+    "temp_category_cold",
+    "temp_category_cool",
+    "temp_category_freezing",
+    "temp_category_hot",
+    "temp_category_warm",
+    "time_of_day_afternoon",
+    "time_of_day_evening",
+    "time_of_day_morning",
+    "time_of_day_night"
+  ],
+  "n_features": 36
+}

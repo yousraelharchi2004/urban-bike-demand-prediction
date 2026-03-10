@@ -45,7 +45,7 @@ def predict():
             return jsonify({"success": False, "error": "No data provided"}), 400
 
         model_type = request.args.get('model_type', 'original').lower()
-        if model_type not in ('original', 'improved', 'advanced', 'xgboost', 'unified', 'ensemble'):
+        if model_type not in ('original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking', 'unified', 'ensemble'):
             model_type = 'original'
 
         # Unified / ensemble path
@@ -77,7 +77,7 @@ def predict():
         try:
             if used_type == 'original':
                 processed = preprocess_input_original(data)
-            elif used_type in ('advanced', 'xgboost'):
+            elif used_type in ('advanced', 'xgboost', 'lightgbm', 'stacking'):
                 processed = preprocess_with_advanced_features(data, model_type=used_type)
             else:
                 processed = preprocess_input(data, model_type=used_type)

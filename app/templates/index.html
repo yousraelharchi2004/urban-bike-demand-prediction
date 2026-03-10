@@ -505,6 +505,82 @@
                                     </div>
                                 </div>
 
+                                <!-- LightGBM Model -->
+                                <div class="model-option" data-model="lightgbm" onclick="selectModel('lightgbm')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-leaf"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <div class="model-header">
+                                            <h4>LightGBM</h4>
+                                            <span class="model-badge badge-lightgbm">Fast & Light</span>
+                                        </div>
+                                        <p class="model-description">Leaf-wise gradient boosting • 36 features • Memory efficient</p>
+                                        <div class="model-stats">
+                                            <div class="stat">
+                                                <span class="stat-label">R² Score</span>
+                                                <span class="stat-value" id="stat-r2-lightgbm">0.76</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">RMSE</span>
+                                                <span class="stat-value" id="stat-rmse-lightgbm">302.6</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">MAE</span>
+                                                <span class="stat-value" id="stat-mae-lightgbm">225.7</span>
+                                            </div>
+                                        </div>
+                                        <div class="feature-tags">
+                                            <span class="feature-tag">Histogram-Based</span>
+                                            <span class="feature-tag">Leaf-Wise Growth</span>
+                                            <span class="feature-tag">Fast Training</span>
+                                            <span class="feature-tag">Low Memory</span>
+                                            <span class="feature-tag-more">Advanced</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Stacking Ensemble Model -->
+                                <div class="model-option" data-model="stacking" onclick="selectModel('stacking')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-layer-group"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <div class="model-header">
+                                            <h4>Stacking Ensemble</h4>
+                                            <span class="model-badge badge-stacking">Best Ensemble</span>
+                                        </div>
+                                        <p class="model-description">RF + XGBoost + LightGBM • RidgeCV meta-learner • 36 features</p>
+                                        <div class="model-stats">
+                                            <div class="stat">
+                                                <span class="stat-label">R² Score</span>
+                                                <span class="stat-value" id="stat-r2-stacking">0.79</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">RMSE</span>
+                                                <span class="stat-value" id="stat-rmse-stacking">280.5</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">MAE</span>
+                                                <span class="stat-value" id="stat-mae-stacking">207.6</span>
+                                            </div>
+                                        </div>
+                                        <div class="feature-tags">
+                                            <span class="feature-tag">3 Base Learners</span>
+                                            <span class="feature-tag">Meta-Learner</span>
+                                            <span class="feature-tag">Model Fusion</span>
+                                            <span class="feature-tag">Robust</span>
+                                            <span class="feature-tag-more">Ensemble</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 
@@ -520,6 +596,8 @@
                                             <th>Improved RF</th>
                                             <th>Advanced RF</th>
                                             <th>XGBoost</th>
+                                            <th>LightGBM</th>
+                                            <th>Stacking</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -529,6 +607,8 @@
                                             <td><span class="metric-value improved">0.90</span></td>
                                             <td><span class="metric-value advanced">0.91</span></td>
                                             <td><span class="metric-value xgboost">0.94</span></td>
+                                            <td><span class="metric-value lightgbm">0.76</span></td>
+                                            <td><span class="metric-value stacking">0.79</span></td>
                                         </tr>
                                         <tr>
                                             <td>RMSE</td>
@@ -536,6 +616,8 @@
                                             <td class="improved">194.6</td>
                                             <td class="advanced">192.4</td>
                                             <td class="xgboost">153.3</td>
+                                            <td class="lightgbm">302.6</td>
+                                            <td class="stacking">280.5</td>
                                         </tr>
                                         <tr>
                                             <td>MAE</td>
@@ -543,11 +625,15 @@
                                             <td class="improved">116.6</td>
                                             <td class="advanced">116.6</td>
                                             <td class="xgboost">90.9</td>
+                                            <td class="lightgbm">225.7</td>
+                                            <td class="stacking">207.6</td>
                                         </tr>
                                         <tr>
                                             <td>Features</td>
                                             <td>14</td>
                                             <td>38</td>
+                                            <td>36</td>
+                                            <td>36</td>
                                             <td>36</td>
                                             <td>36</td>
                                         </tr>
@@ -556,6 +642,8 @@
                                             <td>Fast</td>
                                             <td>Moderate</td>
                                             <td>Moderate</td>
+                                            <td>Slow</td>
+                                            <td>Fast</td>
                                             <td>Slow</td>
                                         </tr>
                                     </tbody>
@@ -926,34 +1014,36 @@
             
             if (modelIndicator) {
                 modelIndicator.className = `model-indicator ${modelType}`;
-                if (modelType === 'original') modelIndicator.textContent = 'Standard';
-                else if (modelType === 'improved') modelIndicator.textContent = 'Improved';
-                else if (modelType === 'advanced') modelIndicator.textContent = 'Advanced';
-                else if (modelType === 'xgboost') modelIndicator.textContent = 'XGBoost';
+                const indicatorNames = {
+                    'original': 'Standard', 'improved': 'Improved', 'advanced': 'Advanced',
+                    'xgboost': 'XGBoost', 'lightgbm': 'LightGBM', 'stacking': 'Stacking'
+                };
+                modelIndicator.textContent = indicatorNames[modelType] || modelType;
             }
-            
+
             if (modelBadge) {
                 modelBadge.className = `model-badge ${modelType}`;
-                if (modelType === 'original') modelBadge.textContent = 'Standard Model';
-                else if (modelType === 'improved') modelBadge.textContent = 'Improved Model';
-                else if (modelType === 'advanced') modelBadge.textContent = 'Advanced Model';
-                else if (modelType === 'xgboost') modelBadge.textContent = 'XGBoost Model';
+                const badgeNames = {
+                    'original': 'Standard Model', 'improved': 'Improved Model', 'advanced': 'Advanced Model',
+                    'xgboost': 'XGBoost Model', 'lightgbm': 'LightGBM Model', 'stacking': 'Stacking Ensemble'
+                };
+                modelBadge.textContent = badgeNames[modelType] || modelType;
             }
-            
+
             // Update insight text
             const modelInsight = document.getElementById('model-insight');
             if (modelInsight) {
                 const pElement = modelInsight.querySelector('p');
                 if (pElement) {
-                    if (modelType === 'original') {
-                        pElement.innerHTML = 'Using <strong>standard model</strong>. Switch to advanced, improved, or XGBoost model for potentially better accuracy.';
-                    } else if (modelType === 'improved') {
-                        pElement.innerHTML = 'Using <strong>improved model</strong> with 38 engineered features for better pattern detection.';
-                    } else if (modelType === 'advanced') {
-                        pElement.innerHTML = 'Using <strong>advanced model</strong> with cyclical encoding and weather categories for optimal performance.';
-                    } else if (modelType === 'xgboost') {
-                        pElement.innerHTML = 'Using <strong>XGBoost model</strong> with gradient boosting for state-of-the-art accuracy.';
-                    }
+                    const insights = {
+                        'original': 'Using <strong>standard model</strong>. Switch to advanced, improved, or XGBoost model for potentially better accuracy.',
+                        'improved': 'Using <strong>improved model</strong> with 38 engineered features for better pattern detection.',
+                        'advanced': 'Using <strong>advanced model</strong> with cyclical encoding and weather categories for optimal performance.',
+                        'xgboost': 'Using <strong>XGBoost model</strong> with gradient boosting for state-of-the-art accuracy.',
+                        'lightgbm': 'Using <strong>LightGBM model</strong> with leaf-wise tree growth for fast, memory-efficient predictions.',
+                        'stacking': 'Using <strong>Stacking Ensemble</strong> combining RF, XGBoost, and LightGBM with a RidgeCV meta-learner.'
+                    };
+                    pElement.innerHTML = insights[modelType] || insights['original'];
                 }
             }
         }

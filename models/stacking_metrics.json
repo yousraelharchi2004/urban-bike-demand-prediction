@@ -1,0 +1,58 @@
+{
+  "model": "Stacking Ensemble",
+  "base_learners": [
+    "RandomForest",
+    "XGBoost",
+    "LightGBM"
+  ],
+  "meta_learner": "RidgeCV",
+  "train": {
+    "rmse": 81.46446554201312,
+    "mae": 54.81110435918393,
+    "r2": 0.9843872182892193
+  },
+  "test": {
+    "rmse": 280.52766313476195,
+    "mae": 207.63126066163437,
+    "r2": 0.7908009731454124
+  },
+  "feature_names": [
+    "hour",
+    "temperature",
+    "Humidity%",
+    "Wind_speed_m/s",
+    "visibility",
+    "dew_point",
+    "Solar_Radiation_MJ/m2",
+    "rainfall",
+    "snowfall",
+    "hour_sin",
+    "hour_cos",
+    "hour_squared",
+    "day_of_week",
+    "is_weekend",
+    "temp_hour_interaction",
+    "temp_squared",
+    "is_peak_hour",
+    "rush_hour_intensity",
+    "good_biking_conditions",
+    "season_Autumn",
+    "season_Spring",
+    "season_Summer",
+    "season_Winter",
+    "holiday_Holiday",
+    "holiday_No Holiday",
+    "functioning_day_No",
+    "functioning_day_Yes",
+    "temp_category_cold",
+    "temp_category_cool",
+    "temp_category_freezing",
+    "temp_category_hot",
+    "temp_category_warm",
+    "time_of_day_afternoon",
+    "time_of_day_evening",
+    "time_of_day_morning",
+    "time_of_day_night"
+  ],
+  "n_features": 36
+}

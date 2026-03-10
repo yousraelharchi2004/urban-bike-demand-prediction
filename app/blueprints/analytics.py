@@ -35,10 +35,22 @@ MODEL_META = {
         'accuracy': 92, 'stability': 92, 'speed': 85,
     },
     'xgboost': {
-        'name': 'XGBoost',
-        'r2': 0.94, 'rmse': 78.2, 'mae': 55.8,
-        'features': 100,
-        'accuracy': 94, 'stability': 90, 'speed': 80,
+        'name': 'XGBoost (36 features)',
+        'r2': 0.944, 'rmse': 153.3, 'mae': 90.9,
+        'features': 36,
+        'accuracy': 94, 'stability': 91, 'speed': 80,
+    },
+    'lightgbm': {
+        'name': 'LightGBM (36 features)',
+        'r2': 0.757, 'rmse': 302.6, 'mae': 225.7,
+        'features': 36,
+        'accuracy': 76, 'stability': 72, 'speed': 92,
+    },
+    'stacking': {
+        'name': 'Stacking Ensemble (RF+XGB+LGBM)',
+        'r2': 0.791, 'rmse': 280.5, 'mae': 207.6,
+        'features': 36,
+        'accuracy': 79, 'stability': 78, 'speed': 70,
     },
 }
 
@@ -47,6 +59,8 @@ MODEL_STATE_KEYS = {
     'improved': 'improved_model',
     'advanced': 'advanced_model',
     'xgboost': 'xgboost_model',
+    'lightgbm': 'lightgbm_model',
+    'stacking': 'stacking_model',
 }
 
 
@@ -71,9 +85,10 @@ def dashboard_metrics():
 
     try:
         metrics_data = calculate_model_metrics()
-        overall_accuracy = metrics_data.get('r2_score', 0.824) * 100
+        overall_accuracy = metrics_data.get('r2_score', 0.82) * 100
     except Exception:
-        overall_accuracy = 82.4
+        best_r2 = max((MODEL_META[m]['r2'] for m in loaded), default=0.82)
+        overall_accuracy = best_r2 * 100
 
     try:
         history = get_prediction_history()
@@ -239,7 +254,7 @@ def feature_importance():
     # Try requested model, then fall back through hierarchy
     model = None
     source = 'original'
-    search_order = ['xgboost', 'advanced', 'improved', 'original']
+    search_order = ['xgboost', 'stacking', 'lightgbm', 'advanced', 'improved', 'original']
 
     if requested != 'best' and requested in MODEL_STATE_KEYS:
         candidate = state.get(MODEL_STATE_KEYS[requested])
@@ -281,6 +296,8 @@ def model_performance():
         'improved': '#7c3aed',
         'advanced': '#0891b2',
         'xgboost': '#db2777',
+        'lightgbm': '#059669',
+        'stacking': '#d97706',
     }
 
     datasets = []
@@ -323,6 +340,41 @@ def model_performance():
         "radar_data": radar_data,
         "total_models": len(loaded),
     })
+
+
+@analytics.route('/api/analytics/shap-importance', methods=['GET'])
+def shap_importance():
+    """SHAP-based feature importance from pre-computed analysis."""
+    shap_path = os.path.join('models', 'shap_analysis.json')
+    if not os.path.exists(shap_path):
+        return jsonify({"success": True, "features": [], "source": "No SHAP data available"})
+
+    try:
+        with open(shap_path) as f:
+            shap_data = json.load(f)
+
+        global_imp = shap_data.get('global_importance', [])
+        direction = {d['feature']: d['mean_shap'] for d in shap_data.get('direction', [])}
+
+        features = []
+        for item in global_imp[:15]:
+            feat = item['feature']
+            abs_shap = item['mean_abs_shap']
+            features.append({
+                'feature': feat,
+                'importance': round(abs_shap, 2),
+                'direction': 'positive' if direction.get(feat, 0) > 0 else 'negative',
+                'mean_shap': round(direction.get(feat, 0), 2),
+            })
+
+        return jsonify({
+            "success": True,
+            "features": features,
+            "expected_value": shap_data.get('expected_value'),
+            "source": "LightGBM SHAP Analysis",
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 def _filter_by_time(history, time_filter):
