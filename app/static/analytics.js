@@ -14,13 +14,13 @@ class AnalyticsDashboard {
         
         // Professional color scheme
         this.colors = {
-            primary: '#4f46e5',
-            primaryDark: '#5b21b6',
-            secondary: '#7c3aed',
-            success: '#10b981',
-            warning: '#f59e0b',
-            danger: '#ef4444',
-            info: '#06b6d4',
+            primary: '#2563eb',
+            primaryDark: '#1d4ed8',
+            secondary: '#6366f1',
+            success: '#16a34a',
+            warning: '#ca8a04',
+            danger: '#dc2626',
+            info: '#0284c7',
             dark: '#0f172a',
             light: '#f1f5f9',
             gray100: '#f1f5f9',
@@ -582,7 +582,7 @@ class AnalyticsDashboard {
             const shapData = this.data.shapImportance.features;
             features = shapData.map(f => f.feature);
             shapValues = shapData.map(f => f.mean_shap);
-            barColors = shapValues.map(v => v >= 0 ? '#059669' : '#ef4444');
+            barColors = shapValues.map(v => v >= 0 ? '#06b6d4' : '#ef4444');
             chartTitle = `SHAP Analysis (${this.data.shapImportance.source})`;
 
             // Update insight

@@ -1442,23 +1442,23 @@ class EmailService:
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }}
                 .container {{ max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
-                .header {{ background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%); color: white; padding: 30px 40px; text-align: center; }}
+                .header {{ background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px 40px; text-align: center; }}
                 .header h1 {{ margin: 0; font-size: 28px; font-weight: 700; }}
                 .header p {{ margin: 10px 0 0; opacity: 0.9; font-size: 16px; }}
                 .content {{ padding: 30px 40px; }}
                 .section {{ margin-bottom: 30px; }}
-                .section h2 {{ color: #4361ee; border-bottom: 2px solid #4361ee; padding-bottom: 10px; margin-top: 0; }}
+                .section h2 {{ color: #3b82f6; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-top: 0; }}
                 .metrics-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }}
-                .metric-card {{ background: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center; border-left: 4px solid #4361ee; }}
-                .metric-value {{ font-size: 32px; font-weight: 700; color: #4361ee; margin-bottom: 5px; }}
+                .metric-card {{ background: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center; border-left: 4px solid #3b82f6; }}
+                .metric-value {{ font-size: 32px; font-weight: 700; color: #3b82f6; margin-bottom: 5px; }}
                 .metric-label {{ font-size: 14px; color: #666; }}
                 .insights-list {{ list-style: none; padding: 0; }}
-                .insights-list li {{ background: #f8f9fa; margin-bottom: 10px; padding: 15px; border-radius: 6px; border-left: 4px solid #06d6a0; }}
+                .insights-list li {{ background: #f8f9fa; margin-bottom: 10px; padding: 15px; border-radius: 6px; border-left: 4px solid #0d9488; }}
                 .features-list {{ list-style: none; padding: 0; }}
                 .features-list li {{ background: #f8f9fa; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; }}
                 .footer {{ background: #f8f9fa; padding: 20px 40px; text-align: center; font-size: 14px; color: #666; border-top: 1px solid #e9ecef; }}
                 .attachment-info {{ background: #e9ecef; padding: 15px; border-radius: 6px; margin: 20px 0; font-size: 14px; }}
-                .attachment-info i {{ color: #4361ee; margin-right: 8px; }}
+                .attachment-info i {{ color: #3b82f6; margin-right: 8px; }}
                 @media (max-width: 600px) {{
                     .container {{ padding: 10px; }}
                     .header, .content {{ padding: 20px; }}
@@ -1574,14 +1574,14 @@ class EmailService:
                 'CustomTitle',
                 parent=styles['Heading1'],
                 fontSize=24,
-                textColor=colors.HexColor('#4361ee'),
+                textColor=colors.HexColor('#3b82f6'),
                 spaceAfter=30
             )
             heading_style = ParagraphStyle(
                 'CustomHeading',
                 parent=styles['Heading2'],
                 fontSize=16,
-                textColor=colors.HexColor('#3a0ca3'),
+                textColor=colors.HexColor('#1d4ed8'),
                 spaceAfter=12
             )
             normal_style = styles['Normal']
@@ -1609,7 +1609,7 @@ class EmailService:
             
             summary_table = Table(summary_data, colWidths=[2*inch, 1.5*inch, 3*inch])
             summary_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4361ee')),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -1648,7 +1648,7 @@ class EmailService:
                 
                 feature_table = Table(feature_data, colWidths=[0.5*inch, 3*inch, 1*inch])
                 feature_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7209b7')),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6366f1')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -1681,7 +1681,7 @@ class EmailService:
                 
                 stats_table = Table(stats_data, colWidths=[2*inch, 2*inch])
                 stats_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#06d6a0')),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0d9488')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -2804,8 +2804,8 @@ def get_feature_importance_chart_data():
                 'datasets': [{
                     'label': 'Importance (%)',
                     'data': importance,
-                    'backgroundColor': '#4361ee',
-                    'borderColor': '#3a0ca3',
+                    'backgroundColor': '#3b82f6',
+                    'borderColor': '#1d4ed8',
                     'borderWidth': 1
                 }]
             },
@@ -2813,7 +2813,7 @@ def get_feature_importance_chart_data():
                 'title': 'Feature Importance Analysis',
                 'xlabel': 'Features',
                 'ylabel': 'Importance (%)',
-                'colors': ['#4361ee']
+                'colors': ['#3b82f6']
             }
         }
     except Exception as e:
@@ -2846,7 +2846,7 @@ def get_hourly_patterns_chart_data(time_filter='all'):
                     'label': 'Bike Demand',
                     'data': demand,
                     'backgroundColor': 'rgba(6, 214, 160, 0.1)',
-                    'borderColor': '#06d6a0',
+                    'borderColor': '#0d9488',
                     'borderWidth': 2,
                     'fill': True
                 }]
@@ -2855,7 +2855,7 @@ def get_hourly_patterns_chart_data(time_filter='all'):
                 'title': f'Hourly Demand Patterns ({time_filter})',
                 'xlabel': 'Hour of Day',
                 'ylabel': 'Average Demand (bikes)',
-                'colors': ['#06d6a0']
+                'colors': ['#0d9488']
             }
         }
     except Exception as e:
@@ -2895,7 +2895,7 @@ def get_performance_radar_chart_data():
             },
             'options': {
                 'title': 'Model Performance Analysis',
-                'colors': ['#4361ee', '#7209b7', '#06d6a0']
+                'colors': ['#3b82f6', '#6366f1', '#0d9488']
             }
         }
     except Exception as e:
@@ -2936,8 +2936,8 @@ def generate_chart_image(chart_data, chart_type, format_type='png'):
             width = 0.6
             
             bars = ax.bar(x, data, width, 
-                         color=datasets[0].get('backgroundColor', '#4361ee'),
-                         edgecolor=datasets[0].get('borderColor', '#3a0ca3'),
+                         color=datasets[0].get('backgroundColor', '#3b82f6'),
+                         edgecolor=datasets[0].get('borderColor', '#1d4ed8'),
                          linewidth=1.5)
             
             ax.set_xticks(x)
@@ -2957,7 +2957,7 @@ def generate_chart_image(chart_data, chart_type, format_type='png'):
             x = np.arange(len(labels))
             
             ax.plot(x, data, 
-                   color=datasets[0].get('borderColor', '#06d6a0'),
+                   color=datasets[0].get('borderColor', '#0d9488'),
                    linewidth=2.5,
                    marker='o',
                    markersize=6,
@@ -3248,9 +3248,9 @@ def export_metrics_html_response(metrics):
         <title>UrbanFlow Model Metrics Report</title>
         <style>
             body {{ font-family: Arial, sans-serif; margin: 40px; }}
-            .header {{ background: linear-gradient(135deg, #4361ee, #3a0ca3); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; }}
-            .metric-card {{ background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 15px 0; border-left: 4px solid #4361ee; }}
-            .metric-value {{ font-size: 32px; font-weight: bold; color: #4361ee; }}
+            .header {{ background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; }}
+            .metric-card {{ background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 15px 0; border-left: 4px solid #3b82f6; }}
+            .metric-value {{ font-size: 32px; font-weight: bold; color: #3b82f6; }}
             .metric-label {{ color: #666; margin-top: 5px; }}
             table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
             th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
@@ -3339,7 +3339,7 @@ def export_metrics_pdf_response(metrics):
         
         table = Table(data, colWidths=[2*inch, 1.5*inch, 3*inch])
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4361ee')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -3367,7 +3367,7 @@ def export_metrics_pdf_response(metrics):
         
         detailed_table = Table(detailed_data, colWidths=[3*inch, 2*inch])
         detailed_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7209b7')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6366f1')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
@@ -6251,17 +6251,17 @@ def analytics_model_performance():
 
         # Colors for different models
         model_colors = {
-            'original': '#4361ee',
-            'improved': '#7209b7',
-            'advanced': '#06d6a0',
-            'xgboost': '#ef476f',
-            'lightgbm': '#059669',
-            'stacking': '#d97706',
-            'sample': '#4cc9f0'
+            'original': '#3b82f6',
+            'improved': '#6366f1',
+            'advanced': '#0d9488',
+            'xgboost': '#8b5cf6',
+            'lightgbm': '#06b6d4',
+            'stacking': '#64748b',
+            'sample': '#94a3b8'
         }
         
         for model_id, metrics in models_metrics.items():
-            color = model_colors.get(model_id, '#4361ee')
+            color = model_colors.get(model_id, '#3b82f6')
             
             radar_data['datasets'].append({
                 'label': metrics['name'],

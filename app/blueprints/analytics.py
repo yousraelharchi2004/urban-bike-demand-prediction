@@ -292,12 +292,12 @@ def model_performance():
 
     models = {}
     colors = {
-        'original': '#4f46e5',
-        'improved': '#7c3aed',
-        'advanced': '#0891b2',
-        'xgboost': '#db2777',
-        'lightgbm': '#059669',
-        'stacking': '#d97706',
+        'original': '#3b82f6',
+        'improved': '#6366f1',
+        'advanced': '#0d9488',
+        'xgboost': '#8b5cf6',
+        'lightgbm': '#06b6d4',
+        'stacking': '#64748b',
     }
 
     datasets = []
@@ -309,7 +309,7 @@ def model_performance():
             'stability': meta.get('stability', 80) / 100,
             'speed': meta.get('speed', 80) / 100,
         }
-        color = colors.get(key, '#4f46e5')
+        color = colors.get(key, '#3b82f6')
         datasets.append({
             'label': meta.get('name', key),
             'data': [meta.get('accuracy', 80), meta.get('stability', 80), meta.get('speed', 80),
@@ -326,9 +326,9 @@ def model_performance():
         'datasets': datasets if datasets else [{
             'label': 'No Models',
             'data': [0, 0, 0, 0, 0],
-            'backgroundColor': 'rgba(79, 70, 229, 0.1)',
-            'borderColor': '#4f46e5',
-            'pointBackgroundColor': '#4f46e5',
+            'backgroundColor': 'rgba(37, 99, 235, 0.1)',
+            'borderColor': '#2563eb',
+            'pointBackgroundColor': '#2563eb',
             'borderWidth': 2,
             'fill': True,
         }],

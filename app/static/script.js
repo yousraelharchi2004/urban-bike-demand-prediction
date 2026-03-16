@@ -256,8 +256,8 @@ function selectModel(modelName) {
 
     // Show model-colored notification
     const notifColors = {
-        'original': '#4f46e5', 'improved': '#7c3aed', 'advanced': '#0891b2',
-        'xgboost': '#db2777', 'lightgbm': '#059669', 'stacking': '#d97706'
+        'original': '#2563eb', 'improved': '#6366f1', 'advanced': '#0d9488',
+        'xgboost': '#8b5cf6', 'lightgbm': '#06b6d4', 'stacking': '#64748b'
     };
     showNotification(`${formatModelName(modelName)} selected`, 'info');
     // Tint the notification border to model color
@@ -271,12 +271,12 @@ function updateModelUI() {
 
     // Model color map (solid + gradient)
     const modelColors = {
-        'original':  { solid: '#4f46e5', gradient: 'linear-gradient(135deg, #4f46e5, #4338ca)' },
-        'improved':  { solid: '#7c3aed', gradient: 'linear-gradient(135deg, #7c3aed, #5b21b6)' },
-        'advanced':  { solid: '#0891b2', gradient: 'linear-gradient(135deg, #0891b2, #0e7490)' },
-        'xgboost':   { solid: '#db2777', gradient: 'linear-gradient(135deg, #db2777, #be185d)' },
-        'lightgbm':  { solid: '#059669', gradient: 'linear-gradient(135deg, #059669, #047857)' },
-        'stacking':  { solid: '#d97706', gradient: 'linear-gradient(135deg, #d97706, #b45309)' }
+        'original':  { solid: '#2563eb', gradient: '#2563eb' },
+        'improved':  { solid: '#6366f1', gradient: '#6366f1' },
+        'advanced':  { solid: '#0d9488', gradient: '#0d9488' },
+        'xgboost':   { solid: '#8b5cf6', gradient: '#8b5cf6' },
+        'lightgbm':  { solid: '#06b6d4', gradient: '#06b6d4' },
+        'stacking':  { solid: '#64748b', gradient: '#64748b' }
     };
 
     const mc = modelColors[selectedModel] || modelColors.original;
@@ -870,12 +870,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Model Manager data
 const MODEL_INFO = [
-    { key: 'original', name: 'Standard Model', color: '#4f46e5', features: '14 basic features', r2: '0.820', rmse: '112.5', mae: '87.2', detail: 'Quick predictions with basic weather data' },
-    { key: 'improved', name: 'Improved Model', color: '#7c3aed', features: '38 engineered features', r2: '0.899', rmse: '194.6', mae: '116.6', detail: 'Peak hours, weather severity, comfort index' },
-    { key: 'advanced', name: 'Advanced Model', color: '#0891b2', features: '36 advanced features', r2: '0.911', rmse: '192.4', mae: '116.6', detail: 'Cyclical encoding, temp categories, rush intensity' },
-    { key: 'xgboost', name: 'XGBoost', color: '#db2777', features: '36 advanced features', r2: '0.940', rmse: '153.3', mae: '90.9', detail: 'Gradient boosting with regularization' },
-    { key: 'lightgbm', name: 'LightGBM', color: '#059669', features: '36 advanced features', r2: '0.757', rmse: '302.6', mae: '225.7', detail: 'Leaf-wise gradient boosting, fast & memory efficient' },
-    { key: 'stacking', name: 'Stacking Ensemble', color: '#d97706', features: '36 advanced features', r2: '0.791', rmse: '280.5', mae: '207.6', detail: 'RF + XGBoost + LightGBM with RidgeCV meta-learner' },
+    { key: 'original', name: 'Standard Model', color: '#2563eb', features: '14 basic features', r2: '0.820', rmse: '112.5', mae: '87.2', detail: 'Quick predictions with basic weather data' },
+    { key: 'improved', name: 'Improved Model', color: '#6366f1', features: '38 engineered features', r2: '0.899', rmse: '194.6', mae: '116.6', detail: 'Peak hours, weather severity, comfort index' },
+    { key: 'advanced', name: 'Advanced Model', color: '#0d9488', features: '36 advanced features', r2: '0.911', rmse: '192.4', mae: '116.6', detail: 'Cyclical encoding, temp categories, rush intensity' },
+    { key: 'xgboost', name: 'XGBoost', color: '#8b5cf6', features: '36 advanced features', r2: '0.940', rmse: '153.3', mae: '90.9', detail: 'Gradient boosting with regularization' },
+    { key: 'lightgbm', name: 'LightGBM', color: '#06b6d4', features: '36 advanced features', r2: '0.757', rmse: '302.6', mae: '225.7', detail: 'Leaf-wise gradient boosting, fast & memory efficient' },
+    { key: 'stacking', name: 'Stacking Ensemble', color: '#64748b', features: '36 advanced features', r2: '0.791', rmse: '280.5', mae: '207.6', detail: 'RF + XGBoost + LightGBM with RidgeCV meta-learner' },
 ];
 
 function openModelManager() {
@@ -1281,7 +1281,12 @@ function clearForm() {
     
     // Reset weather insight
     updateWeatherInsight(22.5);
-    
+
+    // Clear prediction results
+    if (resultContent) resultContent.style.display = 'none';
+    if (resultPlaceholder) resultPlaceholder.style.display = 'flex';
+    currentPredictionData = null;
+
     showNotification('Form cleared', 'info');
 }
 
@@ -1604,7 +1609,7 @@ function exportPredictionWithFormat() {
             
             <button onclick="exportPrediction('json'); this.closest('div').closest('div').remove()" 
                     style="display: block; width: 100%; padding: 12px; margin: 8px 0; 
-                           background: #4f46e5; color: white; border: none; 
+                           background: #2563eb; color: white; border: none;
                            border-radius: 8px; cursor: pointer; font-size: 16px;">
                 <i class="fas fa-code"></i> JSON (Detailed)
             </button>
