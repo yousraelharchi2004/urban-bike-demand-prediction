@@ -413,13 +413,18 @@
                 }
                 
                 try {
+                    const sysInfo = system.system_info || {};
+                    const models = system.models || {};
+                    const anyModelLoaded = sysInfo.models_loaded || Object.values(models).some(m => m.loaded);
+
                     // Update system status
-                    const systemStatus = system.model_loaded ? 'Operational' : 
+                    const systemStatus = anyModelLoaded ? 'Operational' :
                                        system.status === "API Error" ? 'API Error' : 'Degraded';
                     document.getElementById('system-status').textContent = systemStatus;
-                    
+
                     // Update model status
-                    const modelStatus = system.model_loaded ? 'Model Active' : 'Model Not Loaded';
+                    const totalLoaded = sysInfo.total_models_loaded || Object.values(models).filter(m => m.loaded).length;
+                    const modelStatus = anyModelLoaded ? `${totalLoaded} Model${totalLoaded > 1 ? 's' : ''} Active` : 'Model Not Loaded';
                     document.getElementById('model-status').textContent = modelStatus;
                     
                     // Update database status
@@ -467,7 +472,7 @@
                         name: 'Prediction API',
                         endpoint: '/predict',
                         method: 'POST',
-                        status: system.model_loaded ? 'operational' : 'outage',
+                        status: totalModels > 0 ? 'operational' : 'outage',
                         detail: `${totalModels} model(s) available`
                     },
                     {
@@ -495,8 +500,8 @@
                         name: 'Model Service',
                         endpoint: '/model-info',
                         method: 'GET',
-                        status: system.model_loaded ? 'operational' : 'outage',
-                        detail: system.model_loaded ? `${totalModels}/6 loaded` : 'No models loaded'
+                        status: totalModels > 0 ? 'operational' : 'outage',
+                        detail: totalModels > 0 ? `${totalModels}/6 loaded` : 'No models loaded'
                     },
                     {
                         name: 'History Service',

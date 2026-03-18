@@ -5431,21 +5431,11 @@ def export_predictions_csv():
 
 @main.route('/export/metrics/pdf', methods=['GET'])
 def export_metrics_pdf():
-    """Export model metrics as PDF report - COMPATIBILITY LAYER"""
+    """Export model metrics as PDF report"""
     try:
-        # This would require reportlab or similar library
-        # For now, we'll return a JSON version
-        
         metrics_data = calculate_model_metrics()
-        
-        return jsonify({
-            "success": True,
-            "message": "PDF export requires additional setup. Here's the JSON data.",
-            "data": metrics_data,
-            "export_formats": ["CSV", "JSON", "HTML"],
-            "pdf_note": "To enable PDF export, install: pip install reportlab"
-        })
-        
+        return export_metrics_pdf_response(metrics_data)
+
     except Exception as e:
         return jsonify({
             "success": False,

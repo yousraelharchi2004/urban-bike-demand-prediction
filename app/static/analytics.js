@@ -1437,34 +1437,48 @@ class AnalyticsDashboard {
     async exportModelReport(format) {
         try {
             this.showNotification(`Exporting model report as ${format.toUpperCase()}...`, 'info');
-            
+
             const validation = this.validateExportRequest('report', format);
             if (!validation.valid) {
                 this.showNotification(validation.message, 'error');
                 return;
             }
-            
-            let url;
+
             if (format === 'html') {
-                url = `${this.baseUrl}/export/model-report`;
+                const url = `${this.baseUrl}/export/model-report`;
                 const response = await fetch(url);
-                
+
                 if (!response.ok) {
                     throw new Error('Export failed');
                 }
-                
+
                 const blob = await response.blob();
                 this.downloadBlob(blob, `model_report_${new Date().toISOString().slice(0, 10)}.html`);
                 this.showNotification('Model report exported as HTML!', 'success');
-                
+
             } else if (format === 'pdf') {
-                this.showNotification('PDF report generation requires additional setup', 'info');
-                // PDF would require reportlab on backend
-                
+                const response = await fetch(`${this.baseUrl}/export/metrics/pdf`);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Export failed with status ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/pdf')) {
+                    const blob = await response.blob();
+                    this.downloadBlob(blob, `urbanflow_metrics_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    this.showNotification('PDF report downloaded successfully!', 'success');
+                } else {
+                    // Server returned JSON instead of PDF (fallback)
+                    const data = await response.json();
+                    throw new Error(data.message || data.error || 'Server did not return a PDF file');
+                }
+
             } else {
                 this.showNotification(`Format ${format} not supported for model reports`, 'error');
             }
-            
+
         } catch (error) {
             console.error('Report export error:', error);
             this.showNotification(`Failed to export report: ${error.message}`, 'error');

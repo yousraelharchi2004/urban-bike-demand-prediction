@@ -214,51 +214,77 @@
                         </div>
                     </div>
                     <div class="console-body">
-                        <div class="console-input">
-                            <div class="input-group">
-                                <label for="api-endpoint"><i class="fas fa-link"></i> API Endpoint</label>
-                                <select id="api-endpoint" class="test-select" onchange="updateEndpoint()">
-                                    <option value="/api/status">GET /api/status (JSON)</option>
-                                    <option value="/metrics">GET /metrics</option>
-                                    <option value="/model-info">GET /model-info</option>
-                                    <option value="/prediction-history">GET /prediction-history</option>
-                                    <option value="/predict" selected>POST /predict</option>
-                                    <option value="/api/dashboard-metrics">GET /api/dashboard-metrics</option>
-                                    <option value="/api/analytics/kpis">GET /api/analytics/kpis</option>
-                                    <option value="/api/analytics/hourly-patterns">GET /api/analytics/hourly-patterns</option>
-                                    <option value="/api/analytics/model-performance">GET /api/analytics/model-performance</option>
-                                    <option value="/api/analytics/feature-importance">GET /api/analytics/feature-importance</option>
-                                    <option value="/api/analytics/shap-importance">GET /api/analytics/shap-importance</option>
-                                    <option value="/api/analytics/insights">GET /api/analytics/insights</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label for="api-method"><i class="fas fa-exchange-alt"></i> HTTP Method</label>
-                                <select id="api-method" class="test-select" onchange="updateMethod()">
-                                    <option value="GET">GET</option>
-                                    <option value="POST" selected>POST</option>
-                                    <option value="PUT">PUT</option>
-                                    <option value="DELETE">DELETE</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label for="api-body"><i class="fas fa-code"></i> Request Body (JSON)</label>
-                                <textarea id="api-body" placeholder='Use "Send Request" to test endpoints. Body auto-fills for /predict.'>
-                                </textarea>
-                            </div>
-                            <div class="test-buttons console-actions">
-                                <button class="run-btn" onclick="sendAPIRequest()">
-                                    <i class="fas fa-paper-plane"></i>
-                                    <span>Send Request</span>
-                                </button>
-                                <button class="run-btn" onclick="formatJSON()" class="info">
-                                    <i class="fas fa-indent"></i>
-                                    <span>Format JSON</span>
-                                </button>
+                        <!-- Request Tab Content -->
+                        <div class="console-tab-content active" id="tab-request">
+                            <div class="console-input">
+                                <div class="input-group">
+                                    <label for="api-endpoint"><i class="fas fa-link"></i> API Endpoint</label>
+                                    <select id="api-endpoint" class="test-select" onchange="updateEndpoint()">
+                                        <option value="/api/status">GET /api/status (JSON)</option>
+                                        <option value="/metrics">GET /metrics</option>
+                                        <option value="/model-info">GET /model-info</option>
+                                        <option value="/prediction-history">GET /prediction-history</option>
+                                        <option value="/predict" selected>POST /predict</option>
+                                        <option value="/api/dashboard-metrics">GET /api/dashboard-metrics</option>
+                                        <option value="/api/analytics/kpis">GET /api/analytics/kpis</option>
+                                        <option value="/api/analytics/hourly-patterns">GET /api/analytics/hourly-patterns</option>
+                                        <option value="/api/analytics/model-performance">GET /api/analytics/model-performance</option>
+                                        <option value="/api/analytics/feature-importance">GET /api/analytics/feature-importance</option>
+                                        <option value="/api/analytics/shap-importance">GET /api/analytics/shap-importance</option>
+                                        <option value="/api/analytics/insights">GET /api/analytics/insights</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="api-method"><i class="fas fa-exchange-alt"></i> HTTP Method</label>
+                                    <select id="api-method" class="test-select" onchange="updateMethod()">
+                                        <option value="GET">GET</option>
+                                        <option value="POST" selected>POST</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="DELETE">DELETE</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="api-body"><i class="fas fa-code"></i> Request Body (JSON)</label>
+                                    <textarea id="api-body" placeholder='Use "Send Request" to test endpoints. Body auto-fills for /predict.'>
+                                    </textarea>
+                                </div>
+                                <div class="test-buttons console-actions">
+                                    <button class="run-btn" onclick="sendAPIRequest()">
+                                        <i class="fas fa-paper-plane"></i>
+                                        <span>Send Request</span>
+                                    </button>
+                                    <button class="run-btn info" onclick="formatJSON()">
+                                        <i class="fas fa-indent"></i>
+                                        <span>Format JSON</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="console-output" id="console-output">
-                            <pre><code>// Response will appear here...</code></pre>
+
+                        <!-- Response Tab Content -->
+                        <div class="console-tab-content" id="tab-response">
+                            <div class="console-output" id="console-output">
+                                <pre><code>// Response will appear here after sending a request...</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- History Tab Content -->
+                        <div class="console-tab-content" id="tab-history">
+                            <div class="console-history" id="console-history">
+                                <div class="history-toolbar">
+                                    <span class="history-count" id="history-count">0 requests</span>
+                                    <button class="run-btn" onclick="clearHistory()" style="padding: 6px 14px; font-size: 0.85rem;">
+                                        <i class="fas fa-trash-alt"></i>
+                                        <span>Clear History</span>
+                                    </button>
+                                </div>
+                                <div class="history-list" id="history-list">
+                                    <div class="history-empty">
+                                        <i class="fas fa-inbox" style="font-size: 2rem; color: #999; margin-bottom: 10px;"></i>
+                                        <p style="color: #999;">No requests yet. Send a request to see it here.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1103,120 +1129,353 @@
         // ================================================================
         // Quick test functions
         // ================================================================
+        async function quickFetch(url, method, body) {
+            const startTime = performance.now();
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            if (method !== 'GET' && body) options.body = body;
+
+            const response = await fetch(url, options);
+            const duration = Math.round(performance.now() - startTime);
+            const contentType = response.headers.get('content-type') || '';
+
+            let data;
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                const text = await response.text();
+                data = { raw_response: text.substring(0, 500), note: 'Response was not JSON (content-type: ' + contentType + ')' };
+            }
+
+            return {
+                url, method, status: response.status,
+                statusText: response.statusText, data,
+                timestamp: new Date().toISOString(), duration: duration + 'ms'
+            };
+        }
+
+        function scrollToConsole() {
+            const console = document.querySelector('.api-console');
+            if (console) {
+                console.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
         async function testAPIStatus() {
             showNotification('Testing API status...', 'info');
             try {
-                const response = await fetch('/status');
-                const data = await response.json();
-                updateConsoleOutput({ status: response.status, data, timestamp: new Date().toISOString() });
-                showNotification('API status test completed!', 'success');
+                const output = await quickFetch('/api/status', 'GET', null);
+                updateConsoleOutput(output);
+                addToHistory('/api/status', 'GET', null, output);
+                switchToTab('response');
+                scrollToConsole();
+                showNotification(`API Health OK - Status ${output.status} (${output.duration})`, 'success');
             } catch (error) {
-                updateConsoleOutput({ error: error.message });
-                showNotification('API status test failed!', 'error');
+                const output = { error: error.message, timestamp: new Date().toISOString() };
+                updateConsoleOutput(output);
+                addToHistory('/api/status', 'GET', null, output);
+                switchToTab('response');
+                scrollToConsole();
+                showNotification('API Health check failed: ' + error.message, 'error');
             }
         }
 
         async function testModelStatus() {
             showNotification('Testing model status...', 'info');
             try {
-                const response = await fetch('/model-info');
-                const data = await response.json();
-                updateConsoleOutput({ status: response.status, data, timestamp: new Date().toISOString() });
-                showNotification('Model status test completed!', 'success');
+                const output = await quickFetch('/model-info', 'GET', null);
+                updateConsoleOutput(output);
+                addToHistory('/model-info', 'GET', null, output);
+                switchToTab('response');
+                scrollToConsole();
+                showNotification(`Model status OK - Status ${output.status} (${output.duration})`, 'success');
             } catch (error) {
-                updateConsoleOutput({ error: error.message });
-                showNotification('Model status test failed!', 'error');
+                const output = { error: error.message, timestamp: new Date().toISOString() };
+                updateConsoleOutput(output);
+                addToHistory('/model-info', 'GET', null, output);
+                switchToTab('response');
+                scrollToConsole();
+                showNotification('Model status test failed: ' + error.message, 'error');
             }
         }
 
+        function getRandomPredictionInput() {
+            const hour = Math.floor(Math.random() * 24);
+            const month = Math.floor(Math.random() * 12) + 1;
+            const dayOfWeek = Math.floor(Math.random() * 7);
+
+            // Temperature varies by season: winter cold, summer hot
+            const seasonTemp = { 1: [-5, 5], 2: [-2, 8], 3: [5, 15], 4: [10, 22],
+                                 5: [15, 28], 6: [20, 33], 7: [23, 36], 8: [22, 35],
+                                 9: [15, 28], 10: [8, 20], 11: [2, 12], 12: [-4, 6] };
+            const [tMin, tMax] = seasonTemp[month];
+            const temperature = Math.round((tMin + Math.random() * (tMax - tMin)) * 10) / 10;
+
+            const humidity = Math.round(30 + Math.random() * 60);
+            const windSpeed = Math.round(Math.random() * 7 * 10) / 10;
+            const visibility = Math.round(200 + Math.random() * 1800);
+            const dewPoint = Math.round((temperature - 5 - Math.random() * 10) * 10) / 10;
+            const solarRadiation = hour >= 6 && hour <= 18 ? Math.round(Math.random() * 3 * 100) / 100 : 0;
+            const rainfall = Math.random() < 0.15 ? Math.round(Math.random() * 20 * 10) / 10 : 0;
+            const snowfall = temperature < 2 && Math.random() < 0.1 ? Math.round(Math.random() * 5 * 10) / 10 : 0;
+
+            // Season from month
+            let seasons = { Spring: 0, Summer: 0, Winter: 0 };
+            if (month >= 3 && month <= 5) seasons.Spring = 1;
+            else if (month >= 6 && month <= 8) seasons.Summer = 1;
+            else if (month >= 11 || month <= 2) seasons.Winter = 1;
+            // Autumn is when all are 0
+
+            const isHoliday = Math.random() < 0.05 ? 1 : 0;
+
+            return {
+                "Hour": hour,
+                "Temperature(\ucE9C)": temperature,
+                "Humidity(%)": humidity,
+                "Wind speed (m/s)": windSpeed,
+                "Visibility (10m)": visibility,
+                "Dew point temperature(\ucE9C)": dewPoint,
+                "Solar Radiation (MJ/m2)": solarRadiation,
+                "Rainfall(mm)": rainfall,
+                "Snowfall (cm)": snowfall,
+                "Seasons_Spring": seasons.Spring,
+                "Seasons_Summer": seasons.Summer,
+                "Seasons_Winter": seasons.Winter,
+                "Holiday_No Holiday": isHoliday ? 0 : 1,
+                "Holiday_Holiday": isHoliday,
+                "Functioning Day_Yes": 1
+            };
+        }
+
         async function testPrediction() {
-            showNotification('Testing prediction...', 'info');
-            const testData = getOriginalModelInput();
+            const testData = getRandomPredictionInput();
+            const bodyStr = JSON.stringify(testData);
+            const hour = testData["Hour"];
+            const temp = testData["Temperature(\ucE9C)"];
+            showNotification(`Testing prediction: ${hour}:00, ${temp}\u00b0C...`, 'info');
             try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testData)
-                });
-                const data = await response.json();
-                updateConsoleOutput({ status: response.status, data, timestamp: new Date().toISOString() });
-                showNotification('Prediction test completed!', 'success');
+                const output = await quickFetch('/predict', 'POST', bodyStr);
+                updateConsoleOutput(output);
+                addToHistory('/predict', 'POST', bodyStr, output);
+                switchToTab('response');
+                scrollToConsole();
+                const bikes = output.data.predicted_bikes || output.data.prediction || '?';
+                showNotification(`Prediction OK - ${bikes} bikes (${output.duration})`, 'success');
             } catch (error) {
-                updateConsoleOutput({ error: error.message });
-                showNotification('Prediction test failed!', 'error');
+                const output = { error: error.message, timestamp: new Date().toISOString() };
+                updateConsoleOutput(output);
+                addToHistory('/predict', 'POST', bodyStr, output);
+                switchToTab('response');
+                scrollToConsole();
+                showNotification('Prediction test failed: ' + error.message, 'error');
             }
         }
 
         // ================================================================
         // API Console functions
         // ================================================================
+        let requestHistory = [];
+
         async function sendAPIRequest() {
             const endpoint = apiEndpointSelect.value;
             const method = apiMethodSelect.value;
             let body = apiBodyTextarea.value;
 
+            // Strip comment lines from body before sending
+            if (method !== 'GET' && body) {
+                const lines = body.split('\n').filter(l => !l.trimStart().startsWith('//'));
+                body = lines.join('\n').trim();
+            }
+
             showNotification(`Sending ${method} request to ${endpoint}...`, 'info');
 
             try {
-                const options = {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' }
-                };
-
-                if (method !== 'GET' && body) {
-                    options.body = body;
-                }
-
-                const response = await fetch(endpoint, options);
-                const data = await response.json();
-
-                const output = {
-                    url: endpoint, method, status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries()),
-                    data, timestamp: new Date().toISOString()
-                };
+                const output = await quickFetch(endpoint, method, method !== 'GET' ? body : null);
 
                 updateConsoleOutput(output);
-                showNotification(`API request completed with status ${response.status}`, 'success');
+                addToHistory(endpoint, method, body, output);
+                switchToTab('response');
+                scrollToConsole();
+                showNotification(`API request completed with status ${output.status} (${output.duration})`, 'success');
             } catch (error) {
-                updateConsoleOutput({ error: error.message, timestamp: new Date().toISOString() });
+                const errorOutput = { error: error.message, timestamp: new Date().toISOString() };
+                updateConsoleOutput(errorOutput);
+                addToHistory(endpoint, method, body, errorOutput);
+                switchToTab('response');
+                scrollToConsole();
                 showNotification(`API request failed: ${error.message}`, 'error');
             }
         }
 
         function formatJSON() {
+            const text = apiBodyTextarea.value.trim();
+
+            if (!text) {
+                showNotification('Nothing to format - textarea is empty.', 'warning');
+                return;
+            }
+
+            // If text contains comment lines (// ...), strip them and try to parse the JSON part
+            const lines = text.split('\n');
+            const jsonLines = lines.filter(line => !line.trimStart().startsWith('//'));
+            const jsonText = jsonLines.join('\n').trim();
+
+            if (!jsonText) {
+                showNotification('No JSON found - only comments in the textarea.', 'warning');
+                return;
+            }
+
             try {
-                const text = apiBodyTextarea.value;
-                const obj = JSON.parse(text);
+                const obj = JSON.parse(jsonText);
                 apiBodyTextarea.value = JSON.stringify(obj, null, 2);
                 showNotification('JSON formatted successfully!', 'success');
             } catch (error) {
-                showNotification('Invalid JSON!', 'error');
+                showNotification('Invalid JSON! Check syntax and try again.', 'error');
             }
+        }
+
+        function getEndpointExamples() {
+            return {
+                '/api/status': {
+                    method: 'GET',
+                    description: '// GET /api/status\n// Returns system health and model availability\n//\n// Expected Response:\n' + JSON.stringify({
+                        "status": "online",
+                        "models_loaded": { "original": true, "improved": true, "advanced": true, "xgboost": true },
+                        "total_predictions": 150
+                    }, null, 2)
+                },
+                '/metrics': {
+                    method: 'GET',
+                    description: '// GET /metrics\n// Returns performance metrics for all models\n//\n// Expected Response:\n' + JSON.stringify({
+                        "models": {
+                            "original": { "r2": 0.82, "rmse": 112.5, "features": 14 },
+                            "advanced": { "r2": 0.911, "rmse": 192.4, "features": 36 },
+                            "xgboost": { "r2": 0.944, "rmse": 153.3, "features": 36 }
+                        }
+                    }, null, 2)
+                },
+                '/model-info': {
+                    method: 'GET',
+                    description: '// GET /model-info?model_type=original\n// Returns model metadata and feature list\n//\n// Query Parameters:\n//   model_type: original | improved | advanced | xgboost\n//\n// Expected Response:\n' + JSON.stringify({
+                        "model_type": "original",
+                        "model_class": "RandomForestRegressor",
+                        "n_features": 14,
+                        "feature_names": ["Hour", "Temperature", "Humidity", "..."]
+                    }, null, 2)
+                },
+                '/prediction-history': {
+                    method: 'GET',
+                    description: '// GET /prediction-history?limit=10&filter=today&model=all\n// Returns past predictions with filtering\n//\n// Query Parameters:\n//   limit:  number of records (default: 50)\n//   filter: all | today | week | month\n//   model:  all | original | advanced | xgboost\n//\n// Expected Response:\n' + JSON.stringify({
+                        "success": true,
+                        "total_predictions": 84,
+                        "history": [{ "timestamp": "2026-03-18T12:30:00", "prediction": 847, "model_type": "advanced" }]
+                    }, null, 2)
+                },
+                '/predict': {
+                    method: 'POST',
+                    body: getOriginalModelInput(),
+                    description: null
+                },
+                '/api/dashboard-metrics': {
+                    method: 'GET',
+                    description: '// GET /api/dashboard-metrics\n// Returns dashboard KPI summary\n//\n// Expected Response:\n' + JSON.stringify({
+                        "accuracy": 94.4,
+                        "total_predictions": 84,
+                        "models_available": 6,
+                        "best_model": "xgboost"
+                    }, null, 2)
+                },
+                '/api/analytics/kpis': {
+                    method: 'GET',
+                    description: '// GET /api/analytics/kpis\n// Returns key performance indicators\n//\n// Expected Response:\n' + JSON.stringify({
+                        "accuracy": { "value": 94.4, "unit": "%", "trend": "+12.4%" },
+                        "error_rate": { "value": 90.9, "unit": "bikes (MAE)" },
+                        "predictions": { "value": 84, "trend": "+4 today" },
+                        "features": { "value": 36 }
+                    }, null, 2)
+                },
+                '/api/analytics/hourly-patterns': {
+                    method: 'GET',
+                    description: '// GET /api/analytics/hourly-patterns?filter=all\n// Returns average demand by hour of day\n//\n// Query Parameters:\n//   filter: all | today | week | month | quarter | year\n//\n// Expected Response:\n' + JSON.stringify({
+                        "labels": ["00:00", "01:00", "...", "23:00"],
+                        "data": [120, 85, 45, 30, 25, 80, 350, 1256, 980, "..."],
+                        "peak_hours": [8, 18]
+                    }, null, 2)
+                },
+                '/api/analytics/model-performance': {
+                    method: 'GET',
+                    description: '// GET /api/analytics/model-performance\n// Returns radar chart data for model comparison\n//\n// Expected Response:\n' + JSON.stringify({
+                        "models": ["Original RF", "Advanced RF", "XGBoost"],
+                        "metrics": ["Accuracy", "Stability", "Speed", "R2 Score", "Low Error"],
+                        "data": [[82, 85, 95, 82, 78], [92, 92, 85, 91, 85], [94, 91, 80, 94, 90]]
+                    }, null, 2)
+                },
+                '/api/analytics/feature-importance': {
+                    method: 'GET',
+                    description: '// GET /api/analytics/feature-importance?model=best\n// Returns ranked feature importance\n//\n// Query Parameters:\n//   model: best | original | advanced | xgboost | lightgbm\n//\n// Expected Response:\n' + JSON.stringify({
+                        "model": "advanced",
+                        "features": [
+                            { "name": "temp_hour_interaction", "importance": 16.56 },
+                            { "name": "temperature", "importance": 8.20 },
+                            { "name": "hour", "importance": 6.67 }
+                        ]
+                    }, null, 2)
+                },
+                '/api/analytics/shap-importance': {
+                    method: 'GET',
+                    description: '// GET /api/analytics/shap-importance\n// Returns SHAP-based feature importance\n//\n// Expected Response:\n' + JSON.stringify({
+                        "expected_value": 705,
+                        "features": [
+                            { "name": "Humidity%", "importance": 319.7, "direction": "negative" },
+                            { "name": "temp_hour_interaction", "importance": 139.1, "direction": "positive" },
+                            { "name": "functioning_day_No", "importance": 137.5, "direction": "negative" }
+                        ]
+                    }, null, 2)
+                },
+                '/api/analytics/insights': {
+                    method: 'GET',
+                    description: '// GET /api/analytics/insights\n// Returns AI-generated data insights\n//\n// Expected Response:\n' + JSON.stringify({
+                        "performance": { "title": "Best Model", "value": "XGBoost (R2=0.944)" },
+                        "features": { "title": "Top Predictor", "value": "temp_hour_interaction (16.6%)" },
+                        "data": { "title": "Total Predictions", "value": 84 }
+                    }, null, 2)
+                }
+            };
         }
 
         function updateEndpoint() {
             const endpoint = apiEndpointSelect.value;
+            const examples = getEndpointExamples();
+            const example = examples[endpoint];
 
-            if (endpoint === '/predict') {
-                apiMethodSelect.value = 'POST';
-            } else {
-                apiMethodSelect.value = 'GET';
+            if (example) {
+                apiMethodSelect.value = example.method;
+
+                if (example.method === 'POST' && example.body) {
+                    apiBodyTextarea.value = JSON.stringify(example.body, null, 4);
+                    apiBodyTextarea.disabled = false;
+                } else if (example.description) {
+                    apiBodyTextarea.value = example.description;
+                    apiBodyTextarea.disabled = false;
+                } else {
+                    apiBodyTextarea.value = '';
+                }
             }
 
-            if (endpoint === '/predict') {
-                apiBodyTextarea.value = JSON.stringify(getOriginalModelInput(), null, 4);
-            } else {
-                apiBodyTextarea.value = '';
-            }
+            updateMethod();
         }
 
         function updateMethod() {
             const method = apiMethodSelect.value;
+            const endpoint = apiEndpointSelect.value;
+            const examples = getEndpointExamples();
+            const example = examples[endpoint];
+
             if (method === 'GET') {
-                apiBodyTextarea.disabled = true;
-                apiBodyTextarea.placeholder = 'GET requests do not require a body';
+                // For GET, show the example description but keep textarea enabled for reading
+                if (example && example.description && !apiBodyTextarea.value) {
+                    apiBodyTextarea.value = example.description;
+                }
+                apiBodyTextarea.placeholder = 'GET request - example response shown above';
             } else {
                 apiBodyTextarea.disabled = false;
                 apiBodyTextarea.placeholder = 'Enter JSON request body...';
@@ -1256,14 +1515,101 @@
         }
 
         // ================================================================
-        // UI helpers
+        // History management
         // ================================================================
+        function addToHistory(endpoint, method, requestBody, response) {
+            const entry = {
+                id: requestHistory.length + 1,
+                endpoint: endpoint,
+                method: method,
+                requestBody: requestBody || null,
+                response: response,
+                timestamp: new Date().toLocaleString()
+            };
+            requestHistory.unshift(entry);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('history-list');
+            const historyCount = document.getElementById('history-count');
+            historyCount.textContent = requestHistory.length + ' request' + (requestHistory.length !== 1 ? 's' : '');
+
+            if (requestHistory.length === 0) {
+                historyList.innerHTML = '<div class="history-empty"><i class="fas fa-inbox" style="font-size: 2rem; color: #999; margin-bottom: 10px;"></i><p style="color: #999;">No requests yet. Send a request to see it here.</p></div>';
+                return;
+            }
+
+            historyList.innerHTML = requestHistory.map((entry, idx) => {
+                const statusCode = entry.response.status || 'ERR';
+                const isSuccess = statusCode >= 200 && statusCode < 300;
+                const statusClass = isSuccess ? 'history-status-success' : 'history-status-error';
+                const methodClass = 'history-method-' + entry.method.toLowerCase();
+                return `
+                    <div class="history-item" onclick="viewHistoryEntry(${idx})">
+                        <div class="history-item-header">
+                            <span class="history-method ${methodClass}">${entry.method}</span>
+                            <span class="history-endpoint">${entry.endpoint}</span>
+                            <span class="history-status ${statusClass}">${statusCode}</span>
+                            <span class="history-duration">${entry.response.duration || ''}</span>
+                        </div>
+                        <div class="history-item-footer">
+                            <span class="history-time"><i class="fas fa-clock"></i> ${entry.timestamp}</span>
+                            <button class="history-replay-btn" onclick="event.stopPropagation(); replayRequest(${idx})" title="Replay this request">
+                                <i class="fas fa-redo"></i> Replay
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function viewHistoryEntry(idx) {
+            const entry = requestHistory[idx];
+            updateConsoleOutput(entry.response);
+            switchToTab('response');
+        }
+
+        function replayRequest(idx) {
+            const entry = requestHistory[idx];
+            apiEndpointSelect.value = entry.endpoint;
+            apiMethodSelect.value = entry.method;
+            if (entry.requestBody) {
+                apiBodyTextarea.value = entry.requestBody;
+                apiBodyTextarea.disabled = false;
+            } else {
+                apiBodyTextarea.value = '';
+            }
+            updateMethod();
+            switchToTab('request');
+            showNotification('Request loaded. Click "Send Request" to replay.', 'info');
+        }
+
+        function clearHistory() {
+            requestHistory = [];
+            renderHistory();
+            showNotification('History cleared.', 'info');
+        }
+
+        // ================================================================
+        // Tab switching
+        // ================================================================
+        function switchToTab(tabName) {
+            document.querySelectorAll('.console-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.console-tab-content').forEach(c => c.classList.remove('active'));
+
+            const targetTab = document.querySelector(`.console-tab[data-tab="${tabName}"]`);
+            const targetContent = document.getElementById('tab-' + tabName);
+            if (targetTab) targetTab.classList.add('active');
+            if (targetContent) targetContent.classList.add('active');
+        }
+
         function initConsoleTabs() {
             const tabs = document.querySelectorAll('.console-tab');
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
+                    const tabName = tab.getAttribute('data-tab');
+                    switchToTab(tabName);
                 });
             });
         }
@@ -1393,7 +1739,14 @@
             return div.innerHTML;
         }
 
+        let activeNotification = null;
+
         function showNotification(message, type = 'info') {
+            // Remove previous notification immediately if one exists
+            if (activeNotification && activeNotification.parentNode) {
+                activeNotification.remove();
+            }
+
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `
@@ -1404,10 +1757,16 @@
             `;
 
             document.body.appendChild(notification);
+            activeNotification = notification;
 
             setTimeout(() => {
                 notification.style.animation = 'slideOutRight 0.3s ease';
-                setTimeout(() => notification.remove(), 300);
+                setTimeout(() => {
+                    notification.remove();
+                    if (activeNotification === notification) {
+                        activeNotification = null;
+                    }
+                }, 300);
             }, 3000);
         }
 
