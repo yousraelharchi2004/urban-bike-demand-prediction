@@ -2,10 +2,10 @@
 import requests
 import json
 
-# Base URL of your Flask app
+# Base URL of the Flask app
 BASE_URL = "http://127.0.0.1:5000"
 
-# Sample input data that matches what your form sends
+# Sample input data that matches the form submission format
 test_data = {
     "Hour": 14,
     "Temperature(캜)": 22.5,
@@ -64,7 +64,7 @@ def test_model(model_type, calculate_features=True):
             return False
             
     except requests.exceptions.ConnectionError:
-        print(f"❌ Connection Error: Make sure your Flask app is running on {BASE_URL}")
+        print(f"❌ Connection Error: The Flask app must be running on {BASE_URL}")
         return False
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -119,7 +119,7 @@ def check_api_status():
             print(f"❌ API returned status {response.status_code}")
             return False
     except requests.exceptions.ConnectionError:
-        print(f"❌ Connection Error: Make sure your Flask app is running on {BASE_URL}")
+        print(f"❌ Connection Error: The Flask app must be running on {BASE_URL}")
         return False
 
 def main():
@@ -134,7 +134,7 @@ def main():
         requests.get(f"{BASE_URL}/", timeout=2)
         print("✅ Server is running!")
     except:
-        print("❌ Cannot connect to server. Please start your Flask app first.")
+        print("❌ Cannot connect to server. Please start the Flask app first.")
         print("   Run: python run.py")
         return
     

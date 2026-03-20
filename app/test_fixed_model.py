@@ -13,7 +13,7 @@ features = joblib.load('models/fixed_model_features.pkl')
 
 print(f"Model loaded with {len(features)} features")
 
-# Create a test sample (similar to your frontend input)
+# Create a test sample (similar to the frontend input)
 test_data = {
     'Hour': 16,
     'Temperature(°C)': 22.5,
@@ -39,7 +39,7 @@ test_data = {
 # Create DataFrame with all expected features
 test_df = pd.DataFrame([test_data])
 
-# Make sure we have all the features the model expects
+# Ensure all expected features are present
 for feature in features:
     if feature not in test_df.columns:
         test_df[feature] = 0  # Add missing features with default value

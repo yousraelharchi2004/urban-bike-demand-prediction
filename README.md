@@ -84,7 +84,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env with your settings (SECRET_KEY, email credentials)
+# Edit .env with the appropriate settings (SECRET_KEY, email credentials)
 ```
 
 ### 3. Train models (optional - pre-trained models included)

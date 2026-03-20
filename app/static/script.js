@@ -397,7 +397,7 @@ function updateModelPerformanceMetrics(metrics) {
             maeValue = metrics.advanced_model_metrics.test_mae;
             dbg({r2Value, rmseValue, maeValue});
         } else {
-            // Fallback values from your test output
+            // Fallback values from test output
             r2Value = 0.911;
             rmseValue = 192.4;
             maeValue = 116.6;
@@ -411,7 +411,7 @@ function updateModelPerformanceMetrics(metrics) {
             maeValue = metrics.xgboost_model_metrics.test_mae;
             dbg({r2Value, rmseValue, maeValue});
         } else {
-            // Fallback values from your test output
+            // Fallback values from test output
             r2Value = 0.94;
             rmseValue = 153.3;
             maeValue = 90.9;
@@ -838,7 +838,7 @@ async function initPage() {
         });
     });
     
-    // Set default model selection (this will trigger UI update)
+    // Set default model selection
     selectModel(selectedModel);
     
     // Load available models

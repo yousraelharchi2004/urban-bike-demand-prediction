@@ -204,7 +204,7 @@ def generate_performance_report():
     
     Please ensure:
       1. The model file exists at 'models/random_forest_model.pkl'
-      2. You have the required dependencies installed
+      2. The required dependencies are installed
       3. The model file is not corrupted
     """
         

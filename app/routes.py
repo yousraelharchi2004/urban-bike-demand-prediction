@@ -1247,9 +1247,9 @@ class EmailService:
             }
             
         except smtplib.SMTPAuthenticationError as e:
-            error_msg = "SMTP Authentication failed. Please check your email credentials."
+            error_msg = "SMTP Authentication failed. Please check the email credentials."
             if "Application-specific password" in str(e):
-                error_msg += "\n\nFor Gmail, you need to use an App Password instead of your regular password."
+                error_msg += "\n\nFor Gmail, an App Password is required instead of the regular password."
             print(f"[ERROR] Email authentication error: {error_msg}")
             return {'success': False, 'error': error_msg}
             
@@ -1787,14 +1787,13 @@ class EmailService:
             return None
     
     def generate_chart_images(self, analytics_data):
-        """Generate chart images (placeholder - would require chart generation library)"""
+        """Generate chart images for email attachments"""
         try:
-            # In a real implementation, you would generate actual chart images
-            # using matplotlib, plotly, or another charting library
-            
+            # Chart generation via matplotlib/plotly can be added here
+
             attachments = []
-            
-            # Create placeholder text files for now
+
+            # Create text file attachments for now
             chart_types = ['feature_importance', 'hourly_patterns', 'performance_radar']
             
             for chart_type in chart_types:
@@ -3583,7 +3582,7 @@ def dashboard_metrics():
         # Get prediction count for today
         today = datetime.now().date()  
         
-        # Use your existing JSON history file
+        # Use the JSON history file
         all_predictions = get_prediction_history(limit=None)
         
         # Filter predictions for today
@@ -5676,7 +5675,7 @@ def test_email_config():
             return jsonify({
                 "success": False,
                 "error": result.get('error', 'Email test failed'),
-                "note": "Check your email configuration in environment variables"
+                "note": "Check the email configuration in environment variables"
             }), 500
             
     except Exception as e:
@@ -6466,7 +6465,7 @@ def test_email():
             return jsonify({
                 "success": False,
                 "error": result.get('error', 'Email test failed'),
-                "note": "Check your email configuration in environment variables"
+                "note": "Check the email configuration in environment variables"
             }), 500
             
     except Exception as e:

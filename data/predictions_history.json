@@ -1,31 +1,6 @@
 [
   {
     "id": 101,
-    "timestamp": "2026-03-16T14:31:55.656400",
-    "timestamp_readable": "2026-03-16 14:31:55",
-    "input": {
-      "Hour": 14,
-      "Temperature(\uce9c)": 22.5,
-      "Humidity(%)": 60,
-      "Wind speed (m/s)": 2.5,
-      "Visibility (10m)": 2000,
-      "Dew point temperature(\uce9c)": 10,
-      "Solar Radiation (MJ/m2)": 1.5,
-      "Rainfall(mm)": 0,
-      "Snowfall (cm)": 0,
-      "Seasons_Spring": 0,
-      "Seasons_Summer": 1,
-      "Seasons_Winter": 0,
-      "Holiday_No Holiday": 1,
-      "Functioning Day_Yes": 1
-    },
-    "prediction": 1343.995,
-    "rounded": 1344,
-    "model_type": "original",
-    "summary": "Model: Original, Hour: 14, Temp: 22.5\u00b0C, Season: Summer, Predicted: 1344 bikes"
-  },
-  {
-    "id": 101,
     "timestamp": "2026-03-16T14:31:55.739888",
     "timestamp_readable": "2026-03-16 14:31:55",
     "input": {
@@ -2883,5 +2858,31 @@
     "rounded": 1344,
     "model_type": "original",
     "summary": "Model: Original, Hour: 14, Temp: 22.5\u00b0C, Season: Summer, Predicted: 1344 bikes"
+  },
+  {
+    "id": 101,
+    "timestamp": "2026-03-20T21:15:24.367406",
+    "timestamp_readable": "2026-03-20 21:15:24",
+    "input": {
+      "Hour": 5,
+      "Temperature(\uce9c)": -2.3,
+      "Humidity(%)": 78,
+      "Wind speed (m/s)": 5.4,
+      "Visibility (10m)": 1705,
+      "Dew point temperature(\uce9c)": -8.4,
+      "Solar Radiation (MJ/m2)": 0,
+      "Rainfall(mm)": 7.7,
+      "Snowfall (cm)": 0,
+      "Seasons_Spring": 0,
+      "Seasons_Summer": 0,
+      "Seasons_Winter": 1,
+      "Holiday_No Holiday": 1,
+      "Holiday_Holiday": 0,
+      "Functioning Day_Yes": 1
+    },
+    "prediction": 67.5,
+    "rounded": 68,
+    "model_type": "original",
+    "summary": "Model: Original, Hour: 5, Temp: -2.3\u00b0C, Season: Winter, Predicted: 68 bikes"
   }
 ]

@@ -381,7 +381,7 @@ def train_model_with_features():
     
     print("\n🤖 Training Random Forest model...")
     
-    # First, let's test with a simple model to ensure it works
+    # First, test with a simple model to ensure it works
     try:
         # Test with a small subset first
         test_model = RandomForestRegressor(
@@ -629,7 +629,7 @@ if __name__ == "__main__":
                "time_of_day_night": 0
              }'""")
         
-        print("\n🔍 To test with actual data from your CSV:")
+        print("\n🔍 To test with actual data from the CSV:")
         print("""   python -c "
 import joblib
 import pandas as pd
@@ -640,7 +640,7 @@ print('First 10 feature names:', model.feature_names_in_[:10])
         
     except FileNotFoundError as e:
         print(f"\n❌ File not found: {e}")
-        print("   Make sure the file 'data/raw/seoul_bike.csv' exists in the correct location.")
+        print("   The file 'data/raw/seoul_bike.csv' must exist in the correct location.")
         print("   Current working directory:", os.getcwd())
         print("   Expected path: data/raw/seoul_bike.csv")
         
@@ -650,7 +650,7 @@ print('First 10 feature names:', model.feature_names_in_[:10])
         print("   1. Check if data/raw/seoul_bike.csv exists")
         print("   2. Check file encoding (try opening in Notepad++)")
         print("   3. Check column names in the CSV file")
-        print("   4. Ensure you have required packages installed")
+        print("   4. Ensure the required packages are installed")
         print("   5. Check if the CSV file has the expected columns")
         print("\n📋 For more details, run this debug script:")
         print("""   python -c "

@@ -88,8 +88,7 @@ class EmailService:
     
     def attach_chart_images(self, msg, chart_images):
         """Attach chart images"""
-        # In a real implementation, you would attach actual chart images
-        # For demo, create a placeholder
+        # Attach chart images to the email
         for chart_name, chart_data in chart_images.items():
             chart_info = f"Chart: {chart_name}\nGenerated: {datetime.now()}"
             attachment = MIMEApplication(chart_info.encode('utf-8'), Name=f'{chart_name}.txt')

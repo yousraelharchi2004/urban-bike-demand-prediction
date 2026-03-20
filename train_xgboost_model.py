@@ -12,9 +12,8 @@ warnings.filterwarnings('ignore')
 
 
 def load_and_preprocess_data(filepath='data/raw/seoul_bike.csv'):
-    """Load and preprocess data using your advanced feature engineering"""
-    # We'll reuse your previous preprocessing function
-    # For simplicity, import it from train_with_advanced_features.py if modularized
+    """Load and preprocess data using advanced feature engineering"""
+    # Reuse the preprocessing function from train_with_advanced_features.py
     from train_with_advanced_features import load_and_preprocess_data
     return load_and_preprocess_data(filepath)
 

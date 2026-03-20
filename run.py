@@ -68,7 +68,7 @@ def open_browser():
         Timer(1.5, lambda: webbrowser.open('http://127.0.0.1:5000')).start()
         print("[WEB] Opening browser automatically...")
     except Exception:
-        print("[INFO] Please open your browser manually to: http://127.0.0.1:5000")
+        print("[INFO] Please open the browser manually to: http://127.0.0.1:5000")
 
 def print_system_info():
     """Print system and project information"""
@@ -131,7 +131,7 @@ def main():
     # Check project structure
     if not check_dependencies():
         print("\n[WARN]  Some files are missing. Please check the structure above.")
-        print("   Make sure you've:")
+        print("   Please verify:")
         print("   1. Trained the model and saved to models/")
         print("   2. Placed dataset in data/raw/")
         print("   3. Created all template files")
@@ -204,7 +204,7 @@ def main():
         print(f"\n[FAIL] Failed to start application: {e}")
         print("\n[TOOLS] Troubleshooting steps:")
         print("   1. Check if all dependencies are installed")
-        print("   2. Verify your model file exists")
+        print("   2. Verify the model file exists")
         print("   3. Check app/__init__.py for syntax errors")
         import traceback
         traceback.print_exc()
