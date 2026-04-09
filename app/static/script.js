@@ -2,6 +2,8 @@
 const DEBUG = false;
 function dbg(...args) { if (DEBUG) console.log(...args); }
 
+const API_BASE = '/v2';
+
 // DOM Elements
 const form = document.getElementById('prediction-form');
 const resultContent = document.getElementById('result-content');
@@ -17,6 +19,8 @@ const predictBtn = document.getElementById('predict-btn');
 let selectedModel = 'original';
 let availableModels = {};
 let currentPredictionData = null;
+let MODEL_INFO = [];
+let lastUploadedData = null;
 
 // Show loading state
 function showLoading() {
@@ -83,9 +87,18 @@ function formatModelName(modelName) {
         'advanced': 'Advanced Model',
         'xgboost': 'XGBoost',
         'lightgbm': 'LightGBM',
-        'stacking': 'Stacking Ensemble'
+        'stacking': 'Stacking Ensemble',
+        'unified': 'Unified Pipeline'
     };
     return names[modelName] || modelName;
+}
+
+function getPredictionValue(data) {
+    if (!data) return 0;
+    return data.predicted_bikes
+        ?? data.predicted_rented_bikes
+        ?? data.rounded
+        ?? (data.prediction !== undefined ? Math.round(data.prediction) : 0);
 }
 
 // Get season encoding for form submission
@@ -136,7 +149,7 @@ function updatePredictionResults(data, responseTime) {
     }
     
     // Update prediction count
-    const prediction = data.predicted_rented_bikes || data.rounded || Math.round(data.prediction || 0);
+    const prediction = getPredictionValue(data);
     if (predictionCount) {
         predictionCount.textContent = prediction;
         
@@ -257,7 +270,7 @@ function selectModel(modelName) {
     // Show model-colored notification
     const notifColors = {
         'original': '#2563eb', 'improved': '#6366f1', 'advanced': '#0d9488',
-        'xgboost': '#8b5cf6', 'lightgbm': '#06b6d4', 'stacking': '#64748b'
+        'xgboost': '#8b5cf6', 'lightgbm': '#06b6d4', 'stacking': '#64748b', 'unified': '#0f766e'
     };
     showNotification(`${formatModelName(modelName)} selected`, 'info');
     // Tint the notification border to model color
@@ -276,7 +289,8 @@ function updateModelUI() {
         'advanced':  { solid: '#0d9488', gradient: '#0d9488' },
         'xgboost':   { solid: '#8b5cf6', gradient: '#8b5cf6' },
         'lightgbm':  { solid: '#06b6d4', gradient: '#06b6d4' },
-        'stacking':  { solid: '#64748b', gradient: '#64748b' }
+        'stacking':  { solid: '#64748b', gradient: '#64748b' },
+        'unified':   { solid: '#0f766e', gradient: '#0f766e' }
     };
 
     const mc = modelColors[selectedModel] || modelColors.original;
@@ -384,89 +398,19 @@ function updateModelPerformanceMetrics(metrics) {
     // Log all available keys in metrics
     dbg(Object.keys(metrics));
     
-    // Determine which model's metrics to show based on selected model
-    let r2Value = null;
-    let rmseValue = null;
-    let maeValue = null;
-    
-    if (selectedModel === 'advanced') {
-        // Show advanced model metrics
-        if (metrics.advanced_model_metrics && Object.keys(metrics.advanced_model_metrics).length > 0) {
-            r2Value = metrics.advanced_model_metrics.test_r2;
-            rmseValue = metrics.advanced_model_metrics.test_rmse;
-            maeValue = metrics.advanced_model_metrics.test_mae;
-            dbg({r2Value, rmseValue, maeValue});
-        } else {
-            // Fallback values from test output
-            r2Value = 0.911;
-            rmseValue = 192.4;
-            maeValue = 116.6;
-            
-        }
-    } else if (selectedModel === 'xgboost') {
-        // Show XGBoost metrics
-        if (metrics.xgboost_model_metrics && Object.keys(metrics.xgboost_model_metrics).length > 0) {
-            r2Value = metrics.xgboost_model_metrics.test_r2;
-            rmseValue = metrics.xgboost_model_metrics.test_rmse;
-            maeValue = metrics.xgboost_model_metrics.test_mae;
-            dbg({r2Value, rmseValue, maeValue});
-        } else {
-            // Fallback values from test output
-            r2Value = 0.94;
-            rmseValue = 153.3;
-            maeValue = 90.9;
-            
-        }
-    } else if (selectedModel === 'lightgbm') {
-        // Show LightGBM metrics
-        if (metrics.lightgbm_model_metrics && Object.keys(metrics.lightgbm_model_metrics).length > 0) {
-            r2Value = metrics.lightgbm_model_metrics.test_r2;
-            rmseValue = metrics.lightgbm_model_metrics.test_rmse;
-            maeValue = metrics.lightgbm_model_metrics.test_mae;
-        } else {
-            r2Value = 0.757;
-            rmseValue = 302.6;
-            maeValue = 225.7;
-        }
-    } else if (selectedModel === 'stacking') {
-        // Show Stacking Ensemble metrics
-        if (metrics.stacking_model_metrics && Object.keys(metrics.stacking_model_metrics).length > 0) {
-            r2Value = metrics.stacking_model_metrics.test_r2;
-            rmseValue = metrics.stacking_model_metrics.test_rmse;
-            maeValue = metrics.stacking_model_metrics.test_mae;
-        } else {
-            r2Value = 0.791;
-            rmseValue = 280.5;
-            maeValue = 207.6;
-        }
-    } else if (selectedModel === 'improved') {
-        // Show improved model metrics
-        if (metrics.improved_model_metrics && Object.keys(metrics.improved_model_metrics).length > 0) {
-            r2Value = metrics.improved_model_metrics.r2 || 0.899;
-            rmseValue = metrics.improved_model_metrics.rmse || 194.6;
-            maeValue = metrics.improved_model_metrics.mae || 116.6;
-            dbg({r2Value, rmseValue, maeValue});
-        } else {
-            // Fallback values
-            r2Value = 0.899;
-            rmseValue = 194.6;
-            maeValue = 116.6;
+    const registry = metrics.models || {};
+    const selectedMetrics = registry[selectedModel]
+        || metrics[`${selectedModel}_model_metrics`]
+        || (selectedModel === 'original' ? {
+            test_r2: metrics.r2_score,
+            test_rmse: metrics.root_mean_squared_error,
+            test_mae: metrics.mean_absolute_error
+        } : null);
 
-        }
-    } else {
-        // Show base/original model metrics
-        if (metrics.r2_score !== undefined) {
-            r2Value = metrics.r2_score;
-            rmseValue = metrics.root_mean_squared_error;
-            maeValue = metrics.mean_absolute_error;
-        } else {
-            // Fallback values
-            r2Value = 0.82;
-            rmseValue = 112.5;
-            maeValue = 87.2;
-        }
-        dbg({r2Value, rmseValue, maeValue});
-    }
+    const r2Value = selectedMetrics?.test_r2 ?? selectedMetrics?.r2 ?? null;
+    const rmseValue = selectedMetrics?.test_rmse ?? selectedMetrics?.rmse ?? null;
+    const maeValue = selectedMetrics?.test_mae ?? selectedMetrics?.mae ?? null;
+    dbg({selectedModel, r2Value, rmseValue, maeValue});
     
     // Get DOM elements
     const r2Element = document.getElementById('metric-r2');
@@ -508,7 +452,7 @@ async function fetchModelPerformanceMetrics() {
     
     try {
         
-        const response = await fetch('/metrics');
+        const response = await fetch(`${API_BASE}/metrics`);
         dbg(response.status);
         
         if (response.ok) {
@@ -609,7 +553,7 @@ if (form) {
             }
             
             // Make prediction request with selected model - FIXED URL CONSTRUCTION
-            let url = `/predict?model_type=${modelToUse}`;
+        let url = `${API_BASE}/predict?model_type=${modelToUse}`;
             dbg(url);
             
             // Add calculate_features parameter for models that need it
@@ -698,7 +642,7 @@ async function updateDashboardMetrics() {
         });
         
         
-        const response = await fetch('/api/dashboard-metrics');
+    const response = await fetch(`${API_BASE}/api/dashboard-metrics`);
         dbg('status:', response.status);
         
         if (!response.ok) {
@@ -708,8 +652,15 @@ async function updateDashboardMetrics() {
         const data = await response.json();
         dbg('dashboard:', data);
         
-        if (data.success && data.metrics) {
-            dbg(data.metrics);
+        const metrics = data.metrics || {
+            model_accuracy: data.overall_accuracy,
+            predictions_today: data.total_predictions,
+            avg_error: data.avg_error,
+            models_available: data.models_available
+        };
+        
+        if (data.success && metrics) {
+            dbg(metrics);
             
             // Update Model Accuracy
             if (modelAccuracyEl) {
@@ -718,8 +669,9 @@ async function updateDashboardMetrics() {
                 if (loadingEl && valueEl) {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
-                    valueEl.textContent = data.metrics.model_accuracy + '%';
-                    dbg(data.metrics.model_accuracy + '%');
+                    const accuracy = metrics.model_accuracy ?? '--';
+                    valueEl.textContent = `${accuracy}%`;
+                    dbg(`${accuracy}%`);
                 }
             }
             
@@ -730,8 +682,8 @@ async function updateDashboardMetrics() {
                 if (loadingEl && valueEl) {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
-                    valueEl.textContent = data.metrics.predictions_today;
-                    dbg(data.metrics.predictions_today);
+                    valueEl.textContent = metrics.predictions_today ?? 0;
+                    dbg(metrics.predictions_today ?? 0);
                 }
             }
             
@@ -742,8 +694,8 @@ async function updateDashboardMetrics() {
                 if (loadingEl && valueEl) {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
-                    valueEl.textContent = '±' + data.metrics.avg_error + ' bikes';
-                    dbg('±' + data.metrics.avg_error + ' bikes');
+                    valueEl.textContent = '±' + (metrics.avg_error ?? 87.2) + ' bikes';
+                    dbg('±' + (metrics.avg_error ?? 87.2) + ' bikes');
                 }
             }
             
@@ -754,8 +706,8 @@ async function updateDashboardMetrics() {
                 if (loadingEl && valueEl) {
                     loadingEl.style.display = 'none';
                     valueEl.style.display = 'inline';
-                    valueEl.textContent = data.metrics.models_available;
-                    dbg(data.metrics.models_available);
+                    valueEl.textContent = metrics.models_available ?? 0;
+                    dbg(metrics.models_available ?? 0);
                 }
             }
         } else {
@@ -776,11 +728,12 @@ async function updateDashboardMetrics() {
 // Load available models from API
 async function loadAvailableModels() {
     try {
-        const response = await fetch('/api/models');
+        const response = await fetch(`${API_BASE}/api/models`);
         const data = await response.json();
         
         if (data.success && data.models) {
             availableModels = data.models;
+            refreshModelInfo();
             
             // Update models available count
             const availableCount = Object.values(availableModels).filter(m => m.available).length;
@@ -791,6 +744,15 @@ async function loadAvailableModels() {
                     valueEl.textContent = availableCount;
                 }
             }
+
+            Object.entries(availableModels).forEach(([key, model]) => {
+                const r2El = document.getElementById(`stat-r2-${key}`);
+                const rmseEl = document.getElementById(`stat-rmse-${key}`);
+                const maeEl = document.getElementById(`stat-mae-${key}`);
+                if (r2El && typeof model.r2 === 'number') r2El.textContent = model.r2.toFixed(3);
+                if (rmseEl && typeof model.rmse === 'number') rmseEl.textContent = model.rmse.toFixed(1);
+                if (maeEl && typeof model.mae === 'number') maeEl.textContent = model.mae.toFixed(1);
+            });
             
             return true;
         }
@@ -809,7 +771,7 @@ async function initPage() {
         const savedModel = sessionStorage.getItem('selectedModel');
         dbg(savedModel);
         
-        if (savedModel && ['original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking'].includes(savedModel)) {
+        if (savedModel && ['original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking', 'unified'].includes(savedModel)) {
             dbg(savedModel);
             selectedModel = savedModel;
         } else {
@@ -857,6 +819,7 @@ async function initPage() {
 
     // Initialize dynamic AI Insights
     attachInsightListeners();
+    attachFileUploadListener();
     updateAllInsights();
 }
 
@@ -869,14 +832,28 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Model Manager data
-const MODEL_INFO = [
-    { key: 'original', name: 'Standard Model', color: '#2563eb', features: '14 basic features', r2: '0.820', rmse: '112.5', mae: '87.2', detail: 'Quick predictions with basic weather data' },
-    { key: 'improved', name: 'Improved Model', color: '#6366f1', features: '38 engineered features', r2: '0.899', rmse: '194.6', mae: '116.6', detail: 'Peak hours, weather severity, comfort index' },
-    { key: 'advanced', name: 'Advanced Model', color: '#0d9488', features: '36 advanced features', r2: '0.911', rmse: '192.4', mae: '116.6', detail: 'Cyclical encoding, temp categories, rush intensity' },
-    { key: 'xgboost', name: 'XGBoost', color: '#8b5cf6', features: '36 advanced features', r2: '0.940', rmse: '153.3', mae: '90.9', detail: 'Gradient boosting with regularization' },
-    { key: 'lightgbm', name: 'LightGBM', color: '#06b6d4', features: '36 advanced features', r2: '0.757', rmse: '302.6', mae: '225.7', detail: 'Leaf-wise gradient boosting, fast & memory efficient' },
-    { key: 'stacking', name: 'Stacking Ensemble', color: '#64748b', features: '36 advanced features', r2: '0.791', rmse: '280.5', mae: '207.6', detail: 'RF + XGBoost + LightGBM with RidgeCV meta-learner' },
-];
+function refreshModelInfo() {
+    const colors = {
+        'original': '#2563eb',
+        'improved': '#6366f1',
+        'advanced': '#0d9488',
+        'xgboost': '#8b5cf6',
+        'lightgbm': '#06b6d4',
+        'stacking': '#64748b',
+        'unified': '#0f766e'
+    };
+
+    MODEL_INFO = Object.entries(availableModels).map(([key, model]) => ({
+        key,
+        name: model.name || formatModelName(key),
+        color: colors[key] || '#2563eb',
+        features: `${model.features || 0} features`,
+        r2: typeof model.r2 === 'number' ? model.r2.toFixed(3) : 'N/A',
+        rmse: typeof model.rmse === 'number' ? model.rmse.toFixed(1) : 'N/A',
+        mae: typeof model.mae === 'number' ? model.mae.toFixed(1) : 'N/A',
+        detail: model.description || 'Artifact-backed model metrics',
+    }));
+}
 
 function openModelManager() {
     const modal = document.createElement('div');
@@ -1340,9 +1317,7 @@ function updateWeatherInsight(temp) {
 // Copy prediction to clipboard
 function copyPrediction() {
     if (currentPredictionData) {
-        const prediction = currentPredictionData.predicted_rented_bikes || 
-                         currentPredictionData.rounded || 
-                         Math.round(currentPredictionData.prediction || 0);
+        const prediction = getPredictionValue(currentPredictionData);
         const model = formatModelName(currentPredictionData.model_type);
         const text = `Predicted bike demand: ${prediction} bikes (using ${model} model)`;
         
@@ -1379,7 +1354,7 @@ function exportPrediction(format = 'json') {
         else if (modelText.includes('XGBoost')) modelType = 'xgboost';
         
         currentPredictionData = {
-            predicted_rented_bikes: parseInt(predictionCount.textContent) || 0,
+            predicted_bikes: parseInt(predictionCount.textContent) || 0,
             model_type: modelType,
             input_summary: {
                 features_used: document.getElementById('detail-features')?.textContent || '14'
@@ -1426,9 +1401,7 @@ function exportPrediction(format = 'json') {
             predictionId: currentPredictionData.prediction_id || 'N/A',
             modelUsed: formatModelName(currentPredictionData.model_type),
             modelType: currentPredictionData.model_type,
-            bikesRequired: currentPredictionData.predicted_rented_bikes || 
-                          currentPredictionData.rounded || 
-                          Math.round(currentPredictionData.prediction || 0),
+            bikesRequired: getPredictionValue(currentPredictionData),
             features: currentPredictionData.input_summary?.features_used || '14',
             responseTime: document.getElementById('response-time')?.textContent || '0.00s',
             confidence: currentPredictionData.confidence || 80,
@@ -1670,11 +1643,16 @@ function updateModelInsight() {
     const info = MODEL_INFO.find(m => m.key === selectedModel);
     if (!info) return;
 
-    if (selectedModel === 'original') {
-        el.innerHTML = `Using <strong>${info.name}</strong> (R\u00B2 ${info.r2}). Try <strong>XGBoost</strong> for best accuracy.`;
+    const best = MODEL_INFO.reduce((bestSoFar, current) => {
+        const currentR2 = parseFloat(current.r2);
+        const bestR2 = bestSoFar && bestSoFar.r2 ? parseFloat(bestSoFar.r2) : -Infinity;
+        return currentR2 > bestR2 ? current : bestSoFar;
+    }, null);
+
+    if (best && best.key !== selectedModel) {
+        el.innerHTML = `Using <strong>${info.name}</strong> (R\u00B2 ${info.r2}). The <strong>${best.name}</strong> still leads with R\u00B2 ${best.r2}.`;
     } else {
-        const best = MODEL_INFO[MODEL_INFO.length - 1];
-        el.innerHTML = `Using <strong>${info.name}</strong> (R\u00B2 ${info.r2}). The <strong>${best.name}</strong> achieves R\u00B2 ${best.r2}.`;
+        el.innerHTML = `Using <strong>${info.name}</strong> (R\u00B2 ${info.r2}).`;
     }
 }
 
@@ -1745,6 +1723,197 @@ function updateFeatureInsight() {
     }
 }
 
+function attachFileUploadListener() {
+    const fileInput = document.getElementById('prediction-file-quick');
+    if (fileInput) {
+        fileInput.addEventListener('change', handlePredictionFileUpload);
+    }
+}
+
+function parsePredictionCsv(text) {
+    const lines = text.trim().split(/\r?\n/).filter(Boolean);
+    if (!lines.length) return null;
+    const headers = lines[0].split(',').map(h => h.trim());
+    const values = (lines[1] || lines[0]).split(',').map(v => v.trim());
+    const record = {};
+    headers.forEach((header, idx) => {
+        if (header) record[header] = values[idx] ?? '';
+    });
+    return record;
+}
+
+const FIELD_NAME_CANONICAL = {
+    hour: 'Hour',
+    dayofweek: 'day_of_week',
+    dayofweeknum: 'day_of_week',
+    temperature: 'Temperature(캜)',
+    temperaturec: 'Temperature(캜)',
+    temperaturecelsius: 'Temperature(캜)',
+    temp: 'Temperature(캜)',
+    humidity: 'Humidity(%)',
+    humiditypercent: 'Humidity(%)',
+    humiditypercentvalue: 'Humidity(%)',
+    windspeed: 'Wind speed (m/s)',
+    windspeedms: 'Wind speed (m/s)',
+    wind: 'Wind speed (m/s)',
+    visibility: 'Visibility (10m)',
+    visibility10m: 'Visibility (10m)',
+    rainfall: 'Rainfall(mm)',
+    rainfallmm: 'Rainfall(mm)',
+    rain: 'Rainfall(mm)',
+    snowfall: 'Snowfall (cm)',
+    snowfallcm: 'Snowfall (cm)',
+    snow: 'Snowfall (cm)',
+    solarradiation: 'Solar Radiation (MJ/m2)',
+    solarradiationmjm2: 'Solar Radiation (MJ/m2)',
+    solar: 'Solar Radiation (MJ/m2)',
+    dewpoint: 'Dew point temperature(캜)',
+    dewpointtemperature: 'Dew point temperature(캜)',
+    dewpointtemperaturec: 'Dew point temperature(캜)',
+    season: 'season',
+    holiday: 'holiday',
+    isholiday: 'holiday',
+    functioning: 'functioning',
+    functioningday: 'functioning'
+};
+
+function canonicalizeFieldName(key) {
+    if (!key) return '';
+    const normalized = key.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return FIELD_NAME_CANONICAL[normalized] || key;
+}
+
+function normalizeSeasonValue(value) {
+    if (value === null || value === undefined) return null;
+    const normalized = value.toString().trim().toLowerCase();
+    const seasonMap = {
+        spring: 'Spring',
+        summer: 'Summer',
+        winter: 'Winter',
+        autumn: 'Autumn',
+        fall: 'Autumn'
+    };
+    if (seasonMap[normalized]) return seasonMap[normalized];
+    if (!normalized) return null;
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function parseBooleanFlag(value) {
+    if (typeof value === 'boolean') return value;
+    if (value === null || value === undefined) return null;
+    const normalized = value.toString().trim().toLowerCase();
+    if (['1', 'true', 'yes', 'y', 'on', 'holiday', 'functioning'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'n', 'off', 'noholiday'].includes(normalized)) return false;
+    return null;
+}
+
+function fillPredictionForm(data) {
+    if (!data) return;
+    if (Array.isArray(data)) data = data[0];
+    let seasonValue = null;
+    let holidayValue = null;
+    let functioningValue = null;
+
+    Object.entries(data).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
+        const canonicalKey = canonicalizeFieldName(key);
+
+        if (canonicalKey === 'season') {
+            seasonValue = normalizeSeasonValue(value);
+            return;
+        }
+
+        if (canonicalKey === 'holiday') {
+            const flag = parseBooleanFlag(value);
+            if (flag !== null) holidayValue = flag;
+            return;
+        }
+
+        if (canonicalKey === 'functioning') {
+            const flag = parseBooleanFlag(value);
+            if (flag !== null) functioningValue = flag;
+            return;
+        }
+
+        const selector = document.querySelector(`[name="${canonicalKey}"]`) || document.getElementById(canonicalKey);
+        if (!selector || selector.type === 'file') return;
+
+        selector.value = value;
+        selector.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const numericValue = parseFloat(value);
+        if (!Number.isNaN(numericValue)) {
+            if (canonicalKey === 'Hour') {
+                syncSlider('hour-slider', 'Hour', numericValue);
+            }
+            if (canonicalKey === 'Temperature(캜)') {
+                syncSlider('temp-slider', 'Temperature(캜)', numericValue);
+            }
+        }
+    });
+
+    if (seasonValue) {
+        updateSeasonSelector(seasonValue);
+    }
+
+    if (holidayValue !== null || functioningValue !== null) {
+        const existingHoliday = document.getElementById('holiday-toggle')?.checked ?? false;
+        const existingFunctioning = document.getElementById('functioning-toggle')?.checked ?? true;
+        updateToggleSwitches(
+            holidayValue ?? existingHoliday,
+            functioningValue ?? existingFunctioning
+        );
+    }
+
+    updateAllInsights();
+    lastUploadedData = data;
+    renderPredictionPreview(data);
+}
+
+function handlePredictionFileUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        let parsedData = null;
+        const text = reader.result;
+        if (file.name.toLowerCase().endsWith('.json')) {
+            try {
+                parsedData = JSON.parse(text);
+            } catch (err) {
+                console.error('Invalid JSON file', err);
+            }
+        } else {
+            parsedData = parsePredictionCsv(text);
+        }
+        if (!parsedData) {
+            showNotification('Cannot parse uploaded file. Match the field names and try again.', 'error');
+            return;
+        }
+        fillPredictionForm(parsedData);
+        showNotification('Form populated from upload. You can edit fields before predicting.', 'success');
+    };
+    reader.onerror = () => {
+        showNotification('Unable to read the uploaded file.', 'error');
+    };
+    reader.readAsText(file);
+}
+
+function renderPredictionPreview(data) {
+    const preview = document.getElementById('file-upload-preview');
+    if (!preview) return;
+    if (!data) {
+        preview.innerHTML = '<strong>Uploaded data preview will appear here.</strong>';
+        return;
+    }
+    const entries = Object.entries(data);
+    if (!entries.length) {
+        preview.innerHTML = '<em>No key/value pairs found.</em>';
+        return;
+    }
+    const list = entries.map(([key, value]) => `<li><strong>${key}</strong>: ${value}</li>`).join('');
+    preview.innerHTML = `<ul class="upload-preview-list">${list}</ul>`;
+}
 // Wire up insight updates on form input changes
 function attachInsightListeners() {
     const fields = ['Hour', 'Temperature(\uCE9C)', 'Humidity(%)', 'Rainfall(mm)', 'Snowfall (cm)', 'Wind speed (m/s)', 'Visibility (10m)'];

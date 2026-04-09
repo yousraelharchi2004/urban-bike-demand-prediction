@@ -1,0 +1,130 @@
+{
+  "model_key": "stacking",
+  "source": "Stacking Ensemble SHAP Analysis",
+  "global_importance": [
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_abs_shap": 122.53387608214109
+    },
+    {
+      "feature": "hour",
+      "mean_abs_shap": 114.54509452618825
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_abs_shap": 112.10424861635272
+    },
+    {
+      "feature": "hour_sin",
+      "mean_abs_shap": 58.98392575172161
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_abs_shap": 43.96595205706014
+    },
+    {
+      "feature": "day_of_week",
+      "mean_abs_shap": 43.61278904104622
+    },
+    {
+      "feature": "rush_hour_intensity",
+      "mean_abs_shap": 39.483422024718266
+    },
+    {
+      "feature": "temperature",
+      "mean_abs_shap": 38.957679104318075
+    },
+    {
+      "feature": "is_peak_hour",
+      "mean_abs_shap": 33.03793258230336
+    },
+    {
+      "feature": "hour_cos",
+      "mean_abs_shap": 29.358851084327632
+    },
+    {
+      "feature": "dew_point",
+      "mean_abs_shap": 26.985873016114674
+    },
+    {
+      "feature": "Humidity%",
+      "mean_abs_shap": 21.723104298904826
+    },
+    {
+      "feature": "is_weekend",
+      "mean_abs_shap": 17.34637391589131
+    },
+    {
+      "feature": "temp_category_warm",
+      "mean_abs_shap": 15.083283718394238
+    },
+    {
+      "feature": "rainfall",
+      "mean_abs_shap": 9.97505240294526
+    }
+  ],
+  "direction": [
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_shap": 42.26171794701406
+    },
+    {
+      "feature": "hour",
+      "mean_shap": -10.86609308108822
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_shap": 6.168618397827148
+    },
+    {
+      "feature": "hour_sin",
+      "mean_shap": -0.7244887830120987
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_shap": -2.6247762157459116
+    },
+    {
+      "feature": "day_of_week",
+      "mean_shap": 8.142994724403117
+    },
+    {
+      "feature": "rush_hour_intensity",
+      "mean_shap": 2.4815831037614906
+    },
+    {
+      "feature": "temperature",
+      "mean_shap": -12.705427183460916
+    },
+    {
+      "feature": "is_peak_hour",
+      "mean_shap": 13.376232720809119
+    },
+    {
+      "feature": "hour_cos",
+      "mean_shap": -9.933409274235094
+    },
+    {
+      "feature": "dew_point",
+      "mean_shap": -14.82763920779135
+    },
+    {
+      "feature": "Humidity%",
+      "mean_shap": -2.565135412464963
+    },
+    {
+      "feature": "is_weekend",
+      "mean_shap": -7.859557642127363
+    },
+    {
+      "feature": "temp_category_warm",
+      "mean_shap": -4.622915774560935
+    },
+    {
+      "feature": "rainfall",
+      "mean_shap": -4.519704852219848
+    }
+  ],
+  "expected_value": 912.3063528472146,
+  "sample_size": 16
+}

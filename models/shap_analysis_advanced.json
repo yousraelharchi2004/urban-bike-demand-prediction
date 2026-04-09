@@ -1,0 +1,130 @@
+{
+  "model_key": "advanced",
+  "source": "Advanced RF SHAP Analysis",
+  "global_importance": [
+    {
+      "feature": "Humidity%",
+      "mean_abs_shap": 221.8153177730827
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_abs_shap": 150.88188243218764
+    },
+    {
+      "feature": "temperature",
+      "mean_abs_shap": 94.5321963656222
+    },
+    {
+      "feature": "rainfall",
+      "mean_abs_shap": 80.30538822420053
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_abs_shap": 78.34926558186898
+    },
+    {
+      "feature": "temp_squared",
+      "mean_abs_shap": 69.00328111587322
+    },
+    {
+      "feature": "hour",
+      "mean_abs_shap": 61.04941167844902
+    },
+    {
+      "feature": "hour_sin",
+      "mean_abs_shap": 47.65463124538939
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_abs_shap": 45.70746777662681
+    },
+    {
+      "feature": "dew_point",
+      "mean_abs_shap": 37.72714600240357
+    },
+    {
+      "feature": "hour_squared",
+      "mean_abs_shap": 34.690885443803424
+    },
+    {
+      "feature": "time_of_day_evening",
+      "mean_abs_shap": 30.484309721364443
+    },
+    {
+      "feature": "season_Winter",
+      "mean_abs_shap": 29.87591809258506
+    },
+    {
+      "feature": "is_peak_hour",
+      "mean_abs_shap": 28.357910304762324
+    },
+    {
+      "feature": "hour_cos",
+      "mean_abs_shap": 24.95551701306101
+    }
+  ],
+  "direction": [
+    {
+      "feature": "Humidity%",
+      "mean_shap": -221.8153177730827
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_shap": 137.7748686928138
+    },
+    {
+      "feature": "temperature",
+      "mean_shap": 75.7896357872182
+    },
+    {
+      "feature": "rainfall",
+      "mean_shap": -80.30538822420053
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_shap": -9.50849027457303
+    },
+    {
+      "feature": "temp_squared",
+      "mean_shap": 69.00328111587322
+    },
+    {
+      "feature": "hour",
+      "mean_shap": 60.73141553339863
+    },
+    {
+      "feature": "hour_sin",
+      "mean_shap": -30.378641863545415
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_shap": 45.70746777662681
+    },
+    {
+      "feature": "dew_point",
+      "mean_shap": -22.90841707038199
+    },
+    {
+      "feature": "hour_squared",
+      "mean_shap": 34.47630543627517
+    },
+    {
+      "feature": "time_of_day_evening",
+      "mean_shap": -2.6144239068047996
+    },
+    {
+      "feature": "season_Winter",
+      "mean_shap": 29.87591809258506
+    },
+    {
+      "feature": "is_peak_hour",
+      "mean_shap": 5.036923119899726
+    },
+    {
+      "feature": "hour_cos",
+      "mean_shap": 21.359514260971334
+    }
+  ],
+  "expected_value": 705.6973216324201,
+  "sample_size": 32
+}

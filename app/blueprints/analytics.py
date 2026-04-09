@@ -6,53 +6,19 @@ Routes: /analytics, /api/analytics/*, /api/dashboard-metrics
 from flask import Blueprint, render_template, jsonify, request
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.models.loader import get_state
-from app.model_metrics import calculate_model_metrics
-from app.utils import get_prediction_history
+from app.model_metrics import calculate_model_metrics, get_model_catalog
+from app.shap_analysis import get_or_generate_shap_analysis
+from app.utils import (
+    extract_prediction_from_history,
+    filter_prediction_history_by_time,
+    get_prediction_history,
+    load_unified_pipeline,
+)
 
 analytics = Blueprint('analytics', __name__)
-
-# Model metadata (single source of truth)
-MODEL_META = {
-    'original': {
-        'name': 'Random Forest (14 features)',
-        'r2': 0.82, 'rmse': 112.5, 'mae': 87.2,
-        'features': 14,
-        'accuracy': 82, 'stability': 85, 'speed': 95,
-    },
-    'improved': {
-        'name': 'Improved RF (tuned)',
-        'r2': 0.88, 'rmse': 98.3, 'mae': 72.1,
-        'features': 14,
-        'accuracy': 88, 'stability': 87, 'speed': 90,
-    },
-    'advanced': {
-        'name': 'Advanced RF (100+ features)',
-        'r2': 0.92, 'rmse': 85.6, 'mae': 61.4,
-        'features': 100,
-        'accuracy': 92, 'stability': 92, 'speed': 85,
-    },
-    'xgboost': {
-        'name': 'XGBoost (36 features)',
-        'r2': 0.944, 'rmse': 153.3, 'mae': 90.9,
-        'features': 36,
-        'accuracy': 94, 'stability': 91, 'speed': 80,
-    },
-    'lightgbm': {
-        'name': 'LightGBM (36 features)',
-        'r2': 0.757, 'rmse': 302.6, 'mae': 225.7,
-        'features': 36,
-        'accuracy': 76, 'stability': 72, 'speed': 92,
-    },
-    'stacking': {
-        'name': 'Stacking Ensemble (RF+XGB+LGBM)',
-        'r2': 0.791, 'rmse': 280.5, 'mae': 207.6,
-        'features': 36,
-        'accuracy': 79, 'stability': 78, 'speed': 70,
-    },
-}
 
 MODEL_STATE_KEYS = {
     'original': 'original_model',
@@ -64,9 +30,22 @@ MODEL_STATE_KEYS = {
 }
 
 
+def _clamp_score(value: float, minimum: float = 0.0, maximum: float = 100.0) -> float:
+    """Clamp a numeric dashboard score into a chart-safe range."""
+    return max(minimum, min(maximum, float(value)))
+
+
+def get_model_meta() -> dict[str, dict]:
+    """Return artifact-backed model metadata used across analytics routes."""
+    return get_model_catalog()
+
+
 def _loaded_models(state):
     """Return list of loaded model keys."""
-    return [k for k, sk in MODEL_STATE_KEYS.items() if state.get(sk) is not None]
+    loaded = [k for k, sk in MODEL_STATE_KEYS.items() if state.get(sk) is not None]
+    if load_unified_pipeline():
+        loaded.append('unified')
+    return loaded
 
 
 @analytics.route('/analytics')
@@ -82,24 +61,41 @@ def dashboard_metrics():
     """Dashboard summary metrics."""
     state = get_state()
     loaded = _loaded_models(state)
+    model_meta = get_model_meta()
+    baseline_meta = model_meta.get('original', {})
+    baseline_r2 = baseline_meta.get('r2', 0.0)
+    avg_error_value = baseline_meta.get('mae', 0.0)
 
     try:
         metrics_data = calculate_model_metrics()
-        overall_accuracy = metrics_data.get('r2_score', 0.82) * 100
+        overall_accuracy = metrics_data.get('r2_score', baseline_r2) * 100
+        avg_error_value = metrics_data.get('mean_absolute_error', avg_error_value)
     except Exception:
-        best_r2 = max((MODEL_META[m]['r2'] for m in loaded), default=0.82)
+        best_r2 = max((model_meta[m]['r2'] for m in loaded), default=baseline_r2)
         overall_accuracy = best_r2 * 100
 
     try:
-        history = get_prediction_history()
+        history = get_prediction_history(limit=None)
     except (FileNotFoundError, json.JSONDecodeError):
         history = []
+
+    today_predictions = len(filter_prediction_history_by_time(history, 'today'))
+
+    metrics_payload = {
+        "model_accuracy": round(overall_accuracy, 1),
+        "predictions_today": today_predictions,
+        "avg_error": round(avg_error_value, 1),
+        "models_available": len(loaded),
+    }
 
     return jsonify({
         "success": True,
         "overall_accuracy": round(overall_accuracy, 1),
         "total_predictions": len(history),
+        "predictions_today": today_predictions,
+        "avg_error": round(avg_error_value, 1),
         "models_available": len(loaded),
+        "metrics": metrics_payload,
     })
 
 
@@ -109,13 +105,13 @@ def hourly_patterns():
     try:
         time_filter = request.args.get('filter', 'all')
         history = get_prediction_history(limit=None)
-        filtered = _filter_by_time(history, time_filter)
+        filtered = filter_prediction_history_by_time(history, time_filter)
 
         hourly = {h: [] for h in range(24)}
         for pred in filtered:
-            inp = pred.get('input_data', pred.get('input', {}))
+            inp = pred.get('input_data', {})
             hour = inp.get('Hour', pred.get('hour'))
-            bikes = pred.get('predicted_bikes', pred.get('prediction'))
+            bikes, _ = extract_prediction_from_history(pred)
             if hour is not None and bikes is not None:
                 hourly[int(hour)].append(float(bikes))
 
@@ -150,27 +146,30 @@ def kpis():
         state = get_state()
         loaded = _loaded_models(state)
         time_filter = request.args.get('filter', 'all')
+        model_meta = get_model_meta()
+        baseline_r2 = model_meta.get('original', {}).get('r2', 0.0)
+        baseline_mae = model_meta.get('original', {}).get('mae', 0.0)
 
         # Best model accuracy
-        best_r2 = max((MODEL_META[m]['r2'] for m in loaded), default=0.82)
+        best_r2 = max((model_meta[m]['r2'] for m in loaded), default=baseline_r2)
 
         history = get_prediction_history(limit=None)
-        filtered = _filter_by_time(history, time_filter)
-        predictions = [p.get('predicted_bikes', p.get('prediction', 0)) for p in filtered]
+        filtered = filter_prediction_history_by_time(history, time_filter)
+        predictions = [extract_prediction_from_history(p)[0] for p in filtered]
 
         # Determine features count from best model
-        best_model_key = max(loaded, key=lambda m: MODEL_META[m]['r2']) if loaded else 'original'
-        features_count = MODEL_META.get(best_model_key, {}).get('features', 14)
+        best_model_key = max(loaded, key=lambda m: model_meta[m]['r2']) if loaded else 'original'
+        features_count = model_meta.get(best_model_key, {}).get('features', 14)
 
         return jsonify({
             "success": True,
             "kpis": {
                 "accuracy": {
                     "value": round(best_r2 * 100, 1),
-                    "trend": f"+{round((best_r2 - 0.82) * 100, 1)}% from baseline" if best_r2 > 0.82 else "baseline",
+                    "trend": f"+{round((best_r2 - baseline_r2) * 100, 1)}% from baseline" if best_r2 > baseline_r2 else "baseline",
                 },
                 "error": {
-                    "value": round(MODEL_META.get(best_model_key, {}).get('mae', 87.2), 1),
+                    "value": round(model_meta.get(best_model_key, {}).get('mae', baseline_mae), 1),
                     "trend": "-12% improvement" if best_model_key != 'original' else "baseline",
                 },
                 "predictions": {
@@ -193,13 +192,14 @@ def insights():
         state = get_state()
         loaded = _loaded_models(state)
         history = get_prediction_history(limit=None)
+        model_meta = get_model_meta()
 
         insight_list = []
 
         # Performance insight
         if loaded:
-            best_key = max(loaded, key=lambda m: MODEL_META[m]['r2'])
-            best = MODEL_META[best_key]
+            best_key = max(loaded, key=lambda m: model_meta[m]['r2'])
+            best = model_meta[best_key]
             insight_list.append({
                 "type": "performance",
                 "icon": "chart-line",
@@ -209,22 +209,30 @@ def insights():
             })
 
         # Feature insight
-        model = state.get('original_model')
-        if model and hasattr(model, 'feature_importances_') and hasattr(model, 'feature_names_in_'):
-            top_feat = model.feature_names_in_[model.feature_importances_.argmax()]
-            top_pct = model.feature_importances_.max() * 100
+        feature_model = None
+        feature_model_key = None
+        for candidate_key in ('xgboost', 'lightgbm', 'advanced', 'improved', 'original'):
+            candidate = state.get(MODEL_STATE_KEYS[candidate_key])
+            if candidate and hasattr(candidate, 'feature_importances_') and hasattr(candidate, 'feature_names_in_'):
+                feature_model = candidate
+                feature_model_key = candidate_key
+                break
+
+        if feature_model is not None:
+            top_feat = feature_model.feature_names_in_[feature_model.feature_importances_.argmax()]
+            top_pct = feature_model.feature_importances_.max() * 100
+            feature_model_name = model_meta.get(feature_model_key, {}).get('name', feature_model_key)
             insight_list.append({
                 "type": "features",
                 "icon": "star",
-                "title": "Top Predictor",
-                "description": f'"{top_feat}" contributes {top_pct:.1f}% to predictions. '
-                               "Temperature and hour of day consistently rank as the strongest features.",
+                "title": f"Top Predictor ({feature_model_name})",
+                "description": f'"{top_feat}" contributes {top_pct:.1f}% to predictions for the {feature_model_name} model.',
             })
 
         # Data insight
         if history:
             recent = history[-min(50, len(history)):]
-            avg = sum(p.get('predicted_bikes', p.get('prediction', 0)) for p in recent) / len(recent)
+            avg = sum(extract_prediction_from_history(p)[0] for p in recent) / len(recent)
             insight_list.append({
                 "type": "data",
                 "icon": "database",
@@ -277,7 +285,7 @@ def feature_importance():
         return jsonify({
             "success": True,
             "features": [{"feature": n, "importance": round(v, 4), "importance_percent": f"{v * 100:.1f}%"} for n, v in pairs[:15]],
-            "source_model": MODEL_META.get(source, {}).get('name', source),
+            "source_model": get_model_meta().get(source, {}).get('name', source),
             "total_features": len(features),
         })
 
@@ -289,6 +297,7 @@ def model_performance():
     """Model performance metrics for radar chart  includes all loaded models."""
     state = get_state()
     loaded = _loaded_models(state)
+    model_meta = get_model_meta()
 
     models = {}
     colors = {
@@ -298,11 +307,12 @@ def model_performance():
         'xgboost': '#8b5cf6',
         'lightgbm': '#06b6d4',
         'stacking': '#64748b',
+        'unified': '#0f766e',
     }
 
     datasets = []
     for key in loaded:
-        meta = MODEL_META.get(key, {})
+        meta = model_meta.get(key, {})
         models[key] = {
             'name': meta.get('name', key),
             'accuracy': meta.get('accuracy', 80) / 100,
@@ -312,8 +322,13 @@ def model_performance():
         color = colors.get(key, '#3b82f6')
         datasets.append({
             'label': meta.get('name', key),
-            'data': [meta.get('accuracy', 80), meta.get('stability', 80), meta.get('speed', 80),
-                     meta.get('r2', 0.8) * 100, 100 - meta.get('mae', 80) / 2],
+            'data': [
+                _clamp_score(meta.get('accuracy', 80)),
+                _clamp_score(meta.get('stability', 80)),
+                _clamp_score(meta.get('speed', 80)),
+                _clamp_score(meta.get('r2', 0.8) * 100),
+                _clamp_score(100 - meta.get('mae', 80) / 2),
+            ],
             'backgroundColor': f'{color}20',
             'borderColor': color,
             'pointBackgroundColor': color,
@@ -345,69 +360,108 @@ def model_performance():
 @analytics.route('/api/analytics/shap-importance', methods=['GET'])
 def shap_importance():
     """SHAP-based feature importance from pre-computed analysis."""
-    shap_path = os.path.join('models', 'shap_analysis.json')
-    if not os.path.exists(shap_path):
-        return jsonify({"success": True, "features": [], "source": "No SHAP data available"})
-
+    requested_model = request.args.get('model', 'lightgbm')
     try:
-        with open(shap_path) as f:
-            shap_data = json.load(f)
-
-        global_imp = shap_data.get('global_importance', [])
-        direction = {d['feature']: d['mean_shap'] for d in shap_data.get('direction', [])}
-
-        features = []
-        for item in global_imp[:15]:
-            feat = item['feature']
-            abs_shap = item['mean_abs_shap']
-            features.append({
-                'feature': feat,
-                'importance': round(abs_shap, 2),
-                'direction': 'positive' if direction.get(feat, 0) > 0 else 'negative',
-                'mean_shap': round(direction.get(feat, 0), 2),
-            })
-
-        return jsonify({
-            "success": True,
-            "features": features,
-            "expected_value": shap_data.get('expected_value'),
-            "source": "LightGBM SHAP Analysis",
-        })
+        return jsonify(get_or_generate_shap_analysis(requested_model))
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def _filter_by_time(history, time_filter):
-    """Filter prediction history by time range."""
-    if time_filter == 'all':
-        return history
+@analytics.route('/api/analytics/date-range', methods=['POST'])
+def date_range_analytics():
+    """Return summary analytics for a custom inclusive date range."""
+    try:
+        data = request.get_json() or {}
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
 
-    now = datetime.now()
-    cutoff_map = {
-        'today': now.replace(hour=0, minute=0, second=0, microsecond=0),
-        'week': now - timedelta(days=7),
-        'month': now - timedelta(days=30),
-        'quarter': now - timedelta(days=90),
-        'year': now - timedelta(days=365),
-    }
+        if not start_date or not end_date:
+            return jsonify({
+                "success": False,
+                "error": "Both start_date and end_date are required",
+            }), 400
 
-    cutoff = cutoff_map.get(time_filter)
-    if cutoff is None:
-        return history
-
-    filtered = []
-    for pred in history:
-        ts = pred.get('timestamp', pred.get('timestamp_readable', ''))
         try:
-            if 'T' in str(ts):
-                dt = datetime.fromisoformat(str(ts).replace('Z', '+00:00').split('+')[0])
-            elif '-' in str(ts):
-                dt = datetime.strptime(str(ts)[:19], '%Y-%m-%d %H:%M:%S')
-            else:
-                continue
-            if dt >= cutoff:
-                filtered.append(pred)
-        except (ValueError, TypeError):
-            continue
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({
+                "success": False,
+                "error": "Invalid date format. Use YYYY-MM-DD",
+            }), 400
 
-    return filtered
+        if start_dt > end_dt:
+            return jsonify({
+                "success": False,
+                "error": "Start date must be before end date",
+            }), 400
+
+        days_diff = (end_dt - start_dt).days
+        if days_diff > 365:
+            return jsonify({
+                "success": False,
+                "error": "Date range cannot exceed 365 days",
+            }), 400
+
+        history = get_prediction_history(limit=None)
+        filtered = []
+        for pred in history:
+            ts = pred.get('timestamp', pred.get('timestamp_readable', ''))
+            try:
+                if 'T' in str(ts):
+                    dt = datetime.fromisoformat(str(ts).replace('Z', '+00:00').split('+')[0])
+                else:
+                    dt = datetime.strptime(str(ts)[:19], '%Y-%m-%d %H:%M:%S')
+            except (TypeError, ValueError):
+                continue
+
+            if start_dt.date() <= dt.date() <= end_dt.date():
+                filtered.append(pred)
+
+        demand_values = [
+            float(extract_prediction_from_history(pred)[0])
+            for pred in filtered
+        ]
+
+        hourly = {hour: [] for hour in range(24)}
+        for pred in filtered:
+            inp = pred.get('input_data', {})
+            hour = inp.get('Hour', pred.get('hour'))
+            value = extract_prediction_from_history(pred)[0]
+            if hour is not None and value is not None:
+                hourly[int(hour)].append(float(value))
+
+        avg_by_hour = [
+            round(sum(values) / len(values), 1) if values else 0
+            for _, values in hourly.items()
+        ]
+
+        loaded = _loaded_models(get_state())
+        model_meta = get_model_meta()
+        return jsonify({
+            "success": True,
+            "date_range": {
+                "start": start_date,
+                "end": end_date,
+                "days": days_diff + 1,
+            },
+            "metrics": {
+                "total_predictions": len(history),
+                "filtered_predictions": len(filtered),
+                "coverage": f"{len(filtered)}/{len(history)} predictions",
+            },
+            "kpis": {
+                "accuracy": round(max((model_meta[m]['r2'] for m in loaded), default=model_meta.get('original', {}).get('r2', 0.0)) * 100, 1),
+                "error": round(sum(demand_values) / len(demand_values), 1) if demand_values else 0,
+                "predictions": len(filtered),
+            },
+            "patterns_summary": {
+                "total_hours": 24,
+                "peak_hours": sum(1 for hour, values in hourly.items() if hour in (7, 8, 9, 17, 18, 19) and values),
+                "avg_demand": round(sum(avg_by_hour) / len(avg_by_hour), 1) if avg_by_hour else 0,
+            },
+            "insights_count": 1 if not filtered else 2,
+            "message": f"Analyzed {len(filtered)} predictions from {start_date} to {end_date}",
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500

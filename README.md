@@ -1,187 +1,66 @@
 # Bike Rental Demand Prediction System
 
-Urban shared bike rental demand prediction using multimodal features - **Seoul Bike Sharing Dataset (2017-2018)**.
+Single-source architecture centered on modular Flask blueprints (`app/blueprints/`), a services layer (`app/services/`), and the supported `train_unified_pipeline.py`. Legacy training scripts and debug utilities were removed to keep the repo focused on deployable artifacts.
 
-Graduation Project (PFE) - Predicts hourly bike rental demand using weather, temporal, and engineered features with ensemble ML models.
-
-## Architecture
+## Directory reality
 
 ```
 bike_demand_project/
-├── app/                          # Flask web application
-│   ├── __init__.py               # App factory
-│   ├── routes.py                 # API endpoints (legacy monolith)
-│   ├── utils.py                  # Preprocessing & feature engineering
-│   ├── email_service.py          # Email notifications
-│   ├── model_metrics.py          # Model evaluation metrics
-│   ├── model_manager.py          # Model lifecycle management
-│   ├── blueprints/               # Modular route organization
-│   │   ├── pages.py              # Page routes (/, /test, /status)
-│   │   ├── prediction.py         # Prediction endpoints
-│   │   ├── analytics.py          # Analytics dashboard API
-│   │   ├── export.py             # Data export routes
-│   │   └── features.py           # Feature engineering API
-│   ├── services/                 # Business logic layer
-│   │   ├── prediction_service.py # Prediction + history
-│   │   └── export_service.py     # Export formatting
-│   ├── models/                   # Model loading
-│   │   └── loader.py             # Lazy model loading with caching
-│   ├── templates/                # HTML templates
-│   └── static/                   # CSS, JS, assets
-├── models/                       # Trained model artifacts
-│   ├── unified_pipeline/         # Leakage-free pipeline output
-│   │   ├── pipeline_config.json
-│   │   ├── scaler.pkl
-│   │   ├── feature_names.json
-│   │   ├── stacking_ensemble.pkl
-│   │   ├── demand_cache.json
-│   │   ├── metrics/
-│   │   └── plots/shap/
-│   ├── random_forest_model.pkl
-│   ├── xgboost_model.pkl
-│   └── ...
-├── data/
-│   └── raw/seoul_bike.csv        # Seoul Bike Sharing Dataset
-├── training/legacy/              # Original training scripts (reference)
-├── tests/                        # pytest test suite
-│   ├── unit/
-│   └── integration/
-├── train_unified_pipeline.py     # Unified training (run this!)
-├── run.py                        # Application entry point
-├── requirements.txt              # Python dependencies
-├── Dockerfile                    # Container deployment
+├── app/
+│   ├── __init__.py               # Application factory (requires SECRET_KEY)
+│   ├── routes.py                 # Legacy compatibility shim exposing modular blueprints
+│   ├── blueprints/               # Production endpoints (prediction, analytics, export, features)
+│   ├── services/                 # Business logic (prediction_use, export helpers)
+│   ├── utils.py                  # Legacy preprocessing, history, unified pipeline loader
+│   ├── email_service.py          # Email with safe failure when config missing
+│   └── models/loader.py          # Lazy artifact loader
+├── models/
+│   ├── unified_pipeline/         # Canonical artifacts + `artifact_manifest.json`
+│   └── random_forest_model.pkl   # Legacy pickles retained for compatibility
+├── scripts/
+│   └── start.sh                  # Docker-friendly entrypoint verifying artifacts
+├── train_unified_pipeline.py     # Supported training pipeline (use this)
+├── Dockerfile
 ├── docker-compose.yml
-└── .env.example                  # Environment template
+├── requirements.txt
+├── run.py                        # Browser-opening entrypoint that checks artifact/secret hygiene
+└── README.md
 ```
 
-## Models
-
-| Model | Type | Features | Test R2 | Notes |
-|-------|------|----------|---------|-------|
-| Random Forest | Baseline | 14 | ~0.82 | Original model |
-| XGBoost | Gradient Boosting | 20+ | ~0.90 | Feature engineered |
-| LightGBM | Gradient Boosting | 25+ | ~0.91 | Fast training |
-| Gradient Boosting | Ensemble | 25+ | ~0.89 | Sklearn GBR |
-| **Stacking Ensemble** | **Meta-learner** | **25+** | **~0.93** | **Top-3 + RidgeCV** |
-
-The unified pipeline uses **TimeSeriesSplit** cross-validation and fits scalers **only on training data** to prevent data leakage.
+## Key hygiene points
+- **Secrets**: `app/__init__.py` refuses to run without `SECRET_KEY`. `.env` is ignored by git and should only live locally; use `.env.example` as a template.
+- **Email**: `app/email_service.py` logs a warning when SMTP credentials are missing and returns a controlled error instead of attempting a send.
+- **Artifacts**: `models/unified_pipeline/artifact_manifest.json` drives what the app loads. The Docker entrypoint (`scripts/start.sh`) verifies the manifest and only then starts Gunicorn.
+- **Generated state**: Prediction history and exports now live under `generated/` (ignored). Set `PREDICTION_HISTORY_FILE` if you want to relocate the file.
+- **Working directory**: `run.py` and `app/utils.py` resolve all paths relative to their own files, not the current working directory, so you can launch the app from anywhere.
 
 ## Quick Start
 
-### 1. Clone and set up environment
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Copy `.env.example` → `.env`, set `SECRET_KEY`, SMTP credentials, and keep that file local (it's ignored by git).
+3. Ensure `models/unified_pipeline/artifact_manifest.json` lists the same `joblib`, `numpy`, and `scikit-learn` versions that are installed in your environment.
+4. Run the app:
+   ```bash
+   python run.py
+   ```
+   The browser opens automatically to `http://127.0.0.1:5000/v2` and the UI/API endpoints live under `/v2` (for example `/v2/status`, `/v2/predict`, `/v2/api/analytics/kpis`).
 
-```bash
-git clone <repo-url>
-cd bike_demand_project
+## Docker deployment
 
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+- Build and run with `docker-compose up --build`. The Dockerfile now creates a non-root `appuser`, writes runtime state under `/app/generated`, and executes the verified `scripts/start.sh` entrypoint.
+- `docker-compose.yml` includes a `/v2/status` healthcheck, so orchestrators know when Gunicorn is ready.
+- Set `STRICT_ARTIFACT_CHECK=1` to fail startup when the manifest dependencies no longer match the runtime; otherwise, the validator logs a warning but keeps running.
 
-pip install -r requirements.txt
-```
+## Training
 
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-# Edit .env with the appropriate settings (SECRET_KEY, email credentials)
-```
-
-### 3. Train models (optional - pre-trained models included)
-
-```bash
-python train_unified_pipeline.py
-```
-
-This generates all artifacts in `models/unified_pipeline/` including:
-- Trained models (RF, XGBoost, LightGBM, Gradient Boosting, Stacking Ensemble)
-- Fitted scaler (train-only)
-- SHAP explainability plots
-- Residual analysis plots
-- Learning curves
-- Model comparison metrics
-
-### 4. Run the application
-
-```bash
-python run.py
-```
-
-The app starts at `http://127.0.0.1:5000`.
-
-### 5. Run with Docker
-
-```bash
-docker compose up --build
-```
-
-## API Reference
-
-### Prediction
-
-```bash
-# Original model
-POST /predict
-Content-Type: application/json
-
-{
-  "Hour": 14,
-  "Temperature(C)": 22.5,
-  "Humidity(%)": 60,
-  "Wind speed (m/s)": 2.5,
-  "Visibility (10m)": 2000,
-  "Dew point temperature(C)": 10,
-  "Solar Radiation (MJ/m2)": 1.5,
-  "Rainfall(mm)": 0,
-  "Snowfall (cm)": 0,
-  "Seasons_Spring": 0,
-  "Seasons_Summer": 1,
-  "Seasons_Winter": 0,
-  "Holiday_No Holiday": 1,
-  "Functioning Day_Yes": 1
-}
-
-# Unified ensemble model
-POST /predict?model_type=unified
-```
-
-### Other Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Web interface |
-| `/status` | GET | System status dashboard |
-| `/metrics` | GET | Model performance metrics |
-| `/model-info` | GET | Model metadata |
-| `/prediction-history` | GET | Past predictions |
-| `/analytics` | GET | Analytics dashboard |
-| `/api/status` | GET | API health check (JSON) |
-| `/api/dashboard-metrics` | GET | Dashboard KPIs |
-| `/export/predictions/csv` | GET | Export predictions as CSV |
+The only supported script is `train_unified_pipeline.py`. Discarded legacy training scripts (the `training/legacy/` folder and the removed top-level `train_*` helpers) remain only for archival reference.
 
 ## Testing
 
 ```bash
-pytest tests/ -v
+pytest tests/
 ```
-
-## Dataset
-
-**Seoul Bike Sharing Demand Dataset**
-- 8,760 hourly records (full year)
-- Period: December 2017 - November 2018
-- Location: Seoul, South Korea
-- Features: Temperature, Humidity, Wind speed, Visibility, Solar radiation, Rainfall, Snowfall, Season, Holiday, Functioning day
-
-## Key Technical Decisions
-
-- **Time-based train/test split** (chronological, not random) to simulate real deployment
-- **Scaler fitted on training data only** to prevent data leakage
-- **Lag features use `shift(1)`** to exclude current observation
-- **NaN fill with training median** (not bfill which leaks future data)
-- **TimeSeriesSplit(n_splits=5)** for cross-validation
-- **SHAP** for model explainability
-
-## License
-
-Academic project - Seoul National University Bike Sharing Dataset.
+The suite now includes `tests/test_environment.py`, which validates that the active Python packages (scikit-learn, pandas, numpy, joblib, xgboost, lightgbm) match the pinned versions in `requirements.txt`. Re-run `pip install -r requirements.txt` if the test reports drift before continuing.

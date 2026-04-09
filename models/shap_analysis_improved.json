@@ -1,0 +1,130 @@
+{
+  "model_key": "improved",
+  "source": "Improved RF (engineered) SHAP Analysis",
+  "global_importance": [
+    {
+      "feature": "demand_rolling_3h",
+      "mean_abs_shap": 151.63285269308585
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_abs_shap": 59.21931982235232
+    },
+    {
+      "feature": "demand_rolling_24h",
+      "mean_abs_shap": 27.74157336397307
+    },
+    {
+      "feature": "comfort_index",
+      "mean_abs_shap": 27.10685966349291
+    },
+    {
+      "feature": "heat_index",
+      "mean_abs_shap": 23.697727743762545
+    },
+    {
+      "feature": "Temperature(°C)",
+      "mean_abs_shap": 22.086534339105178
+    },
+    {
+      "feature": "weather_severity_score",
+      "mean_abs_shap": 21.829338575610016
+    },
+    {
+      "feature": "hour_cubed",
+      "mean_abs_shap": 21.373902684726325
+    },
+    {
+      "feature": "hour_squared",
+      "mean_abs_shap": 21.336170749347783
+    },
+    {
+      "feature": "wind_chill",
+      "mean_abs_shap": 20.81560659150296
+    },
+    {
+      "feature": "Solar Radiation (MJ/m2)",
+      "mean_abs_shap": 20.374695172014135
+    },
+    {
+      "feature": "demand_lag_24",
+      "mean_abs_shap": 18.854082796776474
+    },
+    {
+      "feature": "Hour",
+      "mean_abs_shap": 18.480110594785476
+    },
+    {
+      "feature": "demand_lag_168",
+      "mean_abs_shap": 18.069320288389342
+    },
+    {
+      "feature": "hour_category_evening",
+      "mean_abs_shap": 15.711016245879604
+    }
+  ],
+  "direction": [
+    {
+      "feature": "demand_rolling_3h",
+      "mean_shap": -151.63285269308585
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_shap": 18.949141932899188
+    },
+    {
+      "feature": "demand_rolling_24h",
+      "mean_shap": -27.74157336397307
+    },
+    {
+      "feature": "comfort_index",
+      "mean_shap": 10.734715191348892
+    },
+    {
+      "feature": "heat_index",
+      "mean_shap": 9.134735236774311
+    },
+    {
+      "feature": "Temperature(°C)",
+      "mean_shap": 9.866451911042972
+    },
+    {
+      "feature": "weather_severity_score",
+      "mean_shap": 6.743786548512894
+    },
+    {
+      "feature": "hour_cubed",
+      "mean_shap": 8.563649388221053
+    },
+    {
+      "feature": "hour_squared",
+      "mean_shap": 9.88662680663679
+    },
+    {
+      "feature": "wind_chill",
+      "mean_shap": 7.998729235530706
+    },
+    {
+      "feature": "Solar Radiation (MJ/m2)",
+      "mean_shap": -2.160202635650003
+    },
+    {
+      "feature": "demand_lag_24",
+      "mean_shap": -18.854082796776474
+    },
+    {
+      "feature": "Hour",
+      "mean_shap": 8.429203399369877
+    },
+    {
+      "feature": "demand_lag_168",
+      "mean_shap": -17.094262445072363
+    },
+    {
+      "feature": "hour_category_evening",
+      "mean_shap": -0.8513675681065351
+    }
+  ],
+  "expected_value": 691.2124272260273,
+  "sample_size": 32
+}

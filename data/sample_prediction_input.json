@@ -1,0 +1,17 @@
+[
+  {
+    "Hour": 18,
+    "Temperature": 24.0,
+    "Humidity": 65,
+    "Wind speed (m/s)": 2.8,
+    "Visibility (10m)": 2100,
+    "Rainfall(mm)": 0.0,
+    "Snowfall (cm)": 0.0,
+    "Solar Radiation (MJ/m2)": 1.6,
+    "Dew point temperature (°C)": 16.5,
+    "season": "winter",
+    "holiday": "No Holiday",
+    "functioning": "1",
+    "day_of_week": 5
+  }
+]

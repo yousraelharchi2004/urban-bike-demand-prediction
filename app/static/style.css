@@ -4685,6 +4685,35 @@ input:checked + .toggle-label .toggle-text-on {
     margin-top: 24px;
 }
 
+.quick-actions .upload-controls {
+    grid-column: span 2;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.quick-actions .upload-controls select {
+    flex: 1;
+    min-width: 200px;
+    appearance: none;
+}
+
+.file-upload-btn {
+    position: relative;
+    min-width: 210px;
+    justify-content: center;
+}
+
+.file-upload-btn input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
 .quick-action {
     padding: 12px;
     background: var(--gray-100);
@@ -4705,6 +4734,46 @@ input:checked + .toggle-label .toggle-text-on {
     border-color: var(--primary);
     color: var(--primary);
     transform: translateY(-2px);
+}
+
+.file-upload-hint {
+    grid-column: span 2;
+    font-size: 0.85rem;
+    color: var(--gray-500);
+    padding-top: 8px;
+}
+
+.upload-preview {
+    grid-column: span 2;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    min-height: 52px;
+}
+
+.upload-preview strong {
+    color: var(--primary-dark);
+}
+
+.upload-preview-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.upload-preview-list li {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    padding-bottom: 4px;
+}
+
+.upload-preview-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 /* Loading and Error States */

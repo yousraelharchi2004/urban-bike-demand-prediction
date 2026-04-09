@@ -17,19 +17,19 @@
                 <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
             </div>
             <div class="nav-links">
-                <a href="/" class="nav-link">
+                <a href="/v2" class="nav-link">
                     <i class="fas fa-chart-line"></i>
                     <span>Predictor</span>
                 </a>
-                <a href="/analytics" class="nav-link">
+                <a href="/v2/analytics" class="nav-link">
                     <i class="fas fa-analytics"></i>
                     <span>Analytics</span>
                 </a>
-                <a href="/status" class="nav-link active">
+                <a href="/v2/status" class="nav-link active">
                     <i class="fas fa-server"></i>
                     <span>System Status</span>
                 </a>
-                <a href="/test" class="nav-link">
+                <a href="/v2/test" class="nav-link">
                     <i class="fas fa-vial"></i>
                     <span>Test Suite</span>
                 </a>
@@ -55,7 +55,7 @@
                 <button class="action-btn" onclick="refreshStatus()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
-                <a href="/" class="action-btn">
+                <a href="/v2" class="action-btn">
                     <i class="fas fa-arrow-left"></i> Back to Predictor
                 </a>
             </div>
@@ -274,9 +274,9 @@
             </div>
             <div class="footer-right">
                 <div class="footer-links">
-                    <a href="/status"><i class="fas fa-server"></i> System Status</a>
-                    <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
-                    <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                    <a href="/v2/status"><i class="fas fa-server"></i> System Status</a>
+                    <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
                 </div>
                 <div class="footer-meta">
                     <span class="version">v2.1.4</span>
@@ -294,7 +294,7 @@
         // System Status Dashboard JavaScript
         class StatusDashboard {
             constructor() {
-                this.baseUrl = window.location.origin;
+        this.baseUrl = `${window.location.origin}/v2`;
                 this.statusData = {};
                 this.updateInterval = null;
                 this.currentFilter = 'all';
@@ -470,56 +470,56 @@
                 const services = [
                     {
                         name: 'Prediction API',
-                        endpoint: '/predict',
+                    endpoint: '/v2/predict',
                         method: 'POST',
                         status: totalModels > 0 ? 'operational' : 'outage',
                         detail: `${totalModels} model(s) available`
                     },
                     {
                         name: 'Analytics API',
-                        endpoint: '/analytics',
+                    endpoint: '/v2/analytics',
                         method: 'GET',
                         status: 'operational',
                         detail: 'Dashboard active'
                     },
                     {
                         name: 'Status API',
-                        endpoint: '/api/status',
+                    endpoint: '/v2/api/status',
                         method: 'GET',
                         status: 'operational',
                         detail: `v${sysInfo.version || '2.6.0'}`
                     },
                     {
                         name: 'Metrics API',
-                        endpoint: '/metrics',
+                    endpoint: '/v2/metrics',
                         method: 'GET',
                         status: this.statusData.metrics ? 'operational' : 'degraded',
                         detail: 'Performance data'
                     },
                     {
                         name: 'Model Service',
-                        endpoint: '/model-info',
+                    endpoint: '/v2/model-info',
                         method: 'GET',
                         status: totalModels > 0 ? 'operational' : 'outage',
                         detail: totalModels > 0 ? `${totalModels}/6 loaded` : 'No models loaded'
                     },
                     {
                         name: 'History Service',
-                        endpoint: '/prediction-history',
+                    endpoint: '/v2/prediction-history',
                         method: 'GET',
                         status: this.statusData.history ? 'operational' : 'degraded',
                         detail: `${system.prediction_history?.total_predictions || 0} predictions`
                     },
                     {
                         name: 'SHAP Analysis',
-                        endpoint: '/api/analytics/shap-importance',
+                        endpoint: '/v2/api/analytics/shap-importance',
                         method: 'GET',
                         status: 'operational',
                         detail: 'Feature importance'
                     },
                     {
                         name: 'Email Service',
-                        endpoint: '/api/send-analytics-email',
+                        endpoint: '/v2/api/send-analytics-email',
                         method: 'POST',
                         status: sysInfo.email_configured ? 'operational' : 'degraded',
                         detail: sysInfo.email_configured ? 'Configured' : 'Not configured'
@@ -585,24 +585,9 @@
                 const metrics = this.statusData.metrics?.metrics || this.statusData.metrics;
                 const history = this.statusData.history;
 
-                // Update model accuracy - use best model from loaded models
+                // Update model accuracy from the shared metrics payload
                 const accuracyElement = document.getElementById('metric-accuracy');
-                if (system?.models) {
-                    // Find best R2 from model performance data
-                    const modelR2 = {
-                        original: 0.82, improved: 0.88, advanced: 0.92,
-                        xgboost: 0.944, lightgbm: 0.757, stacking: 0.791
-                    };
-                    let bestR2 = 0;
-                    for (const [key, info] of Object.entries(system.models)) {
-                        if (info.loaded && modelR2[key] > bestR2) bestR2 = modelR2[key];
-                    }
-                    if (bestR2 > 0) {
-                        accuracyElement.textContent = `${(bestR2 * 100).toFixed(1)}%`;
-                    } else {
-                        accuracyElement.textContent = '--%';
-                    }
-                } else if (metrics?.r2_score && metrics.r2_score !== 'N/A') {
+                if (metrics?.r2_score && metrics.r2_score !== 'N/A') {
                     accuracyElement.textContent = `${(parseFloat(metrics.r2_score) * 100).toFixed(1)}%`;
                 } else {
                     accuracyElement.textContent = '--%';

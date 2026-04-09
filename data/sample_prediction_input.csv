@@ -1,0 +1,2 @@
+Hour,Temperature(ìºœ),Humidity(%),Wind speed (m/s),Visibility (10m),Rainfall(mm),Snowfall (cm),Solar Radiation (MJ/m2),Dew point temperature(ìºœ),season,holiday,functioning,day_of_week
+9,16.8,72,2.3,1900,0.0,0.0,1.2,12.4,Spring,false,true,2

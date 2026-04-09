@@ -4,52 +4,58 @@ Bike Rental Demand Prediction System
 Urban shared bike rental demand prediction and analysis by multimodal features
 """
 
-# ============================================================================
-# WARNING SUPPRESSION - MUST BE THE FIRST THING IN THE FILE
-# ============================================================================
-import warnings
-
-# Suppress ALL sklearn warnings
-warnings.filterwarnings('ignore', category=UserWarning)
-
-# Suppress FutureWarnings from pandas
-warnings.filterwarnings('ignore', category=FutureWarning)
-
-# Suppress DeprecationWarnings
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-
-# ============================================================================
-# MAIN APPLICATION CODE
-# ============================================================================
 import os
+import secrets
 import sys
 import webbrowser
+from pathlib import Path
 from threading import Timer
 from dotenv import load_dotenv
 
+ROOT = Path(__file__).resolve().parent
+
 # Load environment variables from project root .env
-load_dotenv()
+load_dotenv(dotenv_path=ROOT / '.env')
+
+
+def ensure_secret_key():
+    """Ensure SECRET_KEY exists (generate a temporary one for local runs if needed)."""
+    if os.environ.get("SECRET_KEY"):
+        return
+    temp_key = secrets.token_urlsafe(32)
+    os.environ["SECRET_KEY"] = temp_key
+    print("[INFO] SECRET_KEY was not set; generated a temporary key for this run (set persistently in .env or the env for production).")
+
+
+ensure_secret_key()
+
 
 def check_dependencies():
     """Check if all required files and folders exist"""
     print("[CHECK] Checking project structure...")
-    
-    # Check required folders
-    required_folders = ['app', 'app/templates', 'app/static', 'models', 'data/raw']
+
+    required_folders = [
+        ROOT / 'app',
+        ROOT / 'app/templates',
+        ROOT / 'app/static',
+        ROOT / 'models',
+        ROOT / 'data/raw',
+    ]
     for folder in required_folders:
-        if os.path.exists(folder):
-            print(f"  [OK] {folder}/")
+        if folder.exists():
+            print(f"  [OK] {folder.relative_to(ROOT)}")
         else:
-            print(f"  [MISSING] {folder}/ - Missing!")
+            print(f"  [MISSING] {folder.relative_to(ROOT)} - Missing!")
             return False
     
     # Check required files
     required_files = {
-        'Model file': 'models/random_forest_model.pkl',
-        'Dataset': 'data/raw/seoul_bike.csv',
-        'Main template': 'app/templates/index.html',
-        'Backend routes': 'app/routes.py',
-        'Utils': 'app/utils.py'
+        'Supported artifact manifest': ROOT / 'models' / 'unified_pipeline' / 'artifact_manifest.json',
+        'Dataset': ROOT / 'data' / 'raw' / 'seoul_bike.csv',
+        'Main template': ROOT / 'app' / 'templates' / 'index.html',
+        'Application factory': ROOT / 'app' / '__init__.py',
+        'Prediction blueprint': ROOT / 'app' / 'blueprints' / 'prediction.py',
+        'Utils': ROOT / 'app' / 'utils.py',
     }
     
     all_good = True
@@ -63,7 +69,7 @@ def check_dependencies():
     return all_good
 
 def open_browser():
-    """Open browser after a short delay"""
+    """Open the default browser to the main page (development only)."""
     try:
         Timer(1.5, lambda: webbrowser.open('http://127.0.0.1:5000')).start()
         print("[WEB] Opening browser automatically...")
@@ -106,6 +112,20 @@ def print_system_info():
     except Exception:
         print("  [MISSING] Scikit-learn not installed")
 
+    try:
+        from app.config import get_runtime_environment_report
+
+        report = get_runtime_environment_report()
+        print("\n[ARTIFACT] Supported artifact runtime contract:")
+        for package, version in sorted(report['runtime_dependencies'].items()):
+            print(f"  [OK] {package}: {version}")
+        if report['artifact_dependency_error']:
+            print(f"  [MISMATCH] {report['artifact_dependency_error']}")
+        else:
+            print("  [OK] Artifact dependency versions match the deployed runtime")
+    except Exception as e:
+        print(f"  [WARN] Could not validate artifact dependency versions: {e}")
+
 def show_model_metrics():
     """Display model metrics without loading the model"""
     print("\n" + "="*70)
@@ -113,8 +133,8 @@ def show_model_metrics():
     print("="*70)
     
     # Just show basic model info without loading
-    print("[INFO] Model file exists: models/random_forest_model.pkl")
-    print("[INFO] Expected features: 14 (from Random Forest model)")
+    print("[INFO] Supported artifact contract: models/unified_pipeline/artifact_manifest.json")
+    print("[INFO] Supported training entrypoint: train_unified_pipeline.py")
     
     # Try to load and display metrics from the model_metrics module
     try:
@@ -130,14 +150,12 @@ def main():
     
     # Check project structure
     if not check_dependencies():
-        print("\n[WARN]  Some files are missing. Please check the structure above.")
+        print("\n[FAIL] Required files are missing. Startup aborted.")
         print("   Please verify:")
-        print("   1. Trained the model and saved to models/")
-        print("   2. Placed dataset in data/raw/")
-        print("   3. Created all template files")
-        choice = input("\nContinue anyway? (y/n): ")
-        if choice.lower() != 'y':
-            sys.exit(1)
+        print("   1. Trained the supported artifacts into models/")
+        print("   2. Placed the dataset in data/raw/")
+        print("   3. Created the required templates")
+        sys.exit(1)
     
     # Print system info
     print_system_info()
@@ -148,12 +166,15 @@ def main():
     # Create and configure the app
     try:
         from app import create_app
+        from app.config import validate_runtime_environment
+
+        validate_runtime_environment()
         app = create_app()
         
         print("\n" + "="*70)
         print("[OK] APPLICATION READY")
         print("="*70)
-        print("[WEB] Server will start at: http://127.0.0.1:5000")
+        print("[WEB] Server will listen on: http://127.0.0.1:5000")
         print("\n[INFO] Available endpoints:")
         print("   - Homepage:        http://127.0.0.1:5000/")
         print("   - API Status:      http://127.0.0.1:5000/status")
@@ -192,10 +213,8 @@ def main():
         print("[START] Starting Flask application...")
         print("="*70)
         print("Press Ctrl+C to stop the server\n")
-        
-        # Try to open browser automatically
+
         open_browser()
-        
         # Run the app
         debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes')
         app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=debug_mode)

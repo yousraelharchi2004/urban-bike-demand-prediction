@@ -6,12 +6,6 @@ import os
 import sys
 import json
 import pytest
-import warnings
-
-# Suppress sklearn warnings during tests
-warnings.filterwarnings('ignore', category=UserWarning)
-warnings.filterwarnings('ignore', category=FutureWarning)
-warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 # Ensure project root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -20,6 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 @pytest.fixture
 def app():
     """Create Flask test app."""
+    os.environ.setdefault("SECRET_KEY", "test-secret-key")
     from app import create_app
     app = create_app()
     app.config['TESTING'] = True
@@ -37,11 +32,11 @@ def sample_prediction_input():
     """Sample input data for prediction tests."""
     return {
         "Hour": 14,
-        "Temperature(\u00b0C)": 22.5,
+        "Temperature(°C)": 22.5,
         "Humidity(%)": 60,
         "Wind speed (m/s)": 2.5,
         "Visibility (10m)": 2000,
-        "Dew point temperature(\u00b0C)": 10,
+        "Dew point temperature(°C)": 10,
         "Solar Radiation (MJ/m2)": 1.5,
         "Rainfall(mm)": 0,
         "Snowfall (cm)": 0,
@@ -58,11 +53,11 @@ def sample_prediction_input_korean():
     """Sample input with Korean character field names (original model format)."""
     return {
         "Hour": 14,
-        "Temperature(\uce9c)": 22.5,
+        "Temperature(°C)": 22.5,
         "Humidity(%)": 60,
         "Wind speed (m/s)": 2.5,
         "Visibility (10m)": 2000,
-        "Dew point temperature(\uce9c)": 10,
+        "Dew point temperature(°C)": 10,
         "Solar Radiation (MJ/m2)": 1.5,
         "Rainfall(mm)": 0,
         "Snowfall (cm)": 0,

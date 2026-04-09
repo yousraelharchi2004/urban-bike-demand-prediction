@@ -18,19 +18,19 @@
                 <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
             </div>
             <div class="nav-links">
-                <a href="/" class="nav-link active">
+<a href="/v2" class="nav-link active">
                     <i class="fas fa-chart-line"></i>
                     <span>Predictor</span>
                 </a>
-                <a href="/analytics" class="nav-link">
+<a href="/v2/analytics" class="nav-link">
                     <i class="fas fa-chart-bar"></i>
                     <span>Analytics</span>
                 </a>
-                <a href="/status" class="nav-link">
+<a href="/v2/status" class="nav-link">
                     <i class="fas fa-server"></i>
                     <span>API Status</span>
                 </a>
-                <a href="/test" class="nav-link">
+<a href="/v2/test" class="nav-link">
                     <i class="fas fa-vial"></i>
                     <span>Test Suite</span>
                 </a>
@@ -75,33 +75,42 @@
                     </div>
                 </div>
             </div>
-            <div class="quick-actions">
-                <h4>Quick Actions</h4>
-                
-                <!-- Professional Scenario Selector with Font Awesome Icons -->
-                <select class="scenario-selector" id="scenario-selector" onchange="loadSpecificSample(this.value)">
-                    <option value=""><i class="fas fa-list"></i> Select a scenario...</option>
-                    <option value="morning"><i class="fas fa-sun"></i> Morning Commute (8 AM, Spring)</option>
-                    <option value="afternoon"><i class="fas fa-sun"></i> Afternoon Peak (2 PM, Summer)</option>
-                    <option value="evening"><i class="fas fa-cloud-sun"></i> Evening Commute (5 PM, Autumn)</option>
-                    <option value="winter"><i class="fas fa-snowflake"></i> Winter Day (12 PM, Snow)</option>
-                    <option value="rainy"><i class="fas fa-cloud-rain"></i> Rainy Day (9 AM, Rain)</option>
-                    <option value="holiday"><i class="fas fa-gift"></i> Holiday Afternoon (2 PM, Holiday)</option>
-                </select>
-                
-                <button type="button" class="action-btn" onclick="loadSampleData()">
-                    <i class="fas fa-magic"></i> Load Random Sample
-                </button>
-                <button type="button" class="action-btn" onclick="clearForm()">
-                    <i class="fas fa-eraser"></i> Clear Form
-                </button>
-                <a href="/analytics" class="action-btn">
-                    <i class="fas fa-chart-bar"></i> View Analytics
-                </a>
-                <button type="button" class="action-btn" onclick="openModelManager()">
-                    <i class="fas fa-cogs"></i> Model Manager
-                </button>
-            </div>
+                <div class="quick-actions">
+                    <h4>Quick Actions</h4>
+                    <div class="upload-controls">
+                        <select class="scenario-selector" id="scenario-selector" onchange="loadSpecificSample(this.value)">
+                            <option value=""><i class="fas fa-list"></i> Select a scenario...</option>
+                            <option value="morning"><i class="fas fa-sun"></i> Morning Commute (8 AM, Spring)</option>
+                            <option value="afternoon"><i class="fas fa-sun"></i> Afternoon Peak (2 PM, Summer)</option>
+                            <option value="evening"><i class="fas fa-cloud-sun"></i> Evening Commute (5 PM, Autumn)</option>
+                            <option value="winter"><i class="fas fa-snowflake"></i> Winter Day (12 PM, Snow)</option>
+                            <option value="rainy"><i class="fas fa-cloud-rain"></i> Rainy Day (9 AM, Rain)</option>
+                            <option value="holiday"><i class="fas fa-gift"></i> Holiday Afternoon (2 PM, Holiday)</option>
+                        </select>
+                        <label class="action-btn file-upload-btn" for="prediction-file-quick">
+                            <i class="fas fa-file-import"></i>
+                            <span>Load features via file</span>
+                            <input type="file" id="prediction-file-quick" accept=".csv,.json">
+                        </label>
+                    </div>
+                    
+                    <button type="button" class="action-btn" onclick="loadSampleData()">
+                        <i class="fas fa-magic"></i> Load Random Sample
+                    </button>
+                    <button type="button" class="action-btn" onclick="clearForm()">
+                        <i class="fas fa-eraser"></i> Clear Form
+                    </button>
+                    <a href="/v2/analytics" class="action-btn">
+                        <i class="fas fa-chart-bar"></i> View Analytics
+                    </a>
+                    <button type="button" class="action-btn" onclick="openModelManager()">
+                        <i class="fas fa-cogs"></i> Model Manager
+                    </button>
+                </div>
+                <div class="file-upload-hint">Fields auto-fill the form right away.</div>
+                <div id="file-upload-preview" class="upload-preview">
+                    <strong>No file preview yet.</strong>
+                </div>
         </aside>
 
         <!-- Main Content -->
@@ -581,6 +590,43 @@
                                     </div>
                                 </div>
 
+                                <div class="model-option" data-model="unified" onclick="selectModel('unified')">
+                                    <div class="model-icon">
+                                        <i class="fas fa-diagram-project"></i>
+                                    </div>
+                                    <div class="model-content">
+                                        <div class="model-header">
+                                            <h4>Unified Pipeline</h4>
+                                            <span class="model-badge badge-unified">Best Overall</span>
+                                        </div>
+                                        <p class="model-description">Leakage-free pipeline • stacking ensemble • production artifact bundle</p>
+                                        <div class="model-stats">
+                                            <div class="stat">
+                                                <span class="stat-label">RÂ² Score</span>
+                                                <span class="stat-value" id="stat-r2-unified">0.94</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">RMSE</span>
+                                                <span class="stat-value" id="stat-rmse-unified">144.7</span>
+                                            </div>
+                                            <div class="stat">
+                                                <span class="stat-label">MAE</span>
+                                                <span class="stat-value" id="stat-mae-unified">104.7</span>
+                                            </div>
+                                        </div>
+                                        <div class="feature-tags">
+                                            <span class="feature-tag">Leakage-Free</span>
+                                            <span class="feature-tag">Lag Features</span>
+                                            <span class="feature-tag">Train-Only Scaling</span>
+                                            <span class="feature-tag">Saved Ensemble</span>
+                                            <span class="feature-tag-more">Unified</span>
+                                        </div>
+                                    </div>
+                                    <div class="selection-indicator">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 
@@ -598,6 +644,7 @@
                                             <th>XGBoost</th>
                                             <th>LightGBM</th>
                                             <th>Stacking</th>
+                                            <th>Unified</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -609,6 +656,7 @@
                                             <td><span class="metric-value xgboost">0.94</span></td>
                                             <td><span class="metric-value lightgbm">0.76</span></td>
                                             <td><span class="metric-value stacking">0.79</span></td>
+                                            <td><span class="metric-value unified">0.94</span></td>
                                         </tr>
                                         <tr>
                                             <td>RMSE</td>
@@ -618,6 +666,7 @@
                                             <td class="xgboost">153.3</td>
                                             <td class="lightgbm">302.6</td>
                                             <td class="stacking">280.5</td>
+                                            <td class="unified">144.7</td>
                                         </tr>
                                         <tr>
                                             <td>MAE</td>
@@ -627,6 +676,7 @@
                                             <td class="xgboost">90.9</td>
                                             <td class="lightgbm">225.7</td>
                                             <td class="stacking">207.6</td>
+                                            <td class="unified">104.7</td>
                                         </tr>
                                         <tr>
                                             <td>Features</td>
@@ -635,6 +685,7 @@
                                             <td>36</td>
                                             <td>36</td>
                                             <td>36</td>
+                                            <td>35</td>
                                             <td>36</td>
                                         </tr>
                                         <tr>
@@ -645,6 +696,7 @@
                                             <td>Slow</td>
                                             <td>Fast</td>
                                             <td>Slow</td>
+                                            <td>Moderate</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -811,7 +863,7 @@
                                 <button class="action-btn-small" onclick="showExportOptions()">
                                     <i class="fas fa-download"></i> Export
                                 </button>
-                                <a href="/analytics" class="action-btn-small">
+                                <a href="/v2/analytics" class="action-btn-small">
                                     <i class="fas fa-chart-bar"></i> View Analytics
                                 </a>
                             </div>
@@ -881,9 +933,9 @@
             </div>
             <div class="footer-right">
                 <div class="footer-links">
-                    <a href="/status"><i class="fas fa-server"></i> API Status</a>
-                    <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
-                    <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                    <a href="/v2/status"><i class="fas fa-server"></i> API Status</a>
+                    <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
                     <a href="#" onclick="openModelManager(); return false;"><i class="fas fa-cogs"></i> Model Manager</a>
                 </div>
                 <div class="footer-meta">
@@ -1016,7 +1068,7 @@
                 modelIndicator.className = `model-indicator ${modelType}`;
                 const indicatorNames = {
                     'original': 'Standard', 'improved': 'Improved', 'advanced': 'Advanced',
-                    'xgboost': 'XGBoost', 'lightgbm': 'LightGBM', 'stacking': 'Stacking'
+                    'xgboost': 'XGBoost', 'lightgbm': 'LightGBM', 'stacking': 'Stacking', 'unified': 'Unified'
                 };
                 modelIndicator.textContent = indicatorNames[modelType] || modelType;
             }
@@ -1025,7 +1077,7 @@
                 modelBadge.className = `model-badge ${modelType}`;
                 const badgeNames = {
                     'original': 'Standard Model', 'improved': 'Improved Model', 'advanced': 'Advanced Model',
-                    'xgboost': 'XGBoost Model', 'lightgbm': 'LightGBM Model', 'stacking': 'Stacking Ensemble'
+                    'xgboost': 'XGBoost Model', 'lightgbm': 'LightGBM Model', 'stacking': 'Stacking Ensemble', 'unified': 'Unified Pipeline'
                 };
                 modelBadge.textContent = badgeNames[modelType] || modelType;
             }
@@ -1041,7 +1093,8 @@
                         'advanced': 'Using <strong>advanced model</strong> with cyclical encoding and weather categories for optimal performance.',
                         'xgboost': 'Using <strong>XGBoost model</strong> with gradient boosting for state-of-the-art accuracy.',
                         'lightgbm': 'Using <strong>LightGBM model</strong> with leaf-wise tree growth for fast, memory-efficient predictions.',
-                        'stacking': 'Using <strong>Stacking Ensemble</strong> combining RF, XGBoost, and LightGBM with a RidgeCV meta-learner.'
+                        'stacking': 'Using <strong>Stacking Ensemble</strong> combining RF, XGBoost, and LightGBM with a RidgeCV meta-learner.',
+                        'unified': 'Using the <strong>Unified Pipeline</strong> with leakage-free preprocessing, lag features, train-only scaling, and the saved best ensemble artifact.'
                     };
                     pElement.innerHTML = insights[modelType] || insights['original'];
                 }

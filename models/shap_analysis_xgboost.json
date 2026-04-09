@@ -1,0 +1,130 @@
+{
+  "model_key": "xgboost",
+  "source": "XGBoost SHAP Analysis",
+  "global_importance": [
+    {
+      "feature": "Humidity%",
+      "mean_abs_shap": 352.2639307975769
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_abs_shap": 208.9035085439682
+    },
+    {
+      "feature": "rainfall",
+      "mean_abs_shap": 111.86548292636871
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_abs_shap": 106.99790179729462
+    },
+    {
+      "feature": "dew_point",
+      "mean_abs_shap": 90.83813531696796
+    },
+    {
+      "feature": "day_of_week",
+      "mean_abs_shap": 63.55991053581238
+    },
+    {
+      "feature": "hour_sin",
+      "mean_abs_shap": 54.97879217006266
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_abs_shap": 49.055218160152435
+    },
+    {
+      "feature": "season_Summer",
+      "mean_abs_shap": 45.12031137943268
+    },
+    {
+      "feature": "temperature",
+      "mean_abs_shap": 39.93075308203697
+    },
+    {
+      "feature": "Wind_speed_m/s",
+      "mean_abs_shap": 39.10885591059923
+    },
+    {
+      "feature": "functioning_day_No",
+      "mean_abs_shap": 21.351363569498062
+    },
+    {
+      "feature": "hour",
+      "mean_abs_shap": 20.0026169186458
+    },
+    {
+      "feature": "hour_cos",
+      "mean_abs_shap": 14.384094666689634
+    },
+    {
+      "feature": "is_peak_hour",
+      "mean_abs_shap": 13.372531920671463
+    }
+  ],
+  "direction": [
+    {
+      "feature": "Humidity%",
+      "mean_shap": -352.2639307975769
+    },
+    {
+      "feature": "temp_hour_interaction",
+      "mean_shap": 190.85615980625153
+    },
+    {
+      "feature": "rainfall",
+      "mean_shap": -111.86548292636871
+    },
+    {
+      "feature": "Solar_Radiation_MJ/m2",
+      "mean_shap": 106.99790179729462
+    },
+    {
+      "feature": "dew_point",
+      "mean_shap": -56.89916364848614
+    },
+    {
+      "feature": "day_of_week",
+      "mean_shap": -57.188876152038574
+    },
+    {
+      "feature": "hour_sin",
+      "mean_shap": -33.11068079806864
+    },
+    {
+      "feature": "good_biking_conditions",
+      "mean_shap": -11.10337907075882
+    },
+    {
+      "feature": "season_Summer",
+      "mean_shap": 45.12031137943268
+    },
+    {
+      "feature": "temperature",
+      "mean_shap": -35.0665050894022
+    },
+    {
+      "feature": "Wind_speed_m/s",
+      "mean_shap": -39.10885591059923
+    },
+    {
+      "feature": "functioning_day_No",
+      "mean_shap": 21.351363569498062
+    },
+    {
+      "feature": "hour",
+      "mean_shap": 7.60101527068764
+    },
+    {
+      "feature": "hour_cos",
+      "mean_shap": 6.9481752924621105
+    },
+    {
+      "feature": "is_peak_hour",
+      "mean_shap": 2.234257072210312
+    }
+  ],
+  "expected_value": 704.8974609375,
+  "sample_size": 32
+}

@@ -1,0 +1,122 @@
+{
+  "model_key": "original",
+  "source": "Random Forest (baseline) SHAP Analysis",
+  "global_importance": [
+    {
+      "feature": "Temperature(캜)",
+      "mean_abs_shap": 249.97269061237125
+    },
+    {
+      "feature": "Hour",
+      "mean_abs_shap": 247.19183810181966
+    },
+    {
+      "feature": "Solar Radiation (MJ/m2)",
+      "mean_abs_shap": 127.46880087187783
+    },
+    {
+      "feature": "Seasons_Winter",
+      "mean_abs_shap": 60.67356895318363
+    },
+    {
+      "feature": "Functioning Day_Yes",
+      "mean_abs_shap": 60.2552398898795
+    },
+    {
+      "feature": "Humidity(%)",
+      "mean_abs_shap": 57.5152883644428
+    },
+    {
+      "feature": "Dew point temperature(캜)",
+      "mean_abs_shap": 38.29291848237332
+    },
+    {
+      "feature": "Rainfall(mm)",
+      "mean_abs_shap": 29.726602057495008
+    },
+    {
+      "feature": "Seasons_Spring",
+      "mean_abs_shap": 27.717032999286207
+    },
+    {
+      "feature": "Visibility (10m)",
+      "mean_abs_shap": 10.667148657376131
+    },
+    {
+      "feature": "Wind speed (m/s)",
+      "mean_abs_shap": 8.694564970059979
+    },
+    {
+      "feature": "Seasons_Summer",
+      "mean_abs_shap": 5.811423098555307
+    },
+    {
+      "feature": "Holiday_No Holiday",
+      "mean_abs_shap": 2.257761129559126
+    },
+    {
+      "feature": "Snowfall (cm)",
+      "mean_abs_shap": 1.7957179906954963
+    }
+  ],
+  "direction": [
+    {
+      "feature": "Temperature(캜)",
+      "mean_shap": 58.38108615084371
+    },
+    {
+      "feature": "Hour",
+      "mean_shap": 42.95106647719339
+    },
+    {
+      "feature": "Solar Radiation (MJ/m2)",
+      "mean_shap": -14.268200543028085
+    },
+    {
+      "feature": "Seasons_Winter",
+      "mean_shap": 25.218506103613088
+    },
+    {
+      "feature": "Functioning Day_Yes",
+      "mean_shap": 8.982826902449428
+    },
+    {
+      "feature": "Humidity(%)",
+      "mean_shap": 0.9506938534386331
+    },
+    {
+      "feature": "Dew point temperature(캜)",
+      "mean_shap": -25.361734789741643
+    },
+    {
+      "feature": "Rainfall(mm)",
+      "mean_shap": 19.12068313706266
+    },
+    {
+      "feature": "Seasons_Spring",
+      "mean_shap": 14.639022599874373
+    },
+    {
+      "feature": "Visibility (10m)",
+      "mean_shap": 3.1646761167677426
+    },
+    {
+      "feature": "Wind speed (m/s)",
+      "mean_shap": 4.167107490342196
+    },
+    {
+      "feature": "Seasons_Summer",
+      "mean_shap": -1.7060590240498108
+    },
+    {
+      "feature": "Holiday_No Holiday",
+      "mean_shap": 2.239073114373286
+    },
+    {
+      "feature": "Snowfall (cm)",
+      "mean_shap": 0.7681495284446396
+    }
+  ],
+  "expected_value": 705.6973216324201,
+  "sample_size": 32
+}

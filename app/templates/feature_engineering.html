@@ -16,11 +16,11 @@
         <nav class="navbar">
             <div class="nav-brand"><i class="fas fa-bicycle"></i> UrbanFlow Analytics</div>
             <div class="nav-links">
-                <a href="/"><i class="fas fa-home"></i> Home</a>
-                <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
-                <a href="/feature-engineering" class="active"><i class="fas fa-cogs"></i> Feature Engineering</a>
-                <a href="/status"><i class="fas fa-server"></i> API Status</a>
-                <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                <a href="/v2"><i class="fas fa-home"></i> Home</a>
+                <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                <a href="/v2/feature-engineering" class="active"><i class="fas fa-cogs"></i> Feature Engineering</a>
+                <a href="/v2/status"><i class="fas fa-server"></i> API Status</a>
+                <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
             </div>
         </nav>
 
@@ -32,7 +32,7 @@
                 <button class="action-btn" onclick="refreshFeatureData()">
                     <i class="fas fa-sync-alt"></i> Refresh Data
                 </button>
-                <button class="action-btn" onclick="window.open('/api/features/advanced', '_blank')">
+                <button class="action-btn" onclick="window.open('/v2/api/features/advanced', '_blank')">
                     <i class="fas fa-code"></i> View API
                 </button>
             </div>
@@ -303,7 +303,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
             </div>
             
             <div class="action-buttons">
-                <button class="action-btn" onclick="window.open('/api/features/calculate', '_blank')">
+                <button class="action-btn" onclick="window.open('/v2/api/features/calculate', '_blank')">
                     <i class="fas fa-external-link-alt"></i> Try API Endpoint
                 </button>
                 <button class="action-btn" onclick="testAutoCalculation()">
@@ -317,7 +317,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
             <p>Graduation Project - UrbanFlow Bike Demand Prediction System</p>
             <p>Advanced Feature Engineering | Auto-calculation enabled | 45+ features</p>
             <p>
-                <a href="/api/features/advanced" class="fe-footer-link">
+                <a href="/v2/api/features/advanced" class="fe-footer-link">
                     <i class="fas fa-code"></i> View API Documentation
                 </a>
             </p>
@@ -343,7 +343,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
 
             async loadAdvancedFeatures() {
                 try {
-                    const response = await fetch('/api/features/advanced');
+                    const response = await fetch('/v2/api/features/advanced');
                     const data = await response.json();
                     
                     if (data.success) {
@@ -358,7 +358,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
 
             async loadFeatureImportance() {
                 try {
-                    const response = await fetch('/api/features/importance');
+                    const response = await fetch('/v2/api/features/importance');
                     const data = await response.json();
                     
                     if (data.success) {
@@ -488,7 +488,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
 
             async loadModelMetrics() {
                 try {
-                    const response = await fetch('/api/models');
+                    const response = await fetch('/v2/api/models');
                     const data = await response.json();
                     
                     if (data.success && data.models.advanced) {
@@ -626,7 +626,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
             };
             
             try {
-                const response = await fetch('/api/features/calculate', {
+                const response = await fetch('/v2/api/features/calculate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -688,7 +688,7 @@ df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</cod
 
         function testAutoCalculation() {
             // Test the auto-calculation endpoint with sample data
-            fetch('/api/features/calculate', {
+            fetch('/v2/api/features/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

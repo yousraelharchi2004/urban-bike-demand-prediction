@@ -9,3 +9,9 @@ services:
       - ./data:/app/data
       - ./models:/app/models
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/v2/status || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

@@ -17,19 +17,19 @@
                 <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
             </div>
             <div class="nav-links">
-                <a href="/" class="nav-link">
+                <a href="/v2" class="nav-link">
                     <i class="fas fa-chart-line"></i>
                     <span>Predictor</span>
                 </a>
-                <a href="/analytics" class="nav-link">
+                <a href="/v2/analytics" class="nav-link">
                     <i class="fas fa-analytics"></i>
                     <span>Analytics</span>
                 </a>
-                <a href="/status" class="nav-link">
+                <a href="/v2/status" class="nav-link">
                     <i class="fas fa-server"></i>
                     <span>API Status</span>
                 </a>
-                <a href="/test" class="nav-link active">
+                <a href="/v2/test" class="nav-link active">
                     <i class="fas fa-vial"></i>
                     <span>Test Suite</span>
                 </a>
@@ -65,7 +65,7 @@
                 <button class="action-btn" onclick="runAllTests()">
                     <i class="fas fa-play"></i> Run All Tests
                 </button>
-                <a href="/" class="action-btn">
+                <a href="/v2" class="action-btn">
                     <i class="fas fa-arrow-left"></i> Back to Predictor
                 </a>
             </div>
@@ -220,18 +220,18 @@
                                 <div class="input-group">
                                     <label for="api-endpoint"><i class="fas fa-link"></i> API Endpoint</label>
                                     <select id="api-endpoint" class="test-select" onchange="updateEndpoint()">
-                                        <option value="/api/status">GET /api/status (JSON)</option>
-                                        <option value="/metrics">GET /metrics</option>
-                                        <option value="/model-info">GET /model-info</option>
-                                        <option value="/prediction-history">GET /prediction-history</option>
-                                        <option value="/predict" selected>POST /predict</option>
-                                        <option value="/api/dashboard-metrics">GET /api/dashboard-metrics</option>
-                                        <option value="/api/analytics/kpis">GET /api/analytics/kpis</option>
-                                        <option value="/api/analytics/hourly-patterns">GET /api/analytics/hourly-patterns</option>
-                                        <option value="/api/analytics/model-performance">GET /api/analytics/model-performance</option>
-                                        <option value="/api/analytics/feature-importance">GET /api/analytics/feature-importance</option>
-                                        <option value="/api/analytics/shap-importance">GET /api/analytics/shap-importance</option>
-                                        <option value="/api/analytics/insights">GET /api/analytics/insights</option>
+                                        <option value="/v2/api/status">GET /v2/api/status (JSON)</option>
+                                        <option value="/v2/metrics">GET /v2/metrics</option>
+                                        <option value="/v2/model-info">GET /v2/model-info</option>
+                                        <option value="/v2/prediction-history">GET /v2/prediction-history</option>
+                                        <option value="/v2/predict" selected>POST /v2/predict</option>
+                                        <option value="/v2/api/dashboard-metrics">GET /v2/api/dashboard-metrics</option>
+                                        <option value="/v2/api/analytics/kpis">GET /v2/api/analytics/kpis</option>
+                                        <option value="/v2/api/analytics/hourly-patterns">GET /v2/api/analytics/hourly-patterns</option>
+                                        <option value="/v2/api/analytics/model-performance">GET /v2/api/analytics/model-performance</option>
+                                        <option value="/v2/api/analytics/feature-importance">GET /v2/api/analytics/feature-importance</option>
+                                        <option value="/v2/api/analytics/shap-importance">GET /v2/api/analytics/shap-importance</option>
+                                        <option value="/v2/api/analytics/insights">GET /v2/api/analytics/insights</option>
                                     </select>
                                 </div>
                                 <div class="input-group">
@@ -245,7 +245,7 @@
                                 </div>
                                 <div class="input-group">
                                     <label for="api-body"><i class="fas fa-code"></i> Request Body (JSON)</label>
-                                    <textarea id="api-body" placeholder='Use "Send Request" to test endpoints. Body auto-fills for /predict.'>
+                                    <textarea id="api-body" placeholder='Use "Send Request" to test endpoints. Body auto-fills for /v2/predict.'>
                                     </textarea>
                                 </div>
                                 <div class="test-buttons console-actions">
@@ -306,9 +306,9 @@
             </div>
             <div class="footer-right">
                 <div class="footer-links">
-                    <a href="/status"><i class="fas fa-server"></i> API Status</a>
-                    <a href="/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
-                    <a href="/test"><i class="fas fa-vial"></i> Test Suite</a>
+                    <a href="/v2/status"><i class="fas fa-server"></i> API Status</a>
+                    <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
                 </div>
                 <div class="footer-meta">
                     <span class="version" id="footer-version"></span>
@@ -333,11 +333,11 @@
                 description: "Test that the API status endpoint returns correct system information.",
                 category: "api",
                 priority: "critical",
-                endpoint: "/api/status",
+                endpoint: "/v2/api/status",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/status');
+                    const response = await fetch('/v2/api/status');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.status !== undefined, 'Should contain status field');
@@ -346,7 +346,7 @@
                     return { message: `Status: ${data.status}, Models: ${Object.keys(data.models).length}` };
                 },
                 code: `async function testAPIStatus() {
-    const response = await fetch('/api/status');
+    const response = await fetch('/v2/api/status');
     const data = await response.json();
     assert(response.status === 200, 'Status should be 200');
     assert(data.status !== undefined, 'Should contain status field');
@@ -360,12 +360,12 @@
                 description: "Test that the original Random Forest model can make predictions with valid input.",
                 category: "model",
                 priority: "critical",
-                endpoint: "/predict",
+                endpoint: "/v2/predict",
                 method: "POST",
                 expectedStatus: 200,
                 runner: async function() {
                     const testData = getOriginalModelInput();
-                    const response = await fetch('/predict', {
+                    const response = await fetch('/v2/predict', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(testData)
@@ -385,7 +385,7 @@
         "Seasons_Spring": 0, "Seasons_Summer": 1, "Seasons_Winter": 0,
         "Holiday_No Holiday": 1, "Functioning Day_Yes": 1
     };
-    const response = await fetch('/predict', { method: 'POST',
+    const response = await fetch('/v2/predict', { method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(testData) });
     const data = await response.json();
@@ -399,11 +399,11 @@
                 description: "Test that the model metrics endpoint returns performance data (R2, MAE, etc).",
                 category: "model",
                 priority: "high",
-                endpoint: "/metrics",
+                endpoint: "/v2/metrics",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/metrics');
+                    const response = await fetch('/v2/metrics');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.metrics !== undefined, 'Should contain metrics field');
@@ -412,7 +412,7 @@
                     return { message: `R2: ${data.metrics.r2_score}, MAE: ${data.metrics.mean_absolute_error}` };
                 },
                 code: `async function testModelMetrics() {
-    const response = await fetch('/metrics');
+    const response = await fetch('/v2/metrics');
     const data = await response.json();
     assert(response.status === 200, 'Status should be 200');
     assert(data.metrics !== undefined, 'Should contain metrics field');
@@ -426,11 +426,11 @@
                 description: "Test that prediction history endpoint returns logged predictions.",
                 category: "api",
                 priority: "medium",
-                endpoint: "/prediction-history",
+                endpoint: "/v2/prediction-history",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/prediction-history?limit=5');
+                    const response = await fetch('/v2/prediction-history?limit=5');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Request should be successful');
@@ -438,7 +438,7 @@
                     return { message: `${data.history.length} predictions in history` };
                 },
                 code: `async function testPredictionHistory() {
-    const response = await fetch('/prediction-history?limit=5');
+    const response = await fetch('/v2/prediction-history?limit=5');
     const data = await response.json();
     assert(response.status === 200, 'Status should be 200');
     assert(data.success === true, 'Request should be successful');
@@ -451,12 +451,12 @@
                 description: "Test that the API rejects incomplete input for original model with helpful error.",
                 category: "api",
                 priority: "high",
-                endpoint: "/predict",
+                endpoint: "/v2/predict",
                 method: "POST",
                 expectedStatus: 400,
                 runner: async function() {
                     const incompleteData = { "Hour": 10 };
-                    const response = await fetch('/predict', {
+                    const response = await fetch('/v2/predict', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(incompleteData)
@@ -469,7 +469,7 @@
                 },
                 code: `async function testIncompleteInput() {
     const incompleteData = { "Hour": 10 };
-    const response = await fetch('/predict', { method: 'POST',
+    const response = await fetch('/v2/predict', { method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(incompleteData) });
     const data = await response.json();
@@ -483,11 +483,11 @@
                 description: "Test that model information endpoint returns correct model details.",
                 category: "model",
                 priority: "medium",
-                endpoint: "/model-info",
+                endpoint: "/v2/model-info",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/model-info');
+                    const response = await fetch('/v2/model-info');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     // Response may nest under model_info or be flat
@@ -497,7 +497,7 @@
                     return { message: `Model: ${info.model_type}, Features: ${info.features_count || info.n_features_in}` };
                 },
                 code: `async function testModelInfo() {
-    const response = await fetch('/model-info');
+    const response = await fetch('/v2/model-info');
     const data = await response.json();
     const info = data.model_info || data;
     assert(info.model_loaded === true, 'Model should be loaded');
@@ -510,12 +510,12 @@
                 description: "Test prediction using the XGBoost model via query parameter.",
                 category: "model",
                 priority: "high",
-                endpoint: "/predict?model_type=xgboost&calculate_features=true",
+                endpoint: "/v2/predict?model_type=xgboost&calculate_features=true",
                 method: "POST",
                 expectedStatus: 200,
                 runner: async function() {
                     const testData = getAdvancedModelInput();
-                    const response = await fetch('/predict?model_type=xgboost&calculate_features=true', {
+                    const response = await fetch('/v2/predict?model_type=xgboost&calculate_features=true', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(testData)
@@ -527,7 +527,7 @@
                 },
                 code: `async function testXGBoostPrediction() {
     const testData = { "hour": 8, "temperature": 18, ... };
-    const response = await fetch('/predict?model_type=xgboost&calculate_features=true', {
+    const response = await fetch('/v2/predict?model_type=xgboost&calculate_features=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(testData) });
@@ -541,11 +541,11 @@
                 description: "Test the dashboard metrics endpoint returns accuracy and model count.",
                 category: "analytics",
                 priority: "high",
-                endpoint: "/api/dashboard-metrics",
+                endpoint: "/v2/api/dashboard-metrics",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/dashboard-metrics');
+                    const response = await fetch('/v2/api/dashboard-metrics');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -557,7 +557,7 @@
                     return { message: `Accuracy: ${accuracy}%, Models: ${models}` };
                 },
                 code: `async function testDashboardMetrics() {
-    const response = await fetch('/api/dashboard-metrics');
+    const response = await fetch('/v2/api/dashboard-metrics');
     const data = await response.json();
     assert(data.success === true, 'Should be successful');
     const accuracy = data.overall_accuracy || data.metrics?.model_accuracy;
@@ -570,11 +570,11 @@
                 description: "Test the analytics KPI endpoint returns accuracy, error, and feature metrics.",
                 category: "analytics",
                 priority: "medium",
-                endpoint: "/api/analytics/kpis",
+                endpoint: "/v2/api/analytics/kpis",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/analytics/kpis');
+                    const response = await fetch('/v2/api/analytics/kpis');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -584,7 +584,7 @@
                     return { message: `Accuracy: ${data.kpis.accuracy.value}%, MAE: ${data.kpis.error.value}` };
                 },
                 code: `async function testAnalyticsKPIs() {
-    const response = await fetch('/api/analytics/kpis');
+    const response = await fetch('/v2/api/analytics/kpis');
     const data = await response.json();
     assert(data.success === true, 'Should be successful');
     assert(data.kpis.accuracy !== undefined, 'Should contain accuracy KPI');
@@ -597,11 +597,11 @@
                 description: "Test that model performance endpoint returns radar chart data for all loaded models.",
                 category: "analytics",
                 priority: "medium",
-                endpoint: "/api/analytics/model-performance",
+                endpoint: "/v2/api/analytics/model-performance",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/analytics/model-performance');
+                    const response = await fetch('/v2/api/analytics/model-performance');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -611,7 +611,7 @@
                     return { message: `${data.total_models} models in radar chart` };
                 },
                 code: `async function testModelPerformance() {
-    const response = await fetch('/api/analytics/model-performance');
+    const response = await fetch('/v2/api/analytics/model-performance');
     const data = await response.json();
     assert(data.success === true, 'Should be successful');
     assert(data.radar_data.datasets.length >= 1, 'Should have model datasets');
@@ -623,11 +623,11 @@
                 description: "Test the SHAP analysis endpoint returns feature importance with directional impact.",
                 category: "analytics",
                 priority: "medium",
-                endpoint: "/api/analytics/shap-importance",
+                endpoint: "/v2/api/analytics/shap-importance",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/analytics/shap-importance');
+                    const response = await fetch('/v2/api/analytics/shap-importance');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -639,7 +639,7 @@
                     return { message: `${data.features.length} SHAP features, source: ${data.source}` };
                 },
                 code: `async function testShapImportance() {
-    const response = await fetch('/api/analytics/shap-importance');
+    const response = await fetch('/v2/api/analytics/shap-importance');
     const data = await response.json();
     assert(data.success === true, 'Should be successful');
     assert(data.features !== undefined, 'Should contain features');
@@ -652,11 +652,11 @@
                 description: "Test that tree-based feature importance returns ranked features.",
                 category: "analytics",
                 priority: "medium",
-                endpoint: "/api/analytics/feature-importance",
+                endpoint: "/v2/api/analytics/feature-importance",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/analytics/feature-importance');
+                    const response = await fetch('/v2/api/analytics/feature-importance');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -665,7 +665,7 @@
                     return { message: `${data.features.length} features from ${data.source_model}` };
                 },
                 code: `async function testFeatureImportance() {
-    const response = await fetch('/api/analytics/feature-importance');
+    const response = await fetch('/v2/api/analytics/feature-importance');
     const data = await response.json();
     assert(data.success === true, 'Should be successful');
     assert(data.features.length > 0, 'Should have features');
@@ -678,11 +678,11 @@
                 description: "Test that hourly patterns endpoint returns 24-hour demand data.",
                 category: "analytics",
                 priority: "low",
-                endpoint: "/api/analytics/hourly-patterns",
+                endpoint: "/v2/api/analytics/hourly-patterns",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/analytics/hourly-patterns');
+                    const response = await fetch('/v2/api/analytics/hourly-patterns');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -691,7 +691,7 @@
                     return { message: `24 hourly patterns, ${data.filtered_predictions} predictions used` };
                 },
                 code: `async function testHourlyPatterns() {
-    const response = await fetch('/api/analytics/hourly-patterns');
+    const response = await fetch('/v2/api/analytics/hourly-patterns');
     const data = await response.json();
     assert(data.patterns.length === 24, 'Should have 24 hourly entries');
 }`
@@ -702,19 +702,19 @@
                 description: "Integration test: compare predictions across original and XGBoost models.",
                 category: "integration",
                 priority: "high",
-                endpoint: "/predict",
+                endpoint: "/v2/predict",
                 method: "POST",
                 expectedStatus: 200,
                 runner: async function() {
                     // Original model (needs Korean field names)
-                    const resp1 = await fetch('/predict', {
+                    const resp1 = await fetch('/v2/predict', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(getOriginalModelInput())
                     });
                     const data1 = await resp1.json();
                     // XGBoost model (uses normalized field names + query param)
-                    const resp2 = await fetch('/predict?model_type=xgboost&calculate_features=true', {
+                    const resp2 = await fetch('/v2/predict?model_type=xgboost&calculate_features=true', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(getAdvancedModelInput())
@@ -729,10 +729,10 @@
                 },
                 code: `async function testMultiModelConsistency() {
     // Predict with original model (Korean field names)
-    const resp1 = await fetch('/predict', { method: 'POST', body: originalInput });
+    const resp1 = await fetch('/v2/predict', { method: 'POST', body: originalInput });
     const data1 = await resp1.json();
     // Predict with XGBoost (query param + normalized names)
-    const resp2 = await fetch('/predict?model_type=xgboost&calculate_features=true',
+    const resp2 = await fetch('/v2/predict?model_type=xgboost&calculate_features=true',
         { method: 'POST', body: advancedInput });
     const data2 = await resp2.json();
     assert(data1.success && data2.success, 'Both should succeed');
@@ -744,11 +744,11 @@
                 description: "Test that analytics insights endpoint returns data-driven insights.",
                 category: "analytics",
                 priority: "low",
-                endpoint: "/api/analytics/insights",
+                endpoint: "/v2/api/analytics/insights",
                 method: "GET",
                 expectedStatus: 200,
                 runner: async function() {
-                    const response = await fetch('/api/analytics/insights');
+                    const response = await fetch('/v2/api/analytics/insights');
                     const data = await response.json();
                     assert(response.status === 200, 'Status should be 200');
                     assert(data.success === true, 'Should be successful');
@@ -757,7 +757,7 @@
                     return { message: `${data.insights.length} insights generated` };
                 },
                 code: `async function testInsights() {
-    const response = await fetch('/api/analytics/insights');
+    const response = await fetch('/v2/api/analytics/insights');
     const data = await response.json();
     assert(data.success === true, 'Should be successful');
     assert(data.insights.length >= 1, 'Should have insights');
@@ -769,17 +769,17 @@
                 description: "Integration test: make a prediction then verify it appears in history.",
                 category: "integration",
                 priority: "high",
-                endpoint: "/predict",
+                endpoint: "/v2/predict",
                 method: "POST",
                 expectedStatus: 200,
                 runner: async function() {
                     // Get history count before
-                    const histBefore = await fetch('/prediction-history?limit=1000');
+                    const histBefore = await fetch('/v2/prediction-history?limit=1000');
                     const dataBefore = await histBefore.json();
                     const countBefore = dataBefore.history ? dataBefore.history.length : 0;
 
                     // Make a prediction using original model input (Korean chars)
-                    const predResp = await fetch('/predict', {
+                    const predResp = await fetch('/v2/predict', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(getOriginalModelInput())
@@ -788,7 +788,7 @@
                     assert(predData.success === true, 'Prediction should succeed');
 
                     // Check history increased
-                    const histAfter = await fetch('/prediction-history?limit=1000');
+                    const histAfter = await fetch('/v2/prediction-history?limit=1000');
                     const dataAfter = await histAfter.json();
                     const countAfter = dataAfter.history ? dataAfter.history.length : 0;
                     assert(countAfter >= countBefore, 'History count should not decrease after prediction');
@@ -796,11 +796,11 @@
                 },
                 code: `async function testEndToEnd() {
     // Get history count before
-    const before = await fetch('/prediction-history?limit=1000');
+    const before = await fetch('/v2/prediction-history?limit=1000');
     // Make prediction
-    await fetch('/predict', { method: 'POST', ... });
+    await fetch('/v2/predict', { method: 'POST', ... });
     // Verify history grew
-    const after = await fetch('/prediction-history?limit=1000');
+    const after = await fetch('/v2/prediction-history?limit=1000');
     assert(after.count >= before.count, 'History should grow');
 }`
             }
@@ -865,7 +865,7 @@
 
         async function fetchApiVersion() {
             try {
-                const response = await fetch('/api/status');
+                const response = await fetch('/v2/api/status');
                 const data = await response.json();
                 apiVersion = (data.system_info && data.system_info.version) || data.version || '';
                 if (apiVersion) {
@@ -1163,16 +1163,16 @@
         async function testAPIStatus() {
             showNotification('Testing API status...', 'info');
             try {
-                const output = await quickFetch('/api/status', 'GET', null);
+                const output = await quickFetch('/v2/api/status', 'GET', null);
                 updateConsoleOutput(output);
-                addToHistory('/api/status', 'GET', null, output);
+                addToHistory('/v2/api/status', 'GET', null, output);
                 switchToTab('response');
                 scrollToConsole();
                 showNotification(`API Health OK - Status ${output.status} (${output.duration})`, 'success');
             } catch (error) {
                 const output = { error: error.message, timestamp: new Date().toISOString() };
                 updateConsoleOutput(output);
-                addToHistory('/api/status', 'GET', null, output);
+                addToHistory('/v2/api/status', 'GET', null, output);
                 switchToTab('response');
                 scrollToConsole();
                 showNotification('API Health check failed: ' + error.message, 'error');
@@ -1182,16 +1182,16 @@
         async function testModelStatus() {
             showNotification('Testing model status...', 'info');
             try {
-                const output = await quickFetch('/model-info', 'GET', null);
+                const output = await quickFetch('/v2/model-info', 'GET', null);
                 updateConsoleOutput(output);
-                addToHistory('/model-info', 'GET', null, output);
+                addToHistory('/v2/model-info', 'GET', null, output);
                 switchToTab('response');
                 scrollToConsole();
                 showNotification(`Model status OK - Status ${output.status} (${output.duration})`, 'success');
             } catch (error) {
                 const output = { error: error.message, timestamp: new Date().toISOString() };
                 updateConsoleOutput(output);
-                addToHistory('/model-info', 'GET', null, output);
+                addToHistory('/v2/model-info', 'GET', null, output);
                 switchToTab('response');
                 scrollToConsole();
                 showNotification('Model status test failed: ' + error.message, 'error');
@@ -1253,9 +1253,9 @@
             const temp = testData["Temperature(\ucE9C)"];
             showNotification(`Testing prediction: ${hour}:00, ${temp}\u00b0C...`, 'info');
             try {
-                const output = await quickFetch('/predict', 'POST', bodyStr);
+                const output = await quickFetch('/v2/predict', 'POST', bodyStr);
                 updateConsoleOutput(output);
-                addToHistory('/predict', 'POST', bodyStr, output);
+                addToHistory('/v2/predict', 'POST', bodyStr, output);
                 switchToTab('response');
                 scrollToConsole();
                 const bikes = output.data.predicted_bikes || output.data.prediction || '?';
@@ -1263,7 +1263,7 @@
             } catch (error) {
                 const output = { error: error.message, timestamp: new Date().toISOString() };
                 updateConsoleOutput(output);
-                addToHistory('/predict', 'POST', bodyStr, output);
+                addToHistory('/v2/predict', 'POST', bodyStr, output);
                 switchToTab('response');
                 scrollToConsole();
                 showNotification('Prediction test failed: ' + error.message, 'error');
@@ -1335,17 +1335,17 @@
 
         function getEndpointExamples() {
             return {
-                '/api/status': {
+                '/v2/api/status': {
                     method: 'GET',
-                    description: '// GET /api/status\n// Returns system health and model availability\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/status\n// Returns system health and model availability\n//\n// Expected Response:\n' + JSON.stringify({
                         "status": "online",
                         "models_loaded": { "original": true, "improved": true, "advanced": true, "xgboost": true },
                         "total_predictions": 150
                     }, null, 2)
                 },
-                '/metrics': {
+                '/v2/metrics': {
                     method: 'GET',
-                    description: '// GET /metrics\n// Returns performance metrics for all models\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/metrics\n// Returns performance metrics for all models\n//\n// Expected Response:\n' + JSON.stringify({
                         "models": {
                             "original": { "r2": 0.82, "rmse": 112.5, "features": 14 },
                             "advanced": { "r2": 0.911, "rmse": 192.4, "features": 36 },
@@ -1353,65 +1353,65 @@
                         }
                     }, null, 2)
                 },
-                '/model-info': {
+                '/v2/model-info': {
                     method: 'GET',
-                    description: '// GET /model-info?model_type=original\n// Returns model metadata and feature list\n//\n// Query Parameters:\n//   model_type: original | improved | advanced | xgboost\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/model-info?model_type=original\n// Returns model metadata and feature list\n//\n// Query Parameters:\n//   model_type: original | improved | advanced | xgboost\n//\n// Expected Response:\n' + JSON.stringify({
                         "model_type": "original",
                         "model_class": "RandomForestRegressor",
                         "n_features": 14,
                         "feature_names": ["Hour", "Temperature", "Humidity", "..."]
                     }, null, 2)
                 },
-                '/prediction-history': {
+                '/v2/prediction-history': {
                     method: 'GET',
-                    description: '// GET /prediction-history?limit=10&filter=today&model=all\n// Returns past predictions with filtering\n//\n// Query Parameters:\n//   limit:  number of records (default: 50)\n//   filter: all | today | week | month\n//   model:  all | original | advanced | xgboost\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/prediction-history?limit=10&filter=today&model=all\n// Returns past predictions with filtering\n//\n// Query Parameters:\n//   limit:  number of records (default: 50)\n//   filter: all | today | week | month\n//   model:  all | original | advanced | xgboost\n//\n// Expected Response:\n' + JSON.stringify({
                         "success": true,
                         "total_predictions": 84,
                         "history": [{ "timestamp": "2026-03-18T12:30:00", "prediction": 847, "model_type": "advanced" }]
                     }, null, 2)
                 },
-                '/predict': {
+                '/v2/predict': {
                     method: 'POST',
                     body: getOriginalModelInput(),
                     description: null
                 },
-                '/api/dashboard-metrics': {
+                '/v2/api/dashboard-metrics': {
                     method: 'GET',
-                    description: '// GET /api/dashboard-metrics\n// Returns dashboard KPI summary\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/dashboard-metrics\n// Returns dashboard KPI summary\n//\n// Expected Response:\n' + JSON.stringify({
                         "accuracy": 94.4,
                         "total_predictions": 84,
                         "models_available": 6,
                         "best_model": "xgboost"
                     }, null, 2)
                 },
-                '/api/analytics/kpis': {
+                '/v2/api/analytics/kpis': {
                     method: 'GET',
-                    description: '// GET /api/analytics/kpis\n// Returns key performance indicators\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/analytics/kpis\n// Returns key performance indicators\n//\n// Expected Response:\n' + JSON.stringify({
                         "accuracy": { "value": 94.4, "unit": "%", "trend": "+12.4%" },
                         "error_rate": { "value": 90.9, "unit": "bikes (MAE)" },
                         "predictions": { "value": 84, "trend": "+4 today" },
                         "features": { "value": 36 }
                     }, null, 2)
                 },
-                '/api/analytics/hourly-patterns': {
+                '/v2/api/analytics/hourly-patterns': {
                     method: 'GET',
-                    description: '// GET /api/analytics/hourly-patterns?filter=all\n// Returns average demand by hour of day\n//\n// Query Parameters:\n//   filter: all | today | week | month | quarter | year\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/analytics/hourly-patterns?filter=all\n// Returns average demand by hour of day\n//\n// Query Parameters:\n//   filter: all | today | week | month | quarter | year\n//\n// Expected Response:\n' + JSON.stringify({
                         "labels": ["00:00", "01:00", "...", "23:00"],
                         "data": [120, 85, 45, 30, 25, 80, 350, 1256, 980, "..."],
                         "peak_hours": [8, 18]
                     }, null, 2)
                 },
-                '/api/analytics/model-performance': {
+                '/v2/api/analytics/model-performance': {
                     method: 'GET',
-                    description: '// GET /api/analytics/model-performance\n// Returns radar chart data for model comparison\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/analytics/model-performance\n// Returns radar chart data for model comparison\n//\n// Expected Response:\n' + JSON.stringify({
                         "models": ["Original RF", "Advanced RF", "XGBoost"],
                         "metrics": ["Accuracy", "Stability", "Speed", "R2 Score", "Low Error"],
                         "data": [[82, 85, 95, 82, 78], [92, 92, 85, 91, 85], [94, 91, 80, 94, 90]]
                     }, null, 2)
                 },
-                '/api/analytics/feature-importance': {
+                '/v2/api/analytics/feature-importance': {
                     method: 'GET',
-                    description: '// GET /api/analytics/feature-importance?model=best\n// Returns ranked feature importance\n//\n// Query Parameters:\n//   model: best | original | advanced | xgboost | lightgbm\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/analytics/feature-importance?model=best\n// Returns ranked feature importance\n//\n// Query Parameters:\n//   model: best | original | advanced | xgboost | lightgbm\n//\n// Expected Response:\n' + JSON.stringify({
                         "model": "advanced",
                         "features": [
                             { "name": "temp_hour_interaction", "importance": 16.56 },
@@ -1420,9 +1420,9 @@
                         ]
                     }, null, 2)
                 },
-                '/api/analytics/shap-importance': {
+                '/v2/api/analytics/shap-importance': {
                     method: 'GET',
-                    description: '// GET /api/analytics/shap-importance\n// Returns SHAP-based feature importance\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/analytics/shap-importance\n// Returns SHAP-based feature importance\n//\n// Expected Response:\n' + JSON.stringify({
                         "expected_value": 705,
                         "features": [
                             { "name": "Humidity%", "importance": 319.7, "direction": "negative" },
@@ -1431,9 +1431,9 @@
                         ]
                     }, null, 2)
                 },
-                '/api/analytics/insights': {
+                '/v2/api/analytics/insights': {
                     method: 'GET',
-                    description: '// GET /api/analytics/insights\n// Returns data-driven insights\n//\n// Expected Response:\n' + JSON.stringify({
+                    description: '// GET /v2/api/analytics/insights\n// Returns data-driven insights\n//\n// Expected Response:\n' + JSON.stringify({
                         "performance": { "title": "Best Model", "value": "XGBoost (R2=0.944)" },
                         "features": { "title": "Top Predictor", "value": "temp_hour_interaction (16.6%)" },
                         "data": { "title": "Total Predictions", "value": 84 }

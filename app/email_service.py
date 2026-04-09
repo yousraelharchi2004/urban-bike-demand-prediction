@@ -13,9 +13,24 @@ class EmailService:
         self.smtp_port = int(os.getenv('SMTP_PORT', 587))
         self.sender_email = os.getenv('SENDER_EMAIL', '')
         self.sender_password = os.getenv('SENDER_PASSWORD', '')
+        self._configured = all([self.sender_email, self.sender_password])
+        if not self._configured:
+            print(
+                "[WARN] EmailService not configured. Set SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, "
+                "and SENDER_PASSWORD in the environment to enable email sending."
+            )
+
+    @property
+    def configured(self):
+        return self._configured
         
     def send_analytics_report(self, email_data, chart_images=None):
         """Send analytics report email"""
+        if not self._configured:
+            return {
+                'success': False,
+                'error': 'Email credentials missing. Cannot send analytics report.'
+            }
         try:
             # Create message
             msg = MIMEMultipart()

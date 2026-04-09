@@ -7,21 +7,153 @@ import pandas as pd
 import joblib
 import os
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import traceback
+import sys
+from pathlib import Path
+
+from app.artifact_contract import (
+    format_dependency_mismatch_error,
+    read_manifest,
+    unified_manifest_path,
+)
+
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except AttributeError:
+    pass
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Canonical field names
+CANONICAL_TEMP = "Temperature(°C)"
+CANONICAL_DEW = "Dew point temperature(°C)"
+
+TEMP_ALIAS_MAP = {
+    "Temperature(Â°C)": CANONICAL_TEMP,
+    "Temperature(Ã‚Â°C)": CANONICAL_TEMP,
+    "Temperature(Ã¬ÂºÅ“)": CANONICAL_TEMP,
+    "Temperature(ìºœ)": CANONICAL_TEMP,
+    "Temperature(캜)": CANONICAL_TEMP,
+    "Temperature(\\u00b0C)": CANONICAL_TEMP,
+}
+
+DEW_ALIAS_MAP = {
+    "Dew point temperature(Â°C)": CANONICAL_DEW,
+    "Dew point temperature(Ã‚Â°C)": CANONICAL_DEW,
+    "Dew point temperature(Ã¬ÂºÅ“)": CANONICAL_DEW,
+    "Dew point temperature(ìºœ)": CANONICAL_DEW,
+    "Dew point temperature(캜)": CANONICAL_DEW,
+    "Dew point temperature(\\u00b0C)": CANONICAL_DEW,
+}
+
+PREDICTION_HISTORY_FILE = Path(os.environ.get('PREDICTION_HISTORY_FILE', PROJECT_ROOT / 'generated' / 'predictions_history.json'))
+PREDICTION_HISTORY_SCHEMA_VERSION = 2
+
+
+def _detect_canonical_column(name: str) -> str | None:
+    lower = name.lower()
+    if 'temperature' in lower and 'dew' not in lower:
+        return CANONICAL_TEMP
+    if 'dew point temperature' in lower:
+        return CANONICAL_DEW
+    return None
+
+def _safe_console(value) -> str:
+    """Return a string safe for console output (replace non-ASCII)."""
+    return ''.join(ch if ord(ch) < 128 else '?' for ch in str(value))
+
+
+def _apply_aliases_to_dataframe(df: pd.DataFrame, alias_map: dict[str, str]) -> pd.DataFrame:
+    rename: dict[str, str] = {}
+    existing_canonicals = set(df.columns) & {CANONICAL_TEMP, CANONICAL_DEW}
+    for col in df.columns:
+        dest = alias_map.get(col)
+        if not dest:
+            dest = _detect_canonical_column(col)
+        if dest:
+            if dest in existing_canonicals and dest != col:
+                continue
+            rename[col] = dest
+            existing_canonicals.add(dest)
+    if rename:
+        df = df.rename(columns=rename)
+    return df
+
+
+def _apply_aliases_to_dict(data: dict, alias_map: dict[str, str]) -> None:
+    existing_canonicals = set(data.keys()) & {CANONICAL_TEMP, CANONICAL_DEW}
+    for key, value in list(data.items()):
+        dest = alias_map.get(key)
+        if not dest:
+            dest = _detect_canonical_column(key)
+        if dest and dest not in existing_canonicals:
+            data[dest] = value
+            existing_canonicals.add(dest)
+
+
+def normalize_weather_fields(data: dict | pd.DataFrame) -> dict | pd.DataFrame:
+    """Ensure the canonical temperature/dew-point keys are present."""
+    if isinstance(data, pd.DataFrame):
+        data = _apply_aliases_to_dataframe(data, TEMP_ALIAS_MAP)
+        data = _apply_aliases_to_dataframe(data, DEW_ALIAS_MAP)
+    else:
+        _apply_aliases_to_dict(data, TEMP_ALIAS_MAP)
+        _apply_aliases_to_dict(data, DEW_ALIAS_MAP)
+    return data
+
+
+def _first_matching_column(columns, patterns):
+    """Return the first column whose name contains all pattern fragments."""
+    normalized = [(col, str(col).lower()) for col in columns]
+    for col, lowered in normalized:
+        if all(pattern in lowered for pattern in patterns):
+            return col
+    return None
+
+
+def _normalize_temperature_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize the various corrupted temperature/dew-point column names."""
+    if df is None or df.empty:
+        return df
+
+    df = df.copy()
+    df = _apply_aliases_to_dataframe(df, TEMP_ALIAS_MAP)
+    df = _apply_aliases_to_dataframe(df, DEW_ALIAS_MAP)
+    return df
 
 def load_model(model_type='original'):
     """Load either original, improved, advanced, or xgboost model"""
     import joblib
     import os
     
-    if model_type == 'xgboost':
+    project_root = Path(__file__).resolve().parents[1]
+    manifest = read_manifest(unified_manifest_path(project_root))
+    manifest_dir = unified_manifest_path(project_root).parent
+
+    manifest_model_map = {
+        'xgboost': 'xgboost',
+        'lightgbm': 'lightgbm',
+        'stacking': 'stacking_ensemble',
+    }
+    manifest_model_name = manifest_model_map.get(model_type)
+    if manifest_model_name and manifest:
+        model_info = manifest.get('models', {}).get(manifest_model_name, {})
+        artifact_path = model_info.get('artifact_path')
+        if artifact_path:
+            model_paths = [str((manifest_dir / artifact_path).resolve())]
+            model_name = manifest_model_name.replace('_', ' ').title()
+        else:
+            model_paths = []
+            model_name = manifest_model_name.replace('_', ' ').title()
+    elif model_type == 'xgboost':
         model_paths = [
             "models/xgboost_model.pkl",
             "../models/xgboost_model.pkl",
@@ -29,6 +161,22 @@ def load_model(model_type='original'):
             os.path.join(os.getcwd(), "models", "xgboost_model.pkl")
         ]
         model_name = "XGBoost"
+    elif model_type == 'lightgbm':
+        model_paths = [
+            "models/lightgbm_model.pkl",
+            "../models/lightgbm_model.pkl",
+            os.path.join(os.path.dirname(__file__), "..", "models", "lightgbm_model.pkl"),
+            os.path.join(os.getcwd(), "models", "lightgbm_model.pkl")
+        ]
+        model_name = "LightGBM"
+    elif model_type == 'stacking':
+        model_paths = [
+            "models/stacking_model.pkl",
+            "../models/stacking_model.pkl",
+            os.path.join(os.path.dirname(__file__), "..", "models", "stacking_model.pkl"),
+            os.path.join(os.getcwd(), "models", "stacking_model.pkl")
+        ]
+        model_name = "Stacking Ensemble"
     elif model_type == 'improved':
         model_paths = [
             "models/improved_random_forest.pkl",
@@ -104,11 +252,11 @@ def load_model(model_type='original'):
     
     # If we get here, no model was found
     if model_type == 'xgboost':
-        raise FileNotFoundError(f" {model_name} model not found. Please run the XGBoost training script first.")
+        raise FileNotFoundError(f" {model_name} model not found. Please run train_unified_pipeline.py first.")
     elif model_type == 'improved':
         raise FileNotFoundError(f" {model_name} model not found. Please run the training script first.")
     elif model_type == 'advanced':
-        raise FileNotFoundError(f" {model_name} model not found. Please run train_with_advanced_features.py first.")
+        raise FileNotFoundError(f" {model_name} model not found. Please run train_unified_pipeline.py for the supported artifact contract, or use legacy artifacts intentionally.")
     else:
         raise FileNotFoundError(" Model file not found. Please train the model first.")
 
@@ -127,9 +275,11 @@ def preprocess_input(data, use_engineered_features=False, model_type='original',
         model: The loaded model object (optional, used to get feature_names_in_)
     """
     print(f" Preprocessing input for {model_type.upper()} model...")
-    
+
     # Create a copy to avoid modifying original
-    df = pd.DataFrame([data])
+    working = dict(data)
+    normalize_weather_fields(working)
+    df = pd.DataFrame([working])
     
     # Debug: print what columns we received
     print(f" Input data columns received: {list(df.columns)}")
@@ -149,11 +299,12 @@ def preprocess_original_features(input_data, model=None):
         df = pd.DataFrame([input_data])
     else:
         df = input_data
+    df = _normalize_temperature_columns(df)
     
     # Get expected features from model if available, otherwise use default
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
-        print(f" Using model.feature_names_in_ for original model: {expected_features}")
+        print(f" Using model.feature_names_in_ for original model: {_safe_console(expected_features)}")
     else:
         # FALLBACK: Use the model's actual training feature names
         # The original model was trained with Temperature(캜) and Dew point temperature(캜)
@@ -173,9 +324,9 @@ def preprocess_original_features(input_data, model=None):
             'Holiday_No Holiday',
             'Functioning Day_Yes'
         ]
-        print(f" Using default feature list for original model: {expected_features}")
+        print(f" Using default feature list for original model: {_safe_console(expected_features)}")
     
-    print(f" Original model expects these {len(expected_features)} features: {expected_features}")
+        print(f" Original model expects these {len(expected_features)} features: {_safe_console(expected_features)}")
     
     # Handle field name mappings - convert input format to model's expected format
     # If input has Temperature(°C), rename it to Temperature(캜) for the model
@@ -243,8 +394,8 @@ def preprocess_original_features(input_data, model=None):
         processed_df = processed_df[list(model.feature_names_in_)]
     
     print(f" Processed data shape: {processed_df.shape}")
-    print(f" Processed columns: {list(processed_df.columns)}")
-    print(f" First row values: {processed_df.iloc[0].to_dict()}")
+    print(f" Processed columns: {_safe_console(list(processed_df.columns))}")
+    print(f" First row values: {_safe_console(processed_df.iloc[0].to_dict())}")
     
     return processed_df
 
@@ -261,6 +412,7 @@ def prepare_input_with_engineered_features(input_data):
         df = pd.DataFrame([input_data])
     else:
         df = input_data
+    df = normalize_weather_fields(df)
     
     # FIX: Handle both temperature field formats
     if 'Temperature(캜)' in df.columns and 'Temperature(°C)' not in df.columns:
@@ -389,7 +541,7 @@ def preprocess_with_engineered_features(input_data, model=None):
     if model is not None and hasattr(model, 'feature_names_in_'):
         expected_features = list(model.feature_names_in_)
         print(f" Using model.feature_names_in_ for improved model: {len(expected_features)} features")
-        print(f" Feature order from model: {expected_features}")
+        print(f" Feature order from model: {_safe_console(expected_features)}")
     else:
         expected_features = get_engineered_feature_list()
         print(f" Using default feature list for improved model: {len(expected_features)} features")
@@ -432,7 +584,7 @@ def preprocess_with_engineered_features(input_data, model=None):
     
     # The DataFrame is already in the correct order because we built it sequentially
     print(f" Processed data shape: {processed_df.shape}")
-    print(f" Processed columns (in exact order): {list(processed_df.columns)}")
+    print(f" Processed columns (in exact order): {_safe_console(list(processed_df.columns))}")
     print(f" Total engineered features: {len(processed_df.columns)}")
     
     return processed_df
@@ -444,6 +596,7 @@ def preprocess_input_improved(input_data):
         df = pd.DataFrame([input_data])
     else:
         df = input_data
+    df = _normalize_temperature_columns(df)
     
     # Map Korean temperature to degree symbol if needed
     if 'Temperature(캜)' in df.columns and 'Temperature(°C)' not in df.columns:
@@ -465,6 +618,7 @@ def prepare_input_with_advanced_features(input_data):
         df = pd.DataFrame([input_data])
     else:
         df = input_data
+    df = _normalize_temperature_columns(df)
     
     print(f" Preparing advanced features from columns: {list(df.columns)}")
     
@@ -663,10 +817,21 @@ def prepare_input_with_advanced_features(input_data):
     # ==================================================
     # 10. HOLIDAY ENCODING
     # ==================================================
+    if 'Holiday_No Holiday' in df.columns:
+        df['holiday_No Holiday'] = df['Holiday_No Holiday']
+        df['holiday_No_Holiday'] = df['Holiday_No Holiday']
+        df['holiday_Holiday'] = 1 - pd.to_numeric(df['Holiday_No Holiday'], errors='coerce').fillna(1)
+    elif 'holiday_No Holiday' in df.columns:
+        df['holiday_No_Holiday'] = df['holiday_No Holiday']
+    elif 'holiday_No_Holiday' in df.columns:
+        df['holiday_No Holiday'] = df['holiday_No_Holiday']
+
     if 'holiday_Holiday' not in df.columns:
         df['holiday_Holiday'] = 0
     if 'holiday_No Holiday' not in df.columns:
         df['holiday_No Holiday'] = 1
+    if 'holiday_No_Holiday' not in df.columns:
+        df['holiday_No_Holiday'] = df['holiday_No Holiday']
     
     # ==================================================
     # 11. FUNCTIONING DAY ENCODING
@@ -758,7 +923,7 @@ def preprocess_with_advanced_features(input_data, model=None):
         processed_df = processed_df[list(model.feature_names_in_)]
     
     print(f" Processed data shape: {processed_df.shape}")
-    print(f" Processed columns: {list(processed_df.columns)}")
+    print(f" Processed columns: {_safe_console(list(processed_df.columns))}")
     print(f" Total advanced features: {len(processed_df.columns)}")
     
     return processed_df
@@ -1154,65 +1319,290 @@ def validate_input(data, model_type='original'):
     
     return errors
 
-def save_prediction_to_history(input_data, prediction_result):
-    """Save prediction to history file"""
+def _write_prediction_history(history: list[dict]) -> None:
+    """Persist prediction history using the canonical event schema."""
+    PREDICTION_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with PREDICTION_HISTORY_FILE.open('w', encoding='utf-8') as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
+
+
+def _prediction_history_day_key(entry: dict) -> str:
+    """Return the YYYY-MM-DD bucket used for daily prediction IDs."""
+    timestamp = entry.get('timestamp', entry.get('timestamp_readable', ''))
     try:
-        history_file = 'data/predictions_history.json'
-        
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(history_file), exist_ok=True)
-        
-        # Load existing history
-        if os.path.exists(history_file):
-            with open(history_file, 'r') as f:
-                history = json.load(f)
+        if 'T' in str(timestamp):
+            parsed = datetime.fromisoformat(str(timestamp).replace('Z', '+00:00').split('+')[0])
         else:
-            history = []
-        
-        # Create history entry
-        history_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'input': input_data,
-            'prediction': prediction_result.get('prediction', 0),
-            'rounded': prediction_result.get('rounded', 0),
-            'confidence': prediction_result.get('confidence', 0),
-            'model_type': prediction_result.get('model_type', 'original'),
-            'success': prediction_result.get('success', False)
-        }
-        
-        # Add to history
+            parsed = datetime.strptime(str(timestamp)[:19], '%Y-%m-%d %H:%M:%S')
+        return parsed.strftime('%Y-%m-%d')
+    except (TypeError, ValueError):
+        return datetime.now().strftime('%Y-%m-%d')
+
+
+def _assign_daily_prediction_ids(history: list[dict]) -> tuple[list[dict], bool]:
+    """Assign prediction IDs as the sequence number within each calendar day."""
+    counts_by_day: dict[str, int] = {}
+    changed = False
+
+    for entry in history:
+        day_key = _prediction_history_day_key(entry)
+        counts_by_day[day_key] = counts_by_day.get(day_key, 0) + 1
+        daily_id = counts_by_day[day_key]
+        if entry.get('prediction_id') != daily_id:
+            entry['prediction_id'] = daily_id
+            changed = True
+
+    return history, changed
+
+
+def normalize_prediction_history_entry(entry: dict, default_model_type: str = 'original') -> tuple[dict, bool]:
+    """Return a canonical history entry and whether migration changed the record."""
+    normalized = dict(entry or {})
+    changed = False
+
+    input_data = normalized.get('input_data')
+    if input_data is None:
+        input_data = normalized.pop('input', {})
+        changed = True
+    normalized['input_data'] = input_data if isinstance(input_data, dict) else {}
+
+    timestamp = normalized.get('timestamp')
+    if not timestamp:
+        timestamp = datetime.now().isoformat()
+        normalized['timestamp'] = timestamp
+        changed = True
+
+    if not normalized.get('timestamp_readable'):
+        try:
+            parsed = datetime.fromisoformat(str(timestamp).replace('Z', '+00:00').split('+')[0])
+            normalized['timestamp_readable'] = parsed.strftime('%Y-%m-%d %H:%M:%S')
+        except (TypeError, ValueError):
+            normalized['timestamp_readable'] = str(timestamp)
+        changed = True
+
+    prediction_id = normalized.get('prediction_id')
+    if prediction_id is not None:
+        prediction_id = int(prediction_id)
+        if normalized.get('prediction_id') != prediction_id:
+            normalized['prediction_id'] = prediction_id
+            changed = True
+    else:
+        normalized['prediction_id'] = None
+
+    raw = normalized.get('predicted_bikes_raw')
+    legacy_prediction = normalized.get('prediction')
+    legacy_rounded = normalized.get('rounded')
+    if raw is None:
+        source_value = raw
+        if legacy_prediction is not None:
+            source_value = legacy_prediction
+        elif normalized.get('predicted_bikes') is not None:
+            source_value = normalized.get('predicted_bikes')
+        elif legacy_rounded is not None:
+            source_value = legacy_rounded
+        else:
+            source_value = 0
+        raw = float(source_value)
+        normalized['predicted_bikes_raw'] = raw
+        changed = True
+    else:
+        raw = float(raw)
+        if normalized.get('predicted_bikes_raw') != raw:
+            normalized['predicted_bikes_raw'] = raw
+            changed = True
+
+    rounded = normalized.get('predicted_bikes')
+    if rounded is None:
+        if legacy_rounded is not None:
+            rounded = legacy_rounded
+        else:
+            rounded = round(raw)
+        normalized['predicted_bikes'] = int(round(float(rounded)))
+        changed = True
+    else:
+        rounded_int = int(round(float(rounded)))
+        if rounded != rounded_int:
+            normalized['predicted_bikes'] = rounded_int
+            changed = True
+
+    confidence = normalized.get('confidence', 0)
+    confidence_value = float(confidence or 0)
+    if confidence != confidence_value:
+        changed = True
+    normalized['confidence'] = confidence_value
+
+    model_value = normalized.get('model_type') or default_model_type
+    if normalized.get('model_type') != model_value:
+        changed = True
+    normalized['model_type'] = model_value
+
+    success = normalized.get('success')
+    if success is None:
+        success = True
+        changed = True
+    normalized['success'] = bool(success)
+
+    if normalized.get('schema_version') != PREDICTION_HISTORY_SCHEMA_VERSION:
+        normalized['schema_version'] = PREDICTION_HISTORY_SCHEMA_VERSION
+        changed = True
+
+    for legacy_key in ('input', 'prediction', 'rounded'):
+        if legacy_key in normalized:
+            normalized.pop(legacy_key, None)
+            changed = True
+
+    canonical_keys = (
+        'prediction_id',
+        'timestamp',
+        'timestamp_readable',
+        'input_data',
+        'predicted_bikes_raw',
+        'predicted_bikes',
+        'confidence',
+        'model_type',
+        'success',
+        'schema_version',
+    )
+    canonical_entry = {key: normalized[key] for key in canonical_keys}
+    return canonical_entry, changed
+
+
+def _load_prediction_history(migrate: bool = True) -> list[dict]:
+    """Load prediction history and optionally persist migrated legacy records."""
+    if not PREDICTION_HISTORY_FILE.exists():
+        return []
+
+    with PREDICTION_HISTORY_FILE.open('r', encoding='utf-8') as f:
+        history = json.load(f)
+
+    migrated = []
+    changed = False
+    for entry in history:
+        normalized_entry, entry_changed = normalize_prediction_history_entry(entry)
+        migrated.append(normalized_entry)
+        changed = changed or entry_changed or normalized_entry != entry
+
+    migrated, id_changed = _assign_daily_prediction_ids(migrated)
+    changed = changed or id_changed
+
+    if migrate and changed:
+        _write_prediction_history(migrated)
+
+    return migrated
+
+
+def save_prediction_to_history(input_data, prediction_result, model_type=None):
+    """Save prediction to history using the canonical event schema."""
+    try:
+        history = _load_prediction_history(migrate=True)
+        now = datetime.now()
+
+        if isinstance(prediction_result, dict):
+            result_payload = {
+                'prediction_id': prediction_result.get('prediction_id'),
+                'timestamp': prediction_result.get('timestamp', now.isoformat()),
+                'timestamp_readable': prediction_result.get('timestamp_readable', now.strftime('%Y-%m-%d %H:%M:%S')),
+                'input_data': input_data,
+                'predicted_bikes_raw': prediction_result.get('predicted_bikes_raw', prediction_result.get('prediction', 0)),
+                'predicted_bikes': prediction_result.get('predicted_bikes', prediction_result.get('rounded')),
+                'confidence': prediction_result.get('confidence', 0),
+                'model_type': prediction_result.get('model_type', model_type or 'original'),
+                'success': prediction_result.get('success', True),
+                'schema_version': PREDICTION_HISTORY_SCHEMA_VERSION,
+            }
+        else:
+            numeric_prediction = float(prediction_result)
+            result_payload = {
+                'prediction_id': None,
+                'timestamp': now.isoformat(),
+                'timestamp_readable': now.strftime('%Y-%m-%d %H:%M:%S'),
+                'input_data': input_data,
+                'predicted_bikes_raw': numeric_prediction,
+                'predicted_bikes': int(round(numeric_prediction)),
+                'confidence': 0,
+                'model_type': model_type or 'original',
+                'success': True,
+                'schema_version': PREDICTION_HISTORY_SCHEMA_VERSION,
+            }
+
+        history_entry, _ = normalize_prediction_history_entry(result_payload, default_model_type=model_type or 'original')
         history.append(history_entry)
-        
-        # Keep only last 100 predictions
-        if len(history) > 100:
-            history = history[-100:]
-        
-        # Save back to file
-        with open(history_file, 'w') as f:
-            json.dump(history, f, indent=2)
-        
+        history, _ = _assign_daily_prediction_ids(history)
+
+        max_history = os.getenv('PREDICTION_HISTORY_MAX')
+        if max_history:
+            try:
+                max_history = int(max_history)
+            except ValueError:
+                max_history = None
+        if max_history and len(history) > max_history:
+            history = history[-max_history:]
+            history, _ = _assign_daily_prediction_ids(history)
+
+        history_entry = history[-1]
+        _write_prediction_history(history)
         print(f" Prediction saved to history. Total predictions: {len(history)}")
-        
+        return history_entry
     except Exception as e:
         print(f" Error saving prediction to history: {e}")
+        return None
+
 
 def get_prediction_history(limit=50):
-    """Get prediction history"""
+    """Get normalized prediction history."""
     try:
-        history_file = 'data/predictions_history.json'
-        
-        if os.path.exists(history_file):
-            with open(history_file, 'r') as f:
-                history = json.load(f)
-            
-            # Return limited number of predictions
-            return history[-limit:]
-        else:
-            return []
-        
+        history = _load_prediction_history(migrate=True)
+        if limit is None:
+            return history
+        return history[-limit:]
     except Exception as e:
         print(f" Error loading prediction history: {e}")
         return []
+
+
+def filter_prediction_history_by_time(history: list[dict], time_filter: str = 'all') -> list[dict]:
+    """Return the subset of history entries that fall within the requested time filter."""
+    if not history:
+        return []
+
+    if time_filter == 'all':
+        return list(history)
+
+    now = datetime.now()
+    cutoff_map = {
+        'today': now.replace(hour=0, minute=0, second=0, microsecond=0),
+        'week': now - timedelta(days=7),
+        'month': now - timedelta(days=30),
+        'quarter': now - timedelta(days=90),
+        'year': now - timedelta(days=365),
+    }
+
+    cutoff = cutoff_map.get(time_filter)
+    if cutoff is None:
+        return list(history)
+
+    filtered = []
+    for pred in history:
+        ts = pred.get('timestamp') or pred.get('timestamp_readable') or ''
+        try:
+            if 'T' in str(ts):
+                dt = datetime.fromisoformat(str(ts).replace('Z', '+00:00').split('+')[0])
+            elif '-' in str(ts):
+                dt = datetime.strptime(str(ts)[:19], '%Y-%m-%d %H:%M:%S')
+            else:
+                continue
+            if dt >= cutoff:
+                filtered.append(pred)
+        except (ValueError, TypeError):
+            continue
+
+    return filtered
+
+
+def extract_prediction_from_history(entry: dict) -> tuple[int, float]:
+    """Return (rounded, raw) prediction from a history entry."""
+    normalized, _ = normalize_prediction_history_entry(entry)
+    return int(normalized['predicted_bikes']), float(normalized['predicted_bikes_raw'])
 
 def get_model_feature_names(model_type='original'):
     """Get feature names for a specific model type"""
@@ -1257,43 +1647,49 @@ def load_unified_pipeline():
     if _unified_cache.get('loaded'):
         return _unified_cache
 
-    base = os.path.join(os.getcwd(), 'models', 'unified_pipeline')
-    if not os.path.isdir(base):
-        base = os.path.join(os.path.dirname(__file__), '..', 'models', 'unified_pipeline')
-    if not os.path.isdir(base):
+    project_root = Path(__file__).resolve().parents[1]
+    manifest_path = unified_manifest_path(project_root)
+    manifest = read_manifest(manifest_path)
+    base = manifest_path.parent
+    if not manifest:
         logger.warning("Unified pipeline directory not found")
         return None
 
+    mismatch_error = format_dependency_mismatch_error(manifest)
+    if mismatch_error:
+        logger.error(mismatch_error)
+        if os.environ.get('STRICT_ARTIFACT_CHECK', '0') == '1':
+            raise RuntimeError(mismatch_error)
+
     try:
-        config_path = os.path.join(base, 'pipeline_config.json')
-        with open(config_path) as f:
+        config_path = base / manifest.get('config_path', 'pipeline_config.json')
+        with open(config_path, encoding='utf-8') as f:
             config = json.load(f)
 
-        feature_path = os.path.join(base, 'feature_names.json')
-        with open(feature_path) as f:
+        feature_path = base / manifest.get('feature_names_path', 'feature_names.json')
+        with open(feature_path, encoding='utf-8') as f:
             feature_names = json.load(f)
 
-        scaler = joblib.load(os.path.join(base, 'scaler.pkl'))
+        scaler = joblib.load(base / manifest.get('scaler_path', 'scaler.pkl'))
 
         # Load best model
-        best_model_name = config.get('best_model', 'stacking_ensemble')
-        model_file = os.path.join(base, f'{best_model_name}.pkl')
-        if not os.path.exists(model_file):
-            model_file = os.path.join(base, 'stacking_ensemble.pkl')
+        best_model_name = manifest.get('default_model') or config.get('best_model', 'stacking_ensemble')
+        model_info = manifest.get('models', {}).get(best_model_name, {})
+        model_file = base / model_info.get('artifact_path', f'{best_model_name}.pkl')
         model = joblib.load(model_file)
 
         # Load demand cache for lag features
         demand_cache = []
-        cache_path = os.path.join(base, 'demand_cache.json')
+        cache_path = base / manifest.get('demand_cache_path', 'demand_cache.json')
         if os.path.exists(cache_path):
-            with open(cache_path) as f:
+            with open(cache_path, encoding='utf-8') as f:
                 demand_cache = json.load(f).get('last_168_values', [])
 
         # Load lag medians
         lag_medians = {}
-        lag_path = os.path.join(base, 'lag_medians.json')
+        lag_path = base / manifest.get('lag_medians_path', 'lag_medians.json')
         if os.path.exists(lag_path):
-            with open(lag_path) as f:
+            with open(lag_path, encoding='utf-8') as f:
                 lag_medians = json.load(f)
 
         _unified_cache.update({
@@ -1305,7 +1701,8 @@ def load_unified_pipeline():
             'demand_cache': demand_cache,
             'lag_medians': lag_medians,
             'model_name': best_model_name,
-            'base_dir': base,
+            'base_dir': str(base),
+            'manifest': manifest,
         })
 
         logger.info(f"Loaded unified pipeline: {best_model_name} with {len(feature_names)} features")

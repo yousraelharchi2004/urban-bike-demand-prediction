@@ -1,8 +1,9 @@
 // Feature Engineering Dashboard JavaScript
+const API_BASE = '/v2';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Load model comparison data
-    fetch('/api/model-comparison')
+    fetch(`${API_BASE}/api/model-comparison`)
         .then(response => response.json())
         .then(data => {
             if (data.error) {
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.error('Error fetching comparison:', error));
     
     // Load feature importance data
-    fetch('/api/advanced-model-info')
+    fetch(`${API_BASE}/api/advanced-model-info`)
         .then(response => response.json())
         .then(data => {
             if (data.error) {

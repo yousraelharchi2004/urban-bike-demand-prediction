@@ -4,10 +4,12 @@ function analyticsDbg(...args) { if (ANALYTICS_DEBUG) console.log(...args); }
 
 class AnalyticsDashboard {
     constructor() {
-        this.baseUrl = window.location.origin;
+        this.baseUrl = '/v2';
         this.predictionLimit = 10; // Reduced for better UX
         this.charts = {};
         this.data = {};
+        this.currentFeatureModel = 'xgboost';
+        this.currentShapModel = 'lightgbm';
         this.currentTimeFilter = 'today';
         this.currentHistoryFilter = 'all';
         this.customDateRange = null;
@@ -137,6 +139,52 @@ class AnalyticsDashboard {
         if (clearDateRangeBtn) {
             clearDateRangeBtn.addEventListener('click', () => this.clearCustomDateRange());
         }
+
+        const featureModelSelector = document.getElementById('featureModelSelector');
+        if (featureModelSelector) {
+            featureModelSelector.value = this.currentFeatureModel;
+            featureModelSelector.addEventListener('change', async (event) => {
+                await this.changeFeatureModel(event.target.value);
+            });
+        }
+
+        const shapModelSelector = document.getElementById('shapModelSelector');
+        if (shapModelSelector) {
+            shapModelSelector.value = this.currentShapModel;
+            shapModelSelector.addEventListener('change', async (event) => {
+                await this.changeShapModel(event.target.value);
+            });
+        }
+    }
+
+    async changeFeatureModel(model) {
+        try {
+            this.showNotification(`Loading feature importance for ${model}...`, 'info');
+            await this.loadFeatureImportance(model);
+            if (this.charts.featureImportance) {
+                this.charts.featureImportance.destroy();
+            }
+            this.createFeatureImportanceChart();
+            this.showNotification(`Feature importance updated to ${this.data.featureImportance?.source_model || model}`, 'success');
+        } catch (error) {
+            console.error('Feature model switch error:', error);
+            this.showNotification('Could not update feature importance chart', 'error');
+        }
+    }
+
+    async changeShapModel(model) {
+        try {
+            this.showNotification(`Loading SHAP analysis for ${model}...`, 'info');
+            await this.loadShapImportance(model);
+            if (this.charts.shapImportance) {
+                this.charts.shapImportance.destroy();
+            }
+            this.createShapImportanceChart();
+            this.showNotification(`SHAP analysis updated to ${this.data.shapImportance?.source || model}`, 'success');
+        } catch (error) {
+            console.error('SHAP model switch error:', error);
+            this.showNotification('Could not update SHAP chart', 'error');
+        }
     }
 
     async loadAllData() {
@@ -196,9 +244,10 @@ class AnalyticsDashboard {
         }
     }
 
-    async loadFeatureImportance() {
+    async loadFeatureImportance(model = this.currentFeatureModel) {
         try {
-            const featureResponse = await fetch(`${this.baseUrl}/api/analytics/feature-importance`);
+            this.currentFeatureModel = model;
+            const featureResponse = await fetch(`${this.baseUrl}/api/analytics/feature-importance?model=${encodeURIComponent(model)}`);
             if (featureResponse.ok) {
                 this.data.featureImportance = await featureResponse.json();
                             } else {
@@ -209,9 +258,10 @@ class AnalyticsDashboard {
         }
     }
 
-    async loadShapImportance() {
+    async loadShapImportance(model = this.currentShapModel) {
         try {
-            const response = await fetch(`${this.baseUrl}/api/analytics/shap-importance`);
+            this.currentShapModel = model;
+            const response = await fetch(`${this.baseUrl}/api/analytics/shap-importance?model=${encodeURIComponent(model)}`);
             if (response.ok) {
                 this.data.shapImportance = await response.json();
             } else {
@@ -656,12 +706,12 @@ class AnalyticsDashboard {
         const ctx = document.getElementById('performanceRadarChart');
         if (!ctx) return;
 
-        let radarData = {
-            labels: ['Accuracy (R²)', 'Precision', 'Recall', 'F1-Score', 'Stability', 'Speed'],
+                let radarData = {
+            labels: ['Accuracy', 'Stability', 'Speed', 'R� Score', 'Low Error'],
             datasets: [{
-                label: 'Model Performance',
-                data: [87, 88, 86, 85, 92, 96],
-                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                label: 'No Model Data',
+                data: [0, 0, 0, 0, 0],
+                backgroundColor: 'rgba(79, 70, 229, 0.08)',
                 borderColor: this.colors.primary,
                 pointBackgroundColor: this.colors.primary,
                 borderWidth: 2,
@@ -925,15 +975,23 @@ class AnalyticsDashboard {
             `;
         }
     }
-
     updatePerformanceInsight() {
         const insightElement = document.getElementById('performanceInsight');
         if (!insightElement || !this.data.modelPerformance?.success) return;
-        
+
+        const datasets = this.data.modelPerformance.radar_data?.datasets || [];
+        const bestDataset = datasets.reduce((best, current) => {
+            if (!best) return current;
+            return (current.data?.[3] ?? 0) > (best.data?.[3] ?? 0) ? current : best;
+        }, null);
         const modelCount = this.data.modelPerformance.total_models;
+        const bestLabel = bestDataset?.label || 'Best model';
+        const bestR2 = bestDataset?.data?.[3];
+        const bestLowError = bestDataset?.data?.[4];
+
         insightElement.innerHTML = `
-            <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> 
-            Comparing ${modelCount} model${modelCount > 1 ? 's' : ''}. Advanced models show improved accuracy with feature engineering.</p>
+            <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong>
+            Comparing ${modelCount} model${modelCount > 1 ? 's' : ''}. ${bestLabel} currently leads with R� ${typeof bestR2 === 'number' ? bestR2.toFixed(1) : '--'} and Low Error ${typeof bestLowError === 'number' ? bestLowError.toFixed(1) : '--'}.</p>
         `;
     }
 
@@ -986,6 +1044,33 @@ class AnalyticsDashboard {
         }
 
         historyContainer.innerHTML = history.map(pred => {
+            const input = pred.input_data || pred.input || {};
+            const predictionId = pred.prediction_id || pred.id || 'N/A';
+            const predictedBikes = pred.predicted_bikes ?? pred.rounded ?? (pred.prediction !== undefined ? Math.round(pred.prediction) : 0);
+            pred.input = input;
+            pred.id = predictionId;
+            pred.rounded = predictedBikes;
+            if (pred.input['Temperature(캜)'] !== undefined) {
+                pred.input['Temperature(Â°C)'] = pred.input['Temperature(캜)'];
+            }
+            if (pred.input['Temperature(Â°C)'] === undefined && pred.input['Temperature(°C)'] !== undefined) {
+                pred.input['Temperature(Â°C)'] = pred.input['Temperature(°C)'];
+            }
+            if (pred.input.Hour === undefined && pred.input.hour !== undefined) {
+                pred.input.Hour = pred.input.hour;
+            }
+            if (pred.input.Seasons_Spring === undefined && pred.input.season_Spring !== undefined) {
+                pred.input.Seasons_Spring = pred.input.season_Spring;
+            }
+            if (pred.input.Seasons_Summer === undefined && pred.input.season_Summer !== undefined) {
+                pred.input.Seasons_Summer = pred.input.season_Summer;
+            }
+            if (pred.input.Seasons_Winter === undefined && pred.input.season_Winter !== undefined) {
+                pred.input.Seasons_Winter = pred.input.season_Winter;
+            }
+            if (pred.input.Seasons_Autumn === undefined && pred.input.season_Autumn !== undefined) {
+                pred.input.Seasons_Autumn = pred.input.season_Autumn;
+            }
             // Parse the timestamp to format it nicely
             const timestamp = pred.timestamp || pred.timestamp_readable || 'Unknown time';
             let formattedTime = timestamp;
@@ -1965,3 +2050,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === this) closeDateRangeModal();
     });
 });
+
+
+
+
+

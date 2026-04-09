@@ -20,7 +20,7 @@ Usage:
 import os
 import sys
 import json
-import warnings
+import math
 import pickle
 from datetime import datetime
 
@@ -31,7 +31,12 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+from sklearn.model_selection import (
+    KFold,
+    RandomizedSearchCV,
+    TimeSeriesSplit,
+    cross_val_score,
+)
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import (
     RandomForestRegressor,
@@ -46,7 +51,7 @@ from sklearn.metrics import (
     explained_variance_score,
 )
 
-warnings.filterwarnings('ignore')
+from app.artifact_contract import build_unified_manifest
 
 # ============================================================================
 # CONSTANTS
@@ -59,6 +64,24 @@ METRICS_DIR = os.path.join(OUTPUT_DIR, 'metrics')
 RANDOM_STATE = 42
 TEST_FRACTION = 0.20
 TSCV_SPLITS = 5
+SAFE_N_JOBS = 1
+
+CANONICAL_TEMP = "Temperature(°C)"
+CANONICAL_DEW = "Dew point temperature(°C)"
+TEMP_ALIAS_MAP = {
+    "Temperature(Â°C)": CANONICAL_TEMP,
+    "Temperature(Ã‚Â°C)": CANONICAL_TEMP,
+    "Temperature(Ã¬ÂºÅ“)": CANONICAL_TEMP,
+    "Temperature(ìºœ)": CANONICAL_TEMP,
+    "Temperature(캜)": CANONICAL_TEMP,
+}
+DEW_ALIAS_MAP = {
+    "Dew point temperature(Â°C)": CANONICAL_DEW,
+    "Dew point temperature(Ã‚Â°C)": CANONICAL_DEW,
+    "Dew point temperature(Ã¬ÂºÅ“)": CANONICAL_DEW,
+    "Dew point temperature(ìºœ)": CANONICAL_DEW,
+    "Dew point temperature(캜)": CANONICAL_DEW,
+}
 
 
 # ============================================================================
@@ -82,17 +105,14 @@ class DataLoader:
             raise RuntimeError(f"Cannot read {self.filepath} with any encoding")
 
         # Standardize column names (handle Korean chars)
+        alias_map = {**TEMP_ALIAS_MAP, **DEW_ALIAS_MAP}
         rename_map = {}
         for col in df.columns:
             clean = col.strip()
-            # Temperature(캜) -> Temperature(°C)
-            if 'Temperature' in clean and '캜' in clean:
-                if 'Dew' in clean:
-                    rename_map[col] = 'Dew point temperature(°C)'
-                else:
-                    rename_map[col] = 'Temperature(°C)'
-            else:
-                rename_map[col] = clean
+            canonical = alias_map.get(clean)
+            if not canonical and clean in alias_map:
+                canonical = alias_map[clean]
+            rename_map[col] = canonical or clean
 
         df = df.rename(columns=rename_map)
 
@@ -246,6 +266,38 @@ class ModelTrainer:
     def __init__(self, random_state: int = RANDOM_STATE, n_splits: int = TSCV_SPLITS):
         self.random_state = random_state
         self.tscv = TimeSeriesSplit(n_splits=n_splits)
+        self.search_iterations = 12
+        self.param_distributions = {
+            'random_forest': {
+                'n_estimators': [200, 300, 400],
+                'max_depth': [12, 16, 20, None],
+                'min_samples_split': [2, 5, 8],
+                'min_samples_leaf': [1, 2, 4],
+                'max_features': ['sqrt', 0.6, 0.8],
+            },
+            'gradient_boosting': {
+                'n_estimators': [200, 300, 400],
+                'max_depth': [4, 6, 8],
+                'learning_rate': [0.02, 0.05, 0.1],
+                'subsample': [0.6, 0.8, 1.0],
+                'max_features': ['sqrt', 0.6, None],
+            },
+            'xgboost': {
+                'n_estimators': [300, 400, 500],
+                'max_depth': [4, 6, 8],
+                'learning_rate': [0.02, 0.05, 0.1],
+                'subsample': [0.6, 0.8, 1.0],
+                'colsample_bytree': [0.6, 0.8, 1.0],
+            },
+            'lightgbm': {
+                'n_estimators': [300, 400, 500],
+                'max_depth': [4, 6, 8],
+                'learning_rate': [0.02, 0.05, 0.1],
+                'subsample': [0.6, 0.8, 1.0],
+                'colsample_bytree': [0.6, 0.8, 1.0],
+                'num_leaves': [31, 45, 63],
+            },
+        }
 
     def get_models(self) -> dict:
         """Return dictionary of model name -> estimator."""
@@ -253,7 +305,7 @@ class ModelTrainer:
             'random_forest': RandomForestRegressor(
                 n_estimators=300, max_depth=20, min_samples_split=5,
                 min_samples_leaf=2, max_features='sqrt',
-                random_state=self.random_state, n_jobs=-1,
+                random_state=self.random_state, n_jobs=SAFE_N_JOBS,
             ),
             'gradient_boosting': GradientBoostingRegressor(
                 n_estimators=300, max_depth=6, learning_rate=0.05,
@@ -267,7 +319,7 @@ class ModelTrainer:
             models['xgboost'] = XGBRegressor(
                 n_estimators=500, max_depth=6, learning_rate=0.05,
                 subsample=0.8, colsample_bytree=0.8,
-                random_state=self.random_state, n_jobs=-1, verbosity=0,
+                random_state=self.random_state, n_jobs=SAFE_N_JOBS, verbosity=0,
             )
         except ImportError:
             print("[Trainer] xgboost not installed, skipping")
@@ -278,12 +330,33 @@ class ModelTrainer:
             models['lightgbm'] = LGBMRegressor(
                 n_estimators=500, max_depth=6, learning_rate=0.05,
                 subsample=0.8, colsample_bytree=0.8, num_leaves=31,
-                random_state=self.random_state, n_jobs=-1, verbose=-1,
+                random_state=self.random_state, n_jobs=SAFE_N_JOBS, verbose=-1,
             )
         except ImportError:
             print("[Trainer] lightgbm not installed, skipping")
 
         return models
+
+    def _maybe_tune_model(self, name, estimator, X_train, y_train):
+        params = self.param_distributions.get(name)
+        if not params:
+            return estimator, False
+
+        print(f"  Hyperparameter search: {name}")
+        search = RandomizedSearchCV(
+            estimator,
+            params,
+            scoring='r2',
+            n_iter=min(self.search_iterations, sum(len(v) for v in params.values())),
+            cv=self.tscv,
+            random_state=self.random_state,
+            n_jobs=SAFE_N_JOBS,
+            verbose=0,
+            refit=True,
+        )
+        search.fit(X_train, y_train)
+        print(f"    Best CV R²: {search.best_score_:.4f}")
+        return search.best_estimator_, True
 
     def train_and_evaluate(self, X_train, y_train, X_test, y_test):
         """Train all models, return results dict."""
@@ -292,14 +365,16 @@ class ModelTrainer:
 
         for name, model in models.items():
             print(f"\n  Training {name}...")
-            model.fit(X_train, y_train)
+            model, tuned = self._maybe_tune_model(name, model, X_train, y_train)
+            if not tuned:
+                model.fit(X_train, y_train)
 
             y_pred_train = model.predict(X_train)
             y_pred_test = model.predict(X_test)
 
             cv_scores = cross_val_score(
                 model, X_train, y_train,
-                cv=self.tscv, scoring='neg_root_mean_squared_error', n_jobs=-1,
+                cv=self.tscv, scoring='neg_root_mean_squared_error', n_jobs=SAFE_N_JOBS,
             )
 
             metrics = {
@@ -344,11 +419,15 @@ class StackingEnsemble:
 
         estimators = [(name, results[name]['model']) for name in top3_names]
 
+        # StackingRegressor internally uses cross_val_predict, which requires
+        # partition-based CV and does not support TimeSeriesSplit.
+        stacking_cv = KFold(n_splits=5, shuffle=False)
+
         stack = StackingRegressor(
             estimators=estimators,
             final_estimator=RidgeCV(),
-            cv=tscv,
-            n_jobs=-1,
+            cv=stacking_cv,
+            n_jobs=SAFE_N_JOBS,
         )
 
         stack.fit(X_train, y_train)
@@ -404,8 +483,8 @@ class Evaluator:
         sorted_res = np.sort(residuals)
         n = len(sorted_res)
         theoretical = np.array([
-            np.sqrt(2) * np.math.erfc(2 * (i - 0.5) / n)
-            if (i - 0.5) / n < 0.5 else -np.sqrt(2) * np.math.erfc(2 * (1 - (i - 0.5) / n))
+            np.sqrt(2) * math.erfc(2 * (i - 0.5) / n)
+            if (i - 0.5) / n < 0.5 else -np.sqrt(2) * math.erfc(2 * (1 - (i - 0.5) / n))
             for i in range(1, n + 1)
         ]) if n < 5000 else np.linspace(-3, 3, n)
         # Simplified Q-Q: just use sorted standardized residuals vs expected
@@ -662,6 +741,12 @@ class ArtifactSaver:
             json.dump(all_metrics, f, indent=2, default=str)
         print(f"  Saved metrics: {path}")
 
+    def save_manifest(self, manifest: dict):
+        path = os.path.join(self.output_dir, 'artifact_manifest.json')
+        with open(path, 'w') as f:
+            json.dump(manifest, f, indent=2, default=str)
+        print(f"  Saved artifact manifest: {path}")
+
     def save_demand_cache(self, df: pd.DataFrame, target_col: str):
         """Save last 168 demand values for Flask prediction-time lag features."""
         last_168 = df[target_col].tail(168).tolist()
@@ -760,6 +845,20 @@ def main():
         'scale_cols': pipeline.scale_cols,
     }
     saver.save_config(config)
+
+    manifest = build_unified_manifest(
+        config=config,
+        feature_names_path='feature_names.json',
+        scaler_path='scaler.pkl',
+        lag_medians_path='lag_medians.json',
+        demand_cache_path='demand_cache.json',
+        metrics_path='metrics/all_models_comparison.json',
+        model_filenames={
+            **{f'{name}': f'{name}_model.pkl' for name in results.keys()},
+            'stacking_ensemble': 'stacking_ensemble.pkl',
+        },
+    )
+    saver.save_manifest(manifest)
 
     # 10. Residual analysis and learning curves
     print("\n" + "=" * 70)

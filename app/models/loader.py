@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import json
+from pathlib import Path
 from typing import Any, Optional
 
 import joblib
@@ -28,6 +29,32 @@ _state = {
     'xgboost_model_features': None,
     'model_loaded': False,
 }
+
+
+def _configure_model_for_inference(model: Any) -> Any:
+    """Force safe single-process inference in restricted Windows environments."""
+    if model is None:
+        return None
+
+    if hasattr(model, 'n_jobs'):
+        try:
+            model.n_jobs = 1
+        except Exception:
+            pass
+
+    # Some ensemble wrappers contain nested estimators with their own parallelism.
+    for attr in ('estimators_', 'estimators'):
+        nested = getattr(model, attr, None)
+        if nested:
+            for item in nested:
+                child = item[1] if isinstance(item, tuple) and len(item) == 2 else item
+                _configure_model_for_inference(child)
+
+    final_estimator = getattr(model, 'final_estimator_', None) or getattr(model, 'final_estimator', None)
+    if final_estimator is not None:
+        _configure_model_for_inference(final_estimator)
+
+    return model
 
 
 def _extract_model(data: Any) -> Any:
@@ -60,6 +87,7 @@ def _try_load(paths: list[str], name: str) -> tuple[Any, Any]:
                 raw = joblib.load(p)
                 model = _extract_model(raw)
                 if hasattr(model, 'predict'):
+                    _configure_model_for_inference(model)
                     logger.info(f"Loaded {name} from {p}")
                     return model, raw
             except Exception as e:
@@ -79,9 +107,14 @@ def init_models():
     if _state['model_loaded']:
         return
 
+    project_root = Path(__file__).resolve().parents[1]
+    unified_pipeline_dir = project_root / 'models' / 'unified_pipeline'
+
     base_paths = [
-        'models',
+        str(unified_pipeline_dir),
+        str(project_root / 'models'),
         os.path.join(os.path.dirname(__file__), '..', '..', 'models'),
+        os.path.join(os.getcwd(), 'models'),
     ]
 
     def paths_for(filename):

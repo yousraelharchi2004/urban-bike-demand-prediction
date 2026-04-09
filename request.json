@@ -1,0 +1,16 @@
+{
+  "Hour": 14,
+  "Temperature(캜)": 22.5,
+  "Humidity(%)": 60,
+  "Wind speed (m/s)": 2.5,
+  "Visibility (10m)": 2000,
+  "Dew point temperature(캜)": 10,
+  "Solar Radiation (MJ/m2)": 1.5,
+  "Rainfall(mm)": 0,
+  "Snowfall (cm)": 0,
+  "Seasons_Spring": 0,
+  "Seasons_Summer": 1,
+  "Seasons_Winter": 0,
+  "Holiday_No Holiday": 1,
+  "Functioning Day_Yes": 1
+}
