@@ -174,14 +174,17 @@ def _unified_summary() -> dict | None:
 
 
 def _model_artifact_metrics(model_key: str) -> dict:
+    # Prefer the supported unified artifact bundle whenever available so
+    # dashboard metrics remain consistent with the deployed pipeline.
+    if model_key != 'unified':
+        unified_metrics = _unified_metrics_for(model_key)
+        if unified_metrics:
+            return unified_metrics
+
     if model_key == 'unified':
         unified_summary = _unified_summary()
         if unified_summary:
             return unified_summary
-
-    unified_metrics = _unified_metrics_for(model_key)
-    if unified_metrics:
-        return unified_metrics
 
     if model_key == 'original':
         payload = _read_json(MODELS_DIR / 'proper_model_metrics.json')
@@ -294,6 +297,12 @@ def _model_artifact_metrics(model_key: str) -> dict:
             'best_model': best_model,
         }
 
+    # Last-resort fallback to unified pipeline comparison metrics only when
+    # neither canonical unified selection nor dedicated artifacts are usable.
+    unified_metrics = _unified_metrics_for(model_key)
+    if unified_metrics:
+        return unified_metrics
+
     return {}
 
 
@@ -347,10 +356,11 @@ def get_model_metrics(model_key: str = 'original') -> dict:
 
 
 def calculate_model_metrics():
-    """Return artifact-backed metrics plus loaded-model metadata for the best available model."""
+    """Return artifact-backed metrics plus loaded-model metadata for the baseline model."""
     catalog = get_model_catalog()
     best_model_key = max(catalog, key=lambda key: catalog[key].get('r2', -1)) if catalog else 'original'
-    selected = catalog.get(best_model_key, catalog.get('original', {}))
+    selected_model_key = 'original'
+    selected = catalog.get(selected_model_key, catalog.get(best_model_key, {}))
     model_path = MODELS_DIR / 'random_forest_model.pkl'
     proper_model_path = MODELS_DIR / 'proper_random_forest.pkl'
     resolved_model_path = proper_model_path if proper_model_path.exists() else model_path
@@ -364,6 +374,21 @@ def calculate_model_metrics():
         except Exception as exc:
             load_error = str(exc)
             model_available = False
+
+    metric_sources = {
+        "selected_model": {
+            "model_key": selected_model_key,
+            "artifact_path": selected.get('artifact_path'),
+        },
+        "best_model": {
+            "model_key": best_model_key,
+            "artifact_path": catalog.get(best_model_key, {}).get('artifact_path'),
+        },
+        "all_models": {
+            key: value.get('artifact_path')
+            for key, value in catalog.items()
+        },
+    }
 
     metrics = {
         "model_name": selected.get('name', 'Random Forest (baseline)'),
@@ -393,6 +418,7 @@ def calculate_model_metrics():
         "validation_split": "80/20",
         "has_feature_importance": bool(model is not None and hasattr(model, 'feature_importances_')),
         "artifact_path": selected.get('artifact_path'),
+        "metric_sources": metric_sources,
         "models": catalog,
         "original_model_metrics": catalog.get('original', {}),
         "improved_model_metrics": catalog.get('improved', {}),
@@ -402,8 +428,9 @@ def calculate_model_metrics():
         "stacking_model_metrics": catalog.get('stacking', {}),
         "unified_model_metrics": catalog.get('unified', {}),
         "best_model": best_model_key,
+        "selected_model": selected_model_key,
         "interpretation": {
-            "r2_interpretation": f"The best available model explains {round(selected.get('r2', 0.0) * 100, 1)}% of the variance in bike rental demand",
+            "r2_interpretation": f"The baseline model explains {round(selected.get('r2', 0.0) * 100, 1)}% of the variance in bike rental demand",
             "mae_interpretation": f"On average, predictions are off by {round(selected.get('mae', 0.0), 1)} bikes",
             "rmse_interpretation": f"The typical prediction error is about {round(selected.get('rmse', 0.0), 1)} bikes",
         }

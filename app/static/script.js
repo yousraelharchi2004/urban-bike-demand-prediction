@@ -1,4 +1,4 @@
-// Debug flag - set to true during development, false in production
+﻿// Debug flag - set to true during development, false in production
 const DEBUG = false;
 function dbg(...args) { if (DEBUG) console.log(...args); }
 
@@ -101,6 +101,35 @@ function getPredictionValue(data) {
         ?? (data.prediction !== undefined ? Math.round(data.prediction) : 0);
 }
 
+function formatPredictionInterval(data) {
+    const level = Number.parseInt(data?.confidence_level, 10) || 91;
+    return `Prediction interval (${level}%)`;
+}
+
+function getModelFeatureCount(modelKey = selectedModel) {
+    const model = availableModels?.[modelKey];
+    if (model && typeof model.features === 'number') {
+        return model.features;
+    }
+    if (modelKey === 'original') return 14;
+    if (modelKey === 'improved') return 38;
+    if (modelKey === 'unified') return 35;
+    return 36;
+}
+
+function updateFeaturesUsedDisplay(modelKey = selectedModel) {
+    const featuresUsed = document.getElementById('features-used');
+    if (!featuresUsed) return;
+
+    const loadingEl = featuresUsed.querySelector('.metric-loading');
+    const valueEl = featuresUsed.querySelector('.metric-value');
+    if (loadingEl && valueEl) {
+        loadingEl.style.display = 'none';
+        valueEl.style.display = 'inline';
+        valueEl.textContent = getModelFeatureCount(modelKey);
+    }
+}
+
 // Get season encoding for form submission
 function getSeasonEncoding(season) {
     const encoding = {};
@@ -162,13 +191,15 @@ function updatePredictionResults(data, responseTime) {
         document.getElementById('detail-model').textContent = formatModelName(data.model_type);
     }
     if (document.getElementById('detail-features')) {
-        document.getElementById('detail-features').textContent = data.input_summary?.features_used || '14';
+        const featuresUsed = data.model_metrics?.features_count ?? data.input_summary?.features_used ?? getModelFeatureCount(data.model_type);
+        document.getElementById('detail-features').textContent = featuresUsed;
     }
     if (responseTimeElement) {
         responseTimeElement.textContent = `${responseTime}s`;
     }
     if (document.getElementById('prediction-id')) {
-        document.getElementById('prediction-id').textContent = data.prediction_id || '--';
+        const predictionId = data.prediction_id ?? data.predictionId ?? null;
+        document.getElementById('prediction-id').textContent = predictionId !== null && predictionId !== undefined && predictionId !== '' ? predictionId : '--';
     }
     
     // Update timestamp
@@ -180,9 +211,9 @@ function updatePredictionResults(data, responseTime) {
         });
     }
     
-    // Update confidence
+    // Update prediction interval
     if (confidenceBadge) {
-        confidenceBadge.textContent = `${data.confidence || 80}% confidence`;
+        confidenceBadge.textContent = formatPredictionInterval(data);
     }
     
     // Update model badge
@@ -352,6 +383,8 @@ function updateModelUI() {
     document.querySelectorAll('.prediction-breakdown .metric-value').forEach(el => {
         el.style.color = mc.solid;
     });
+
+    updateFeaturesUsedDisplay(selectedModel);
 
     // Confidence badge
     const confBadge = document.getElementById('confidence-badge');
@@ -633,12 +666,13 @@ async function updateDashboardMetrics() {
             modelsAvailable: !!modelsAvailableEl
         });
         
-        // Show loading states
-        document.querySelectorAll('.metric-loading').forEach(el => {
-            el.style.display = 'inline';
-        });
-        document.querySelectorAll('.metric-value').forEach(el => {
-            el.style.display = 'none';
+        // Show loading states only for sidebar dashboard cards.
+        [modelAccuracyEl, predictionsTodayEl, avgErrorEl, modelsAvailableEl].forEach((container) => {
+            if (!container) return;
+            const loadingEl = container.querySelector('.metric-loading');
+            const valueEl = container.querySelector('.metric-value');
+            if (loadingEl) loadingEl.style.display = 'inline';
+            if (valueEl) valueEl.style.display = 'none';
         });
         
         
@@ -715,12 +749,13 @@ async function updateDashboardMetrics() {
         }
     } catch (error) {
         console.error('Dashboard metrics error:', error);
-        // Show fallback values
-        document.querySelectorAll('.metric-loading').forEach(el => {
-            el.style.display = 'none';
-        });
-        document.querySelectorAll('.metric-value').forEach(el => {
-            el.style.display = 'inline';
+        // Show fallback values only for sidebar dashboard cards.
+        [modelAccuracyEl, predictionsTodayEl, avgErrorEl, modelsAvailableEl].forEach((container) => {
+            if (!container) return;
+            const loadingEl = container.querySelector('.metric-loading');
+            const valueEl = container.querySelector('.metric-value');
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (valueEl) valueEl.style.display = 'inline';
         });
     }
 }
@@ -734,6 +769,7 @@ async function loadAvailableModels() {
         if (data.success && data.models) {
             availableModels = data.models;
             refreshModelInfo();
+            updateFeaturesUsedDisplay(selectedModel);
             
             // Update models available count
             const availableCount = Object.values(availableModels).filter(m => m.available).length;
@@ -749,10 +785,19 @@ async function loadAvailableModels() {
                 const r2El = document.getElementById(`stat-r2-${key}`);
                 const rmseEl = document.getElementById(`stat-rmse-${key}`);
                 const maeEl = document.getElementById(`stat-mae-${key}`);
+                const cmpR2El = document.getElementById(`cmp-r2-${key}`);
+                const cmpRmseEl = document.getElementById(`cmp-rmse-${key}`);
+                const cmpMaeEl = document.getElementById(`cmp-mae-${key}`);
+                const cmpFeaturesEl = document.getElementById(`cmp-features-${key}`);
                 if (r2El && typeof model.r2 === 'number') r2El.textContent = model.r2.toFixed(3);
                 if (rmseEl && typeof model.rmse === 'number') rmseEl.textContent = model.rmse.toFixed(1);
                 if (maeEl && typeof model.mae === 'number') maeEl.textContent = model.mae.toFixed(1);
+                if (cmpR2El && typeof model.r2 === 'number') cmpR2El.textContent = model.r2.toFixed(3);
+                if (cmpRmseEl && typeof model.rmse === 'number') cmpRmseEl.textContent = model.rmse.toFixed(1);
+                if (cmpMaeEl && typeof model.mae === 'number') cmpMaeEl.textContent = model.mae.toFixed(1);
+                if (cmpFeaturesEl && typeof model.features === 'number') cmpFeaturesEl.textContent = model.features;
             });
+            updateFeaturesUsedDisplay(selectedModel);
             
             return true;
         }
@@ -1361,7 +1406,9 @@ function exportPrediction(format = 'json') {
             },
             prediction_id: document.getElementById('prediction-id')?.textContent || 'N/A',
             timestamp: new Date().toISOString(),
-            confidence: parseInt(confidenceBadge?.textContent) || 80
+            confidence_level: 90,
+            lower_bound: null,
+            upper_bound: null
         };
     }
     
@@ -1404,7 +1451,7 @@ function exportPrediction(format = 'json') {
             bikesRequired: getPredictionValue(currentPredictionData),
             features: currentPredictionData.input_summary?.features_used || '14',
             responseTime: document.getElementById('response-time')?.textContent || '0.00s',
-            confidence: currentPredictionData.confidence || 80,
+            predictionInterval: formatPredictionInterval(currentPredictionData),
             r2Score: document.getElementById('metric-r2')?.textContent || '0.820',
             rmse: document.getElementById('metric-rmse')?.textContent || '112.5',
             mae: document.getElementById('metric-mae')?.textContent || '87.2',
@@ -1433,7 +1480,7 @@ function exportPrediction(format = 'json') {
             rows.push(['Bikes Required', exportData.bikesRequired]);
             rows.push(['Features Count', exportData.features]);
             rows.push(['Response Time', exportData.responseTime]);
-            rows.push(['Confidence', exportData.confidence + '%']);
+            rows.push(['Prediction Interval', exportData.predictionInterval]);
             rows.push(['R² Score', exportData.r2Score]);
             rows.push(['RMSE', exportData.rmse]);
             rows.push(['MAE', exportData.mae]);
@@ -1492,7 +1539,7 @@ Prediction ID: ${exportData.predictionId}
 PREDICTION RESULT:
 Bikes Required: ${exportData.bikesRequired}
 Model Used: ${exportData.modelUsed}
-Confidence: ${exportData.confidence}%
+Prediction Interval: ${exportData.predictionInterval}
 Response Time: ${exportData.responseTime}
 
 MODEL PERFORMANCE:
@@ -1942,4 +1989,5 @@ window.showNotification = showNotification;
 window.updateHourDescription = updateHourDescription;
 window.updateWeatherInsight = updateWeatherInsight;
 window.updateAllInsights = updateAllInsights;
+
 

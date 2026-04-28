@@ -65,14 +65,19 @@ def dashboard_metrics():
     baseline_meta = model_meta.get('original', {})
     baseline_r2 = baseline_meta.get('r2', 0.0)
     avg_error_value = baseline_meta.get('mae', 0.0)
+    best_r2 = max((model_meta[m]['r2'] for m in loaded), default=baseline_r2)
+    overall_accuracy = best_r2 * 100
 
     try:
         metrics_data = calculate_model_metrics()
-        overall_accuracy = metrics_data.get('r2_score', baseline_r2) * 100
-        avg_error_value = metrics_data.get('mean_absolute_error', avg_error_value)
+        best_model_key = metrics_data.get('best_model')
+        if best_model_key in model_meta:
+            overall_accuracy = model_meta[best_model_key].get('r2', best_r2) * 100
+            avg_error_value = model_meta[best_model_key].get('mae', avg_error_value)
+        else:
+            avg_error_value = metrics_data.get('mean_absolute_error', avg_error_value)
     except Exception:
-        best_r2 = max((model_meta[m]['r2'] for m in loaded), default=baseline_r2)
-        overall_accuracy = best_r2 * 100
+        pass
 
     try:
         history = get_prediction_history(limit=None)
@@ -146,6 +151,7 @@ def kpis():
         state = get_state()
         loaded = _loaded_models(state)
         time_filter = request.args.get('filter', 'all')
+        requested_model = (request.args.get('model') or '').strip().lower()
         model_meta = get_model_meta()
         baseline_r2 = model_meta.get('original', {}).get('r2', 0.0)
         baseline_mae = model_meta.get('original', {}).get('mae', 0.0)
@@ -157,9 +163,24 @@ def kpis():
         filtered = filter_prediction_history_by_time(history, time_filter)
         predictions = [extract_prediction_from_history(p)[0] for p in filtered]
 
-        # Determine features count from best model
+        # Determine the model used for KPI feature count.
         best_model_key = max(loaded, key=lambda m: model_meta[m]['r2']) if loaded else 'original'
-        features_count = model_meta.get(best_model_key, {}).get('features', 14)
+        kpi_model_key = best_model_key
+        if requested_model and requested_model in model_meta and requested_model in loaded:
+            kpi_model_key = requested_model
+
+        features_count = model_meta.get(kpi_model_key, {}).get('features', 14)
+        if kpi_model_key == 'unified':
+            pipeline = load_unified_pipeline()
+            if pipeline and isinstance(pipeline.get('feature_names'), list):
+                features_count = len(pipeline['feature_names'])
+        else:
+            model_obj = state.get(MODEL_STATE_KEYS.get(kpi_model_key, ''))
+            if model_obj is not None:
+                if hasattr(model_obj, 'feature_names_in_'):
+                    features_count = len(model_obj.feature_names_in_)
+                elif hasattr(model_obj, 'n_features_in_'):
+                    features_count = int(model_obj.n_features_in_)
 
         return jsonify({
             "success": True,
@@ -178,6 +199,7 @@ def kpis():
                 },
                 "features": {
                     "value": features_count,
+                    "model": kpi_model_key,
                 },
             },
         })

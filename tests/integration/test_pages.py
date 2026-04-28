@@ -7,6 +7,7 @@ import os
 import sys
 import json
 from pathlib import Path
+from app.model_metrics import get_model_catalog
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -80,11 +81,12 @@ class TestMetricsEndpoint:
         assert response.status_code == 200
         assert data['success'] is True
 
-        artifact = json.loads(Path('models/proper_model_metrics.json').read_text(encoding='utf-8'))
+        artifact = get_model_catalog()['original']
         metrics = data['metrics']
         assert metrics['r2_score'] == pytest.approx(artifact['r2'])
         assert metrics['mean_absolute_error'] == pytest.approx(artifact['mae'])
         assert metrics['root_mean_squared_error'] == pytest.approx(artifact['rmse'])
+        assert metrics['metric_sources']['selected_model']['artifact_path'] == artifact['artifact_path']
 
 
 class TestModelInfoEndpoint:
@@ -108,16 +110,17 @@ class TestModelInfoEndpoint:
         assert response.status_code == 200
         assert data['success'] is True
 
-        original = json.loads(Path('models/proper_model_metrics.json').read_text(encoding='utf-8'))
-        xgboost = json.loads(Path('models/xgboost_metrics.json').read_text(encoding='utf-8'))
+        catalog = get_model_catalog()
+        original = catalog['original']
+        xgboost = catalog['xgboost']
         models = data['models']
 
         assert models['original']['r2'] == pytest.approx(original['r2'])
         assert models['original']['rmse'] == pytest.approx(original['rmse'])
         assert models['original']['mae'] == pytest.approx(original['mae'])
-        assert models['xgboost']['r2'] == pytest.approx(xgboost['performance']['test_r2'])
-        assert models['xgboost']['rmse'] == pytest.approx(xgboost['performance']['test_rmse'])
-        assert models['xgboost']['mae'] == pytest.approx(xgboost['performance']['test_mae'])
+        assert models['xgboost']['r2'] == pytest.approx(xgboost['r2'])
+        assert models['xgboost']['rmse'] == pytest.approx(xgboost['rmse'])
+        assert models['xgboost']['mae'] == pytest.approx(xgboost['mae'])
 
 
 class TestRouteRegistration:

@@ -74,6 +74,13 @@
                         <span class="metric-value" style="display: none;">4</span>
                     </div>
                 </div>
+                <div class="stat-item">
+                    <div class="stat-label">Features Used</div>
+                    <div class="stat-value" id="features-used">
+                        <span class="metric-loading" style="display: none;">Loading...</span>
+                        <span class="metric-value" style="display: inline;">14</span>
+                    </div>
+                </div>
             </div>
                 <div class="quick-actions">
                     <h4>Quick Actions</h4>
@@ -123,7 +130,7 @@
                 </div>
                 <div class="header-status">
                     <span class="status-indicator active"></span>
-                    <span class="status-text">Quad-Model System <span id="fe-status">Available</span></span>
+                    <span class="status-text"><span id="header-model-system-label">Multi-Model System</span> <span id="fe-status">Available</span></span>
                 </div>
             </div>
 
@@ -650,43 +657,43 @@
                                     <tbody>
                                         <tr>
                                             <td>R² Score</td>
-                                            <td><span class="metric-value">0.82</span></td>
-                                            <td><span class="metric-value improved">0.90</span></td>
-                                            <td><span class="metric-value advanced">0.91</span></td>
-                                            <td><span class="metric-value xgboost">0.94</span></td>
-                                            <td><span class="metric-value lightgbm">0.76</span></td>
-                                            <td><span class="metric-value stacking">0.79</span></td>
-                                            <td><span class="metric-value unified">0.94</span></td>
+                                            <td><span class="metric-value" id="cmp-r2-original">0.82</span></td>
+                                            <td><span class="metric-value improved" id="cmp-r2-improved">0.90</span></td>
+                                            <td><span class="metric-value advanced" id="cmp-r2-advanced">0.91</span></td>
+                                            <td><span class="metric-value xgboost" id="cmp-r2-xgboost">0.94</span></td>
+                                            <td><span class="metric-value lightgbm" id="cmp-r2-lightgbm">0.76</span></td>
+                                            <td><span class="metric-value stacking" id="cmp-r2-stacking">0.79</span></td>
+                                            <td><span class="metric-value unified" id="cmp-r2-unified">0.94</span></td>
                                         </tr>
                                         <tr>
                                             <td>RMSE</td>
-                                            <td>112.5</td>
-                                            <td class="improved">194.6</td>
-                                            <td class="advanced">192.4</td>
-                                            <td class="xgboost">153.3</td>
-                                            <td class="lightgbm">302.6</td>
-                                            <td class="stacking">280.5</td>
-                                            <td class="unified">144.7</td>
+                                            <td id="cmp-rmse-original">112.5</td>
+                                            <td class="improved" id="cmp-rmse-improved">194.6</td>
+                                            <td class="advanced" id="cmp-rmse-advanced">192.4</td>
+                                            <td class="xgboost" id="cmp-rmse-xgboost">153.3</td>
+                                            <td class="lightgbm" id="cmp-rmse-lightgbm">302.6</td>
+                                            <td class="stacking" id="cmp-rmse-stacking">280.5</td>
+                                            <td class="unified" id="cmp-rmse-unified">144.7</td>
                                         </tr>
                                         <tr>
                                             <td>MAE</td>
-                                            <td>87.2</td>
-                                            <td class="improved">116.6</td>
-                                            <td class="advanced">116.6</td>
-                                            <td class="xgboost">90.9</td>
-                                            <td class="lightgbm">225.7</td>
-                                            <td class="stacking">207.6</td>
-                                            <td class="unified">104.7</td>
+                                            <td id="cmp-mae-original">87.2</td>
+                                            <td class="improved" id="cmp-mae-improved">116.6</td>
+                                            <td class="advanced" id="cmp-mae-advanced">116.6</td>
+                                            <td class="xgboost" id="cmp-mae-xgboost">90.9</td>
+                                            <td class="lightgbm" id="cmp-mae-lightgbm">225.7</td>
+                                            <td class="stacking" id="cmp-mae-stacking">207.6</td>
+                                            <td class="unified" id="cmp-mae-unified">104.7</td>
                                         </tr>
                                         <tr>
                                             <td>Features</td>
-                                            <td>14</td>
-                                            <td>38</td>
-                                            <td>36</td>
-                                            <td>36</td>
-                                            <td>36</td>
-                                            <td>35</td>
-                                            <td>36</td>
+                                            <td id="cmp-features-original">14</td>
+                                            <td id="cmp-features-improved">38</td>
+                                            <td id="cmp-features-advanced">36</td>
+                                            <td id="cmp-features-xgboost">36</td>
+                                            <td id="cmp-features-lightgbm">36</td>
+                                            <td id="cmp-features-stacking">36</td>
+                                            <td id="cmp-features-unified">35</td>
                                         </tr>
                                         <tr>
                                             <td>Training Time</td>
@@ -798,7 +805,7 @@
                         </h3>
                         <div class="result-meta">
                             <span class="timestamp" id="prediction-timestamp">--:-- --</span>
-                            <span class="confidence" id="confidence-badge">--% confidence</span>
+                            <span class="confidence" id="confidence-badge">Prediction interval (91%)</span>
                         </div>
                     </div>
                     
@@ -941,7 +948,7 @@
                 <div class="footer-meta">
                     <span class="version">v2.5.0</span>
                     <span class="status-indicator active"></span>
-                    <span class="status-text">5-Model System Available</span>
+                    <span class="status-text"><span id="footer-model-system-label">Multi-Model System</span> Available</span>
                 </div>
             </div>
         </div>
@@ -950,7 +957,7 @@
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=3"></script>
     <script>
         // Initialize tabs
         document.querySelectorAll('.tab-btn').forEach(button => {
@@ -1097,6 +1104,27 @@
                         'unified': 'Using the <strong>Unified Pipeline</strong> with leakage-free preprocessing, lag features, train-only scaling, and the saved best ensemble artifact.'
                     };
                     pElement.innerHTML = insights[modelType] || insights['original'];
+                }
+            }
+
+            // Update "Features Used" card in predictor dashboard
+            const featuresUsed = document.getElementById('features-used');
+            if (featuresUsed) {
+                const loadingEl = featuresUsed.querySelector('.metric-loading');
+                const valueEl = featuresUsed.querySelector('.metric-value');
+                const featureCountByModel = {
+                    'original': 14,
+                    'improved': 38,
+                    'advanced': 36,
+                    'xgboost': 36,
+                    'lightgbm': 36,
+                    'stacking': 36,
+                    'unified': 35
+                };
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (valueEl) {
+                    valueEl.style.display = 'inline';
+                    valueEl.textContent = String(featureCountByModel[modelType] ?? '--');
                 }
             }
         }
