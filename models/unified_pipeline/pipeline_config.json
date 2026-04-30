@@ -1,5 +1,5 @@
 {
-  "training_date": "2026-04-04T13:40:23.206295",
+  "training_date": "2026-04-29T15:48:14.143266",
   "dataset": "data/raw/seoul_bike.csv",
   "test_fraction": 0.2,
   "tscv_splits": 5,
@@ -15,8 +15,8 @@
     "stacking_ensemble"
   ],
   "best_model": "stacking_ensemble",
-  "best_test_r2": 0.9443691419169846,
-  "best_test_rmse": 144.66175960578659,
+  "best_test_r2": 0.9370421203077997,
+  "best_test_rmse": 153.89372455997477,
   "scale_cols": [
     "Hour",
     "Temperature(\u00b0C)",

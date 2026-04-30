@@ -1,58 +1,61 @@
 {
   "model": "Stacking Ensemble",
   "base_learners": [
-    "RandomForest",
     "XGBoost",
-    "LightGBM"
+    "LightGBM",
+    "GradientBoosting"
   ],
   "meta_learner": "RidgeCV",
   "train": {
-    "rmse": 81.46446554201312,
-    "mae": 54.81110435918393,
-    "r2": 0.9843872182892193
+    "rmse": 90.91017188045463,
+    "mae": 56.82670280076992,
+    "r2": 0.9805567517968947
   },
   "test": {
-    "rmse": 280.52766313476195,
-    "mae": 207.63126066163437,
-    "r2": 0.7908009731454124
+    "rmse": 153.89372455997477,
+    "mae": 103.83754069146526,
+    "r2": 0.9370421203077997
+  },
+  "cv": {
+    "explained_variance": 0.9378704597402383
   },
   "feature_names": [
-    "hour",
-    "temperature",
-    "Humidity%",
-    "Wind_speed_m/s",
-    "visibility",
-    "dew_point",
-    "Solar_Radiation_MJ/m2",
-    "rainfall",
-    "snowfall",
+    "Hour",
+    "Temperature(°C)",
+    "Humidity(%)",
+    "Wind speed (m/s)",
+    "Visibility (10m)",
+    "Dew point temperature(°C)",
+    "Solar Radiation (MJ/m2)",
+    "Rainfall(mm)",
+    "Snowfall (cm)",
     "hour_sin",
     "hour_cos",
     "hour_squared",
+    "month",
+    "month_sin",
+    "month_cos",
     "day_of_week",
+    "dow_sin",
+    "dow_cos",
     "is_weekend",
-    "temp_hour_interaction",
-    "temp_squared",
     "is_peak_hour",
     "rush_hour_intensity",
-    "good_biking_conditions",
+    "temp_hour",
+    "temp_humidity",
+    "comfort_index",
+    "has_precipitation",
+    "demand_lag_24h",
+    "demand_lag_168h",
+    "demand_rolling_3h_mean",
+    "demand_rolling_24h_mean",
     "season_Autumn",
     "season_Spring",
     "season_Summer",
     "season_Winter",
-    "holiday_Holiday",
-    "holiday_No Holiday",
-    "functioning_day_No",
-    "functioning_day_Yes",
-    "temp_category_cold",
-    "temp_category_cool",
-    "temp_category_freezing",
-    "temp_category_hot",
-    "temp_category_warm",
-    "time_of_day_afternoon",
-    "time_of_day_evening",
-    "time_of_day_morning",
-    "time_of_day_night"
+    "is_holiday",
+    "is_functioning_day"
   ],
-  "n_features": 36
+  "n_features": 35,
+  "source": "retrained_from_train_unified_pipeline"
 }

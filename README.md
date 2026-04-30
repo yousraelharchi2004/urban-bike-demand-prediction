@@ -1,6 +1,6 @@
 # Bike Rental Demand Prediction System
 
-Single-source architecture centered on modular Flask blueprints (`app/blueprints/`), a services layer (`app/services/`), and the supported `train_unified_pipeline.py`. Legacy training scripts and debug utilities were removed to keep the repo focused on deployable artifacts.
+Single-source architecture centered on modular Flask blueprints (`app/blueprints/`), a services layer (`app/services/`), and the supported `train_unified_pipeline.py`. Legacy training scripts are retained under `training/legacy/` for archival/reference, while day-to-day development and deployment should use the unified pipeline and modular app stack.
 
 ## Directory reality
 
@@ -56,7 +56,7 @@ bike_demand_project/
 
 ## Training
 
-The only supported script is `train_unified_pipeline.py`. Discarded legacy training scripts (the `training/legacy/` folder and the removed top-level `train_*` helpers) remain only for archival reference.
+The only supported script is `train_unified_pipeline.py`. Legacy scripts in `training/legacy/` are kept for archival/reference only and are not part of the supported training path.
 
 ## Testing
 

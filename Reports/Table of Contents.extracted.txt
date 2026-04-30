@@ -1,0 +1,182 @@
+  
+• Perfect question. Based on your TOC, use this placement plan.
+  1. Preliminary pages
+  - After Table of Contents, add List of Figures and List of Tables.
+  - This is mandatory if you include many visuals/tables.
+  2. Chapter 2: Literature Review
+  - 2.1–2.4: add Table 2.1 “Summary of forecasting methods in literature” (method, data, metrics,
+    strengths, limits).
+  - 2.5: add Figure 2.1 “Typical feature engineering pipeline from related work”.
+  - 2.6: add Table 2.2 “Evaluation metrics used in prior studies (R², RMSE, MAE, MAPE)”.
+  - 2.7: add Table 2.3 “Research gap and how this thesis addresses it”.
+  3. Chapter 3: Data and Methodology
+  - 3.1: Table 3.1 dataset overview (rows, columns, target, date range), Table 3.2 feature dictionary.
+  - 3.2: Figure 3.1 preprocessing workflow.
+  - 3.3: Table 3.3 engineered features list by category.
+  - 3.4: Figure 3.2 train/test split and TimeSeriesSplit diagram.
+  - 3.5: Table 3.4 model configurations/hyperparameters.
+  - 3.6: Figure 3.3 unified training pipeline flow.
+  - 3.7: Figure 3.4 artifact contract structure, Table 3.5 artifact files and purpose.
+  4. Chapter 4: System Design and Implementation
+  - At chapter start: Figure 4.1 system architecture diagram (Flask app, models, data, frontend).
+  - API part: Table 4.1 main endpoints and descriptions.
+  - 4.5.1: Figure 4.2 local run flow.
+  - 4.5.2: Figure 4.3 Docker deployment flow.
+  - 4.6: Table 4.2 security/config variables (SECRET_KEY, SMTP, .env fields).
+  5. Chapter 5: Results and Discussion
+  - 5.1: Table 5.1 final model comparison (R², RMSE, MAE), Figure 5.1 comparison chart (data/
+    model_comparison.png).
+  - 5.2: Table 5.2 best model justification checklist.
+  - 5.3: Table 5.3 error cases/case studies.
+  - 5.4: Figure 5.2 feature importance / SHAP summary.
+  - 5.5.2: add your real app screenshots:
+  - Figure 5.3 Home screen (Reports/home_screen.png)
+  - Figure 5.4 Analytics screen (Reports/analytics_screen.png)
+  - Figure 5.5 API status (Reports/api_status.png)
+  - Figure 5.6 Test suite evidence (Reports/test_suite.png)
+  6. Appendices
+  - Appendix A: API request/response JSON examples (tables or code blocks).
+  - Appendix B: extra plots/tables not in main text.
+  - Appendix C: additional screenshots and test evidence.
+  - Appendix D: dependency table from requirements.txt.
+  - Appendix E: project folder tree screenshot/table.
+  Important cleanup:
+  - In your TOC file, lines after Appendix E (the “Project Facts You Can Reuse” notes) should not stay
+    in final TOC. Move them to draft notes, not thesis TOC.
+  If you want, next step I can give you ready-to-paste captions list (Figure 2.1 ... Figure 5.6, Table
+  2.1 ... Table 5.3) in final format. 
+## Table of Contents
+  ### Preliminary Pages (as per ugthesis-cjlu-2025)
+  1. Cover Page
+  2. Title Page
+  3. Bonafide Certificate
+  4. Abstract
+  5. Table of Contents
+  6. List of Figures
+  7. List of Tables
+  8. List of Abbreviations (optional but recommended)
+  ### Chapter 1: Introduction
+  1.1 Background and Motivation
+  1.2 Problem Statement
+  1.3 Research Objectives
+  1.4 Scope of the Project
+  1.5 Project Contributions
+  1.6 Thesis Organization
+  ### Chapter 2: Literature Review
+  2.1 Urban Bike-Sharing Demand Forecasting
+  2.2 Traditional Statistical Approaches
+  2.3 Machine Learning Approaches
+  2.4 Ensemble and Time-Series Methods
+  2.5 Feature Engineering in Demand Prediction
+  2.6 Evaluation Metrics in Related Work
+  2.7 Research Gap and Positioning of This Work
+  ### Chapter 3: Data and Methodology
+  3.1 Dataset Description (data/raw/seoul_bike.csv)
+  3.2 Data Preprocessing
+  3.3 Feature Engineering Strategy
+  3.4 Training/Validation Split and Experimental Protocol
+  3.5 Models Implemented
+  ### 3.5.1 Random Forest (Baseline)
+  ### 3.5.2 Improved Random Forest
+  ### 3.5.3 Advanced Random Forest
+  ### 3.5.4 XGBoost
+  ### 3.5.5 LightGBM
+  ### 3.5.6 Stacking Ensemble
+  ### 3.5.7 Unified Pipeline ensemble
+  ### Chapter 4: System Design and Implementation
+4.1 Overall System Architecture
+4.2 Backend Application Structure
+4.3 Model Integration and Inference Workflow
+4.4 API Design and Endpoint Implementation
+4.5 User Interface and Dashboard Implementation
+4.5.1 Main Prediction Page
+4.5.2 Analytics Dashboard
+4.5.4 Feature Engineering Interface
+4.5.4 Feature Engineering Interface
+4.6 Prediction History, Analytics, and Export Features
+4.7 Configuration, Security, and Environment Management
+4.8 Deployment and Execution Setup
+4.9 Chapter Summary
+  ### Chapter 5: Results and Discussion
+  5.1 Model Performance Comparison
+  5.2 Best Model Selection and Justification
+  5.3 Error Analysis and Case Studies
+  5.4 Explainability/Feature Impact Discussion
+  5.5.2 API and UI Functional Validation
+  5.6 Practical Limitations
+  ### Chapter 6: Conclusion and Future Work
+  6.1 Summary of Achievements
+  6.2 Key Contributions
+  6.3 Limitations
+  6.4 Future Enhancements
+  ### References
+  ### Appendices
+  Appendix A: API Request/Response Samples
+  Appendix B: Additional Result Tables and Plots
+  Appendix C: Test Evidence and Screenshots
+  Appendix D: Environment and Dependency Details (requirements.txt)
+  Appendix E: Project Structure SnapshotChapter 1.
+  Project Facts You Can Reuse
+  - Dataset: 8760 rows, 14 columns, period 2017-12-01 to 2018-11-30, target Rented Bike Count (min 0,
+    max 3556, mean 704.6).
+  - Training split: 80/20 (7008 train, 1752 test), TimeSeriesSplit=5.
+  - Engineered features: 35 features in unified pipeline.
+  - Best deployed model artifact: stacking_ensemble, R²=0.9444, RMSE=144.66, MAE=96.53.
+  - App architecture: Flask modular blueprints + services + /v2 API namespace.
+  - Main endpoints: prediction (/predict, /predict/compare, /prediction-history), analytics (/api/
+    dashboard-metrics, /api/analytics/*), status/models.
+  For 1.1 Background and Motivation
+  - Urban bike demand is highly time/weather dependent (hourly, seasonal, holiday, precipitation,
+    temperature effects are explicitly modeled).
+  - Project motivation is operational prediction + decision support through web API/dashboard, not just
+    offline modeling.
+  - You can position it as a move from static/manual planning to data-driven short-term demand
+    estimation.
+    Inference: this “manual planning pain” is inferred from the system design and feature set, not
+    explicitly written as business text in code.
+  For 1.2 Problem Statement
+  - Core technical problem: predict hourly bike rental demand from multimodal inputs (time + weather +
+    context).
+  - Practical problem: avoid under/over-allocation by producing reliable demand estimates and exposing
+    them via deployable endpoints.
+  - ML risks explicitly addressed in code: data leakage prevention, time-aware validation, artifact/
+    runtime consistency checks.
+  For 1.3 Research Objectives
+  - Build a leakage-safe prediction pipeline for hourly bike demand.
+  - Compare multiple regressors (RF, GB, XGBoost, LightGBM, Stacking).
+  - Select best model using objective metrics (R²/RMSE/MAE + CV behavior).
+  - Deploy prediction and analytics interfaces (API + web UI).
+  - Preserve reproducibility with artifact manifest/config and tests.
+  For 1.4 Scope of the Project
+  - Included:
+      - Seoul bike dataset (data/raw/seoul_bike.csv)
+      - Supervised regression for demand prediction
+      - Feature engineering + model comparison
+      - Flask app + dashboard + export/history
+      - Dockerized deployment path
+  - Excluded:
+      - Live IoT ingestion/realtime streaming sensors
+      - Causal policy optimization
+      - Multi-city transfer learning
+      - Production MLOps stack (online retraining orchestration)
+  For 1.5 Project Contributions
+  - Unified training pipeline replacing fragmented legacy scripts.
+  - Explicit leakage controls (time split, lag handling, train-only scaling).
+  - Strong predictive result with stacking ensemble.
+  - End-to-end system: model artifacts + API + analytics + history + export.
+  - Artifact contract and runtime validation for safer deployment.
+  For 1.6 Thesis Organization (project-matched)
+  - Ch1: Context/problem/objectives/scope/contributions.
+  - Ch2: Literature on bike-demand forecasting + ML/time-series methods.
+  - Ch3: Data, preprocessing, feature engineering, training protocol.
+  - Ch4: System implementation (Flask architecture, endpoints, deployment).
+  - Ch5: Experimental results and discussion (model comparison + analytics outcomes).
+  - Ch6: Conclusion, limitations, future work.
+  Evidence Files
+  - train_unified_pipeline.py
+  - models/unified_pipeline/pipeline_config.json
+  - models/unified_pipeline/metrics/all_models_comparison.json
+  - app__init__.py
+  - app/blueprints/prediction.py
+  - app/blueprints/analytics.py
+  - app/blueprints/pages.py

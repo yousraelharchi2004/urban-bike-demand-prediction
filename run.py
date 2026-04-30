@@ -7,9 +7,9 @@ Urban shared bike rental demand prediction and analysis by multimodal features
 import os
 import secrets
 import sys
+import threading
 import webbrowser
 from pathlib import Path
-from threading import Timer
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent
@@ -28,6 +28,17 @@ def ensure_secret_key():
 
 
 ensure_secret_key()
+
+
+def open_browser(url: str):
+    """Open the application URL in the default browser on startup."""
+    def _open():
+        try:
+            webbrowser.open_new(url)
+        except Exception as exc:
+            print(f"[WARN] Could not open browser automatically: {exc}")
+
+    threading.Timer(1.0, _open).start()
 
 
 def check_dependencies():
@@ -67,14 +78,6 @@ def check_dependencies():
             all_good = False
     
     return all_good
-
-def open_browser():
-    """Open the default browser to the main page (development only)."""
-    try:
-        Timer(1.5, lambda: webbrowser.open('http://127.0.0.1:5000')).start()
-        print("[WEB] Opening browser automatically...")
-    except Exception:
-        print("[INFO] Please open the browser manually to: http://127.0.0.1:5000")
 
 def print_system_info():
     """Print system and project information"""
@@ -174,31 +177,34 @@ def main():
         print("\n" + "="*70)
         print("[OK] APPLICATION READY")
         print("="*70)
+        debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes')
+
         print("[WEB] Server will listen on: http://127.0.0.1:5000")
         print("\n[INFO] Available endpoints:")
-        print("   - Homepage:        http://127.0.0.1:5000/")
-        print("   - API Status:      http://127.0.0.1:5000/status")
-        print("   - Model Info:      http://127.0.0.1:5000/model-info")
-        print("   - Model Metrics:   http://127.0.0.1:5000/metrics")
-        print("   - Prediction History: http://127.0.0.1:5000/prediction-history")
-        print("   - Test Page:       http://127.0.0.1:5000/test")
-        print("   - API Prediction:  http://127.0.0.1:5000/predict (POST)")
+        print("   - Homepage (v2):   http://127.0.0.1:5000/v2")
+        print("   - API Status JSON: http://127.0.0.1:5000/v2/api/status")
+        print("   - Model Info:      http://127.0.0.1:5000/v2/model-info")
+        print("   - Model Metrics:   http://127.0.0.1:5000/v2/metrics")
+        print("   - Prediction History: http://127.0.0.1:5000/v2/prediction-history")
+        print("   - Test Page:       http://127.0.0.1:5000/v2/test")
+        print("   - API Prediction:  http://127.0.0.1:5000/v2/predict (POST)")
+        print("   - Legacy homepage: http://127.0.0.1:5000/")
         
         print("\n[TOOLS] Development tools:")
-        print("   - Debug mode:      ON")
-        print("   - Auto-reload:     ON")
+        print(f"   - Debug mode:      {'ON' if debug_mode else 'OFF'}")
+        print(f"   - Auto-reload:     {'ON' if debug_mode else 'OFF'}")
         print("   - Console output:  Detailed logs")
         
         print("\n[NOTE] Quick test command:")
-        print('   curl -X POST http://127.0.0.1:5000/predict \\')
+        print('   curl -X POST http://127.0.0.1:5000/v2/predict \\')
         print('     -H "Content-Type: application/json" \\')
         print('     -d \'{')
         print('       "Hour": 14,')
-        print('       "Temperature(C)": 22.5,')
+        print('       "Temperature(°C)": 22.5,')
         print('       "Humidity(%)": 60,')
         print('       "Wind speed (m/s)": 2.5,')
         print('       "Visibility (10m)": 2000,')
-        print('       "Dew point temperature(C)": 10,')
+        print('       "Dew point temperature(°C)": 10,')
         print('       "Solar Radiation (MJ/m2)": 1.5,')
         print('       "Rainfall(mm)": 0,')
         print('       "Snowfall (cm)": 0,')
@@ -214,9 +220,9 @@ def main():
         print("="*70)
         print("Press Ctrl+C to stop the server\n")
 
-        open_browser()
         # Run the app
-        debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes')
+        if (not debug_mode) or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+            open_browser("http://127.0.0.1:5000/v2")
         app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=debug_mode)
         
     except Exception as e:

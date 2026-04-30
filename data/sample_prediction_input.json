@@ -1,17 +1,19 @@
 [
   {
     "Hour": 18,
-    "Temperature": 24.0,
-    "Humidity": 65,
+    "Temperature(°C)": 24.0,
+    "Humidity(%)": 65,
     "Wind speed (m/s)": 2.8,
     "Visibility (10m)": 2100,
+    "Dew point temperature(°C)": 16.5,
+    "Solar Radiation (MJ/m2)": 1.6,
     "Rainfall(mm)": 0.0,
     "Snowfall (cm)": 0.0,
-    "Solar Radiation (MJ/m2)": 1.6,
-    "Dew point temperature (°C)": 16.5,
-    "season": "winter",
-    "holiday": "No Holiday",
-    "functioning": "1",
+    "Seasons_Spring": 0,
+    "Seasons_Summer": 0,
+    "Seasons_Winter": 1,
+    "Holiday_No Holiday": 1,
+    "Functioning Day_Yes": 1,
     "day_of_week": 5
   }
 ]

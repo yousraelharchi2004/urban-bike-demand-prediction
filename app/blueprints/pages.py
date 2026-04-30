@@ -63,7 +63,8 @@ def api_status():
     """API status endpoint (JSON)."""
     state = get_state()
     try:
-        history = get_prediction_history()
+        # Use full history count (no default limit) for accurate status metrics.
+        history = get_prediction_history(limit=None)
     except (FileNotFoundError, json.JSONDecodeError):
         history = []
 
@@ -168,6 +169,34 @@ def list_models():
             **catalog['unified'],
         },
     }
+
+    # Override feature counts with loaded model metadata when available.
+    # This avoids collapsing all models to unified pipeline feature count.
+    state_model_keys = {
+        'original': 'original_model',
+        'improved': 'improved_model',
+        'advanced': 'advanced_model',
+        'xgboost': 'xgboost_model',
+        'lightgbm': 'lightgbm_model',
+        'stacking': 'stacking_model',
+    }
+    for model_key, state_key in state_model_keys.items():
+        model_obj = state.get(state_key)
+        if model_obj is None:
+            continue
+        feature_count = None
+        if hasattr(model_obj, 'feature_names_in_'):
+            try:
+                feature_count = len(list(model_obj.feature_names_in_))
+            except Exception:
+                feature_count = None
+        if feature_count is None and hasattr(model_obj, 'n_features_in_'):
+            try:
+                feature_count = int(model_obj.n_features_in_)
+            except Exception:
+                feature_count = None
+        if feature_count is not None and model_key in models:
+            models[model_key]['features'] = feature_count
 
     return jsonify({
         "success": True,

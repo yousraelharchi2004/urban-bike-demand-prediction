@@ -633,7 +633,7 @@ class LSTMTrainer:
         try:
             import tensorflow as tf
             from tensorflow.keras.models import Sequential
-            from tensorflow.keras.layers import LSTM, Dense, Dropout
+            from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
             from tensorflow.keras.callbacks import EarlyStopping
         except ImportError:
             print("[LSTM] TensorFlow not installed, skipping LSTM model")
@@ -648,13 +648,28 @@ class LSTMTrainer:
             for i in range(len(X) - seq_len):
                 Xs.append(X[i:i + seq_len])
                 ys.append(y[i + seq_len])
-            return np.array(Xs), np.array(ys)
+            return np.asarray(Xs, dtype=np.float32), np.asarray(ys, dtype=np.float32)
 
-        X_train_np = X_train.values if hasattr(X_train, 'values') else X_train
-        X_test_np = X_test.values if hasattr(X_test, 'values') else X_test
+        # Force numeric dtypes before TensorFlow; mixed pandas dtypes can become object arrays.
+        if hasattr(X_train, 'to_numpy'):
+            X_train_np = X_train.to_numpy(dtype=np.float32, copy=True)
+        else:
+            X_train_np = np.asarray(X_train, dtype=np.float32)
+        if hasattr(X_test, 'to_numpy'):
+            X_test_np = X_test.to_numpy(dtype=np.float32, copy=True)
+        else:
+            X_test_np = np.asarray(X_test, dtype=np.float32)
+        y_train_np = np.asarray(y_train, dtype=np.float32).reshape(-1)
+        y_test_np = np.asarray(y_test, dtype=np.float32).reshape(-1)
 
-        X_train_seq, y_train_seq = create_sequences(X_train_np, y_train, seq_len)
-        X_test_seq, y_test_seq = create_sequences(X_test_np, y_test, seq_len)
+        # Guard against NaN/Inf so model.fit does not crash.
+        X_train_np = np.nan_to_num(X_train_np, nan=0.0, posinf=0.0, neginf=0.0)
+        X_test_np = np.nan_to_num(X_test_np, nan=0.0, posinf=0.0, neginf=0.0)
+        y_train_np = np.nan_to_num(y_train_np, nan=0.0, posinf=0.0, neginf=0.0)
+        y_test_np = np.nan_to_num(y_test_np, nan=0.0, posinf=0.0, neginf=0.0)
+
+        X_train_seq, y_train_seq = create_sequences(X_train_np, y_train_np, seq_len)
+        X_test_seq, y_test_seq = create_sequences(X_test_np, y_test_np, seq_len)
 
         if len(X_train_seq) == 0 or len(X_test_seq) == 0:
             print("  [LSTM] Not enough data for sequences")
@@ -663,7 +678,8 @@ class LSTMTrainer:
         n_features = X_train_seq.shape[2]
 
         model = Sequential([
-            LSTM(64, input_shape=(seq_len, n_features), return_sequences=True),
+            Input(shape=(seq_len, n_features)),
+            LSTM(64, return_sequences=True),
             Dropout(0.2),
             LSTM(32),
             Dropout(0.2),

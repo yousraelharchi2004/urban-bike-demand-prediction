@@ -161,10 +161,12 @@ class AnalyticsDashboard {
         try {
             this.showNotification(`Loading feature importance for ${model}...`, 'info');
             await this.loadFeatureImportance(model);
+            await this.loadKPIs();
             if (this.charts.featureImportance) {
                 this.charts.featureImportance.destroy();
             }
             this.createFeatureImportanceChart();
+            this.updateUI();
             this.showNotification(`Feature importance updated to ${this.data.featureImportance?.source_model || model}`, 'success');
         } catch (error) {
             console.error('Feature model switch error:', error);
@@ -232,7 +234,7 @@ class AnalyticsDashboard {
 
     async loadKPIs() {
         try {
-            const queryParams = this.getTimeFilterQueryParams();
+            const queryParams = this.getTimeFilterQueryParams() + '&model=' + encodeURIComponent(this.currentFeatureModel);
             const kpisResponse = await fetch(`${this.baseUrl}/api/analytics/kpis?${queryParams}`);
             if (kpisResponse.ok) {
                 this.data.kpis = await kpisResponse.json();
@@ -526,6 +528,7 @@ class AnalyticsDashboard {
 
         // Create Feature Importance Chart
         this.createFeatureImportanceChart();
+            this.updateUI();
 
         // Create SHAP Importance Chart
         this.createShapImportanceChart();

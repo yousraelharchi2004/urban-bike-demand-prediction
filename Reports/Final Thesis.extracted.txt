@@ -1,0 +1,557 @@
+Chapter 1: Introduction
+Background and Motivation
+In big cities, bike-sharing is now part of everyday life. People use bikes to go for example to university, gym, work, or metro stations, especially for short trips. Because of that, the number of rented bikes changes a lot during the day, and managing this demand is not easy. If there are not enough bikes at the right time, users get frustrated. If there are too many, resources are wasted.
+What I noticed from this project is that bike demand is strongly linked to time and weather. Morning and evening hours are usually different from midday, and factors like rain, snow, and temperature can change demand quickly. This means simple planning based only on average values is often not enough.
+That’s why I chose to work on urban bike demand prediction project. My goal was to build a system that can learn from historical data and make realistic predictions for future demand using machine learning models and compared several approaches to find which one works better. I also wanted this project to be practical, not only theoretical, so I integrated the model into a web application with prediction and analytics features.
+The motivation behind this work is both technical and practical. So technically, it helped me apply what learned about preprocessing, feature engineering, model evaluation, and deployment. Then practically, this kind of system can support better decisions in bike-sharing operations and improve service quality for users in urban areas.
+Problem Statement
+Urban bike rental demand is difficult to estimate accurately because it changes continuously with time and environmental conditions. In practice, demand can increase sharply during rush hours and drop during unfavorable weather such as rain or snow. This variability creates a planning challenge for bike-sharing services.
+The main problem is that traditional estimation methods, such as fixed schedules or average-based assumptions, are not flexible enough to capture these fluctuations. As a result, operators may face two common issues: bike shortages in high-demand periods and bike oversupply in low-demand periods. Both situations reduce service efficiency and user satisfaction.
+From a technical perspective, predicting bike demand is also challenging because many input factors interact with each other, including hour, season, temperature, humidity, wind speed, visibility, rainfall, snowfall, holiday status, and functioning day. These relationships are nonlinear and cannot be modeled well with very simple approaches.
+Therefore, this project addresses the following core problem: how to design and implement a reliable machine-learning-based system that predicts urban bike rental demand with good accuracy and can be used in a practical application environment. The system should not only produce accurate predictions, but also be structured in a way that supports evaluation, comparison of models, and deployment through a usable web interface.
+Research Objectives
+The main objective of this project is to build a practical and accurate system for predicting urban
+Bike rental demand using historical and contextual data.
+To achieve this, the project defines the following specific objectives:
+Prepare and analyze the bike rental dataset to ensure data quality and consistency before modeling.
+Design a feature set that captures demand behavior, including time-based, weather-based, and operational factors.
+Train and compare multiple machine learning models to identify the most suitable approach for demand prediction.
+Evaluate model performance using clear metrics to measure prediction quality and model reliability.
+Develop an end-to-end prediction workflow that can be reused, updated, and maintained more easily.
+Integrate the selected model into a web-based application that supports prediction requests and analytics visualization.
+Provide a complete project output that combines model performance with practical usability for real-world urban mobility scenarios.
+Scope of the Project
+This project focuses on predicting hourly urban bike rental demand using supervised machine learning.  The work is based on historical bike sharing data and related contextual variables such as time, weather, season, holiday, and operating-day information. The scope includes the full workflow from data preparation and feature engineering to model training, evaluation, and deployment in a web application.
+On the implementation side, the project covers model comparison across several algorithms and selects the best performing approach based on objective evaluation metrics. It also includes practical system integration, where the trained model is connected to API endpoints and dashboard features for prediction and analytics.
+At the same time, some areas are outside the scope of this work. The project doesn’t include live sensor streaming, city-wide bike redistribution optimization or integration with external transportation platforms. It also doesn’t aim to build a nationwide multicity forecasting framework.
+The focus remains on creating a reliable, deployable and academically solid prediction system for a defined urban bike demand use case.
+Project Contributions
+This project makes several concrete contributions at both technical and application levels.
+First, it develops a complete prediction pipeline for urban bike demand, starting from raw data and ending with deployable model artifacts. Instead of treating modeling as an isolated task, the project connects preprocessing, feature engineering, training, evaluation and inference in one consistent workflow.
+Second, it provides a comparative study of different machine learning models for the same prediction task. By evaluating multiple approaches under the same experimental setup, the project identifies a stronger model choice and gives clear evidence for that selection.
+Third, the work improves practical reliability by using a structured training strategy that reduces common modeling issues such as data leakage and inconsistent feature handling between training and inference stages.
+Fourth, the project moves beyond offline experiments by implementing a usable web based system. The final system supports prediction requests, model comparison, analytics endpoints, and history tracking, which makes the output useful for real operational scenarios.
+Finally, this thesis contributes a reproducible project structure that can be extended in future work, including adding new data sources, testing additional forecasting methods or adapting the solution to other smart city mobility contexts.
+Thesis Organization
+This thesis is organized into six chapters.
+Chapter 1 introduces the project context, defines the problem, presents the research objectives, explains the project scope, and summarizes the main contributions.
+Chapter 2 reviews related work on bike demand forecasting, including statistical and machine learning approaches, common feature engineering strategies and evaluation practices used in previous studies.
+Chapter 3 describes the dataset and methodology adopted in this work. It explains data preparation, feature construction, model development and the experimental setup used for training and validation.
+Chapter 4 presents the system design and implementation. It details the application architecture, model integration process, API and dashboard components, and deployment oriented structure.
+Chapter 5 reports the experimental results and discusses model performance, comparative findings and practical interpretation of the outputs.
+Chapter 6 concludes the thesis by summarizing the key outcomes, discussing limitations and proposing directions for future improvements.
+Chapter 2: Literature Review
+Urban Bike Sharing Demand Forecasting
+The meaning of the urban bike sharing demand forecasting is estimating how many bikes people will rent at a specific time and place. This is important for bike operators because demand changes a lot during the day because of a lot of factors. For example, demand is usually high during morning and evening commuting hours and lower late at night. If the prediction is wrong, some stations can become empty while others stay full.
+In the most cities like Hangzhou, bike demand is affected by many factors. Time related factors are very important, such as hour of day, day of week, weekend, and season. Weather is also an important key factor. Temperature, rain, snow, humidity and wind can increase or reduce the number of rentals. Special days like holidays can also change normal travel behavior.
+Earlier forecasting methods often used statistical models with limited variables. These methods were useful, but they had difficulty capturing complex and nonlinear patterns in real data. As bike sharing systems grew and more data became available, machine learning methods became more common. These models can learn stronger patterns between input features and rental demand.
+Today, urban bike demand forecasting isn’t only a research topic but also an operational need. Good forecasts help with bike rebalancing, staff planning and user satisfaction. In this document, forecasting is treated as a practical problem: build models that are accurate, compare them clearly, and integrate them into a usable system for real prediction tasks.
+Traditional Statistical Approaches
+Before machine learning became popular, demand prediction was mostly done with traditional statistical methods. The common idea was simple: use past values to estimate future values. These methods were easier to explain, and they didn’t require very high computing resources.
+One known family is time series models, such as AR (Auto Regressive), MA (Moving Average), ARMA (Auto Regressive Moving Average), and ARIMA (Auto Regressive Integrated Moving Average).
+They focus on trends and repeated patterns over time. If bike demand follows a stable rhythm, these models can give acceptable results.
+Another approach is regression models, especially linear regression. In this case, demand is modeled as a function of input variables like temperature, humidity, hour, and rainfall. This method is useful for understanding which variables have positive or negative effects. But in real bike sharing data, many relationships are not linear, so performance can drop.
+Some studies also use seasonal statistical models to include weekly and monthly behavior. This helps because bike usage on Monday morning is very different from Sunday night. Seasonal decomposition can improve results, but it still depends on assumptions that may not always fit real urban mobility data. 
+In general, traditional statistical approaches were important as a first step in demand forecasting. They are interpretable and good for baseline comparison. However, when data becomes complex and includes many interacting factors, these models may not be enough by themselves.
+Table 2.1: Summary of Traditional Statistical Approaches for Bike Demand Forecasting
+Method
+Main Idea
+Strengths
+Limitations
+Use In Bike Demand Forecasting
+AR 
+Predicts current demand using previous demand values
+Simple and easy to interpret
+Works poorly when patterns are complex or non-stationary
+Useful when bike demand depends strongly on recent past values
+MA 
+Predicts demand using past forecast errors
+Capture short-term random variation
+Limited ability to model trend or external factors 
+Can be used for short-term smoothing of bike demand series
+ARMA 
+Combines AR and MA to model past values and past errors together
+More flexible than AR or MA alone
+Requires stationary data and cannot handle trend directly
+Suitable for stable bike demand series without strong non-stationary behavior
+ARIMA 
+Extends ARMA by adding differencing to handle trend and non stationarity
+Widely used and effective for time series forecasting
+Struggles with complex non- linear relationships and many external variables 
+Common baseline model for forecasting hourly bike rental demand
+Linear Regression
+Models demand as a linear function of input variables such as temperature, humidity and rainfall
+Easy to implement and explain variable effects clearly
+Cannot capture non-linear relationships well
+Useful for understanding how weather and time variables affect bike demand
+Seasonal Statistical Models / Seasonal Decomposition
+Separates demand into trend, seasonality and residual components
+Helps represent repeated weekly or monthly behavior 
+Depends on assumptions that may not match real world data
+Useful for identifying recurring seasonal patterns in bike usage
+Machine Learning Approaches
+Machine Learning approaches became very common in bike demand forecasting because they can learn complex patterns from data.
+A simple and widely used model is Decision tree; a model that predicts by asking a sequence of if-then questions. It splits data into rules, so it is easy to understand, but it can overfit if not controlled. Random Forest improves this by combining many trees, which usually gives more stable predictions. It is one of the most used models in this problem because it balances performance and robustness.
+Gradient boosting models, like XGBoost and LightGBM are also popular. They often achieve high accuracy because they build trees step by step and focus on reducing previous errors. In many studies, these models better than basic models, especially when feature engineering is done carefully.
+Another direction is ensemble learning, where several models are combined. For example, stacking uses predictions from multiple base models and train a final model to produce the output. This can improve results because different models capture different patterns.
+Machine Learning methods are powerful, but they still depend on data quality, feature design and evaluation strategy. If preprocessing is weak or data leakage happens, results can look good but fail in real use. So, model choice alone isn’t enough; the full pipeline matters.
+Table 2.2: Summary of Machine Learning Approaches and Their Role in This Project
+Method
+Main idea
+Strengths 
+Limitations 
+Role in my project
+Decision tree
+It predicts demand by splitting data into a sequence of if-then rules based on feature values 
+Easy to understand, simple to interpret, and useful for explaining decision logic
+Can over fit easily and is usually less stable than ensemble tree methods
+Discussed as a basic machine learning method, but not used as a standalone final model
+Random forest
+Combines many decision trees and average their predictions to improve stability 
+Robust, handles non-linear relationships well and performs strongly on structured tabular data
+Less interpretable than a single tree and can be heavier than simpler models
+Used as an important baseline and comparison model
+XGBoost
+It builds boosted trees sequentially,  where each new tree focuses on correcting previous errors
+High predictive accuracy, strong performance with engineered features and effective for complex patterns
+Requires tuning and is more complex than simpler models
+Used as one of the main compared models 
+LightGBM
+Gradient boosting method designed for efficient and fast tree based learning
+Fast training, efficient resource usage, and strong predictive performance
+Sensitive to parameter settings and data quality if not tuned carefully
+Used as one of the best compared models 
+Stacking 
+Combines predictions from several base models using a final meta model 
+It improves generalization by combining strengths of different models
+More complex to build and validate and deploy correctly 
+Used as the ensemble approach and selected as the best model 
+Ensemble and Time-Series Methods
+In bike demand prediction, one model isn’t always enough using different models learn different parts of the data. Because of that, many studies use ensemble methods to improve stability and accuracy.
+Ensemble learning means combining outputs from multiple models instead of depending on one model only. A simple example is averaging predictions. A more advanced approach is stacking, where several base models are trained first, then a final model learns how to combine their outputs. This usually gives better generalization, especially when demand patterns are complex.
+For bike sharing data, ensemble methods are useful because demand is affected by many interacting factors. Tree based models may capture non-linear effects, while other models may capture smoother trends. When they are combined, prediction error can decrease. 
+Time-series methods are also important in this domain. Since bike demand is ordered by time, validation should respect chronology. If random split is used, future information may leak into training and results become too optimistic. That is why time-aware splitting methods are preferred in serious forecasting work.
+Some recent systems combine both ideas: they train strong machine learning models and evaluate them with time-series protocols. This gives a better balance between high accuracy and realistic testing conditions. In practical deployment, this approach is more reliable for real future predictions than standard random evaluation.
+Feature Engineering in Demand Prediction
+Feature engineering is an important step in bike demand forecasting because raw variables don’t always represent demand patterns clearly. In many studies, researchers create additional variables from the original dataset to help models capture hidden relationships more effectively. This is especially important in bike sharing data, where demand is influenced by a lot of factors.
+A common group of engineered features in the literature is time based features. Since bike demand changes across the day, week and season, many works create variables that describe hourly cycles, weekday and weekend differences and seasonal effects. These features help models represent repeated mobility patterns more clearly.
+Another common approach is to build features related to commuting behavior. In urban areas, bike rentals often increase during morning and evening rush hours. Because of this, some studies include peak hour indicators or similar variables to capture periods of higher demand intensity.
+Weather based feature engineering is also widely used in related work. Researchers often combine weather variables to describe comfort or riding conditions more realistically. For example, the effect of temperature may depend on humidity, rainfall or snowfall. These interaction features can improve model performance because they reflect how users respond to actual outdoor conditions.
+In forecasting tasks, some studies also create lag and rolling features from previous demand values. These variables are useful because current bike usage is often related to recent or weekly demand history. When they are constructed carefully, they help models capture short term memory and recurring temporal behavior.
+Overall, related work shows that feature engineering plays an important role in improving prediction quality. It helps transform raw bike sharing data into a more informative representation, which allows forecasting models to learn demand patterns more effectively.
+Evaluation Metrics in Related Work
+In previous studies about bike demand forecasting, researchers usually don’t evaluate models only by looking at prediction values directly. They use evaluation metrics to measure how close the predicted demand is to the real demand. This is important because two models may both look good, but one of them can still make larger errors in practice. For this reason, most related works use standard regression metrics to compare performance in a clearer and more objective way.
+One of the most common metrics in the literature is R² or the coefficient of determination. This metric shows how much of the variation in the target variable can be explained by the model. In simple words, it helps show whether the model is learning the general demand pattern or not. A value closer to 1 usually means better performance. Many papers use R² because it gives a quick idea about the overall fitting quality of the model. Still, R² alone isn’t enough, because it doesn’t show the real size of the prediction errors.
+Another metric that appears a lot in related work is RMSE, which means Root mean Squared Error. RMSE measures the average prediction because a model may sometimes make very big errors during rush hours or unusual weather conditions. In that case, RMSE can reflect the problem more clearly than some other metrics. Because of that, many forecasting studies consider RMSE as one of the main metrics for model comparison.
+A third common metric is MAE, or Mean Absolute Error. MAE calculates the average of the absolute difference between predicted and real values. It is simpler to understand because it directly shows the average size of the error in the same unit as the target variable, which in this case is the number of rented bikes. For example, if the MAE is 100, it means the model is wrong by about 100 bikes on average. Many authors prefer MAE because it is easier to explain and is less affected by very large outliers than RMSE.
+Some related works also use MAPE, which stands for Mean Absolute Percentage Error. This metric shows the error in percentage form, so it can be helpful when comparing models across different datasets or scales. However, in bike rental demand prediction, MAPE can become less reliable when the real demand is very low or equal to zero. Since the Seoul bike dataset contains some low-demand periods, especially at night, percentage-based metrics aren’t always the best metric by themselves. Because of this, many studies use MAPE only as a secondary metric, not the only one. 
+In general, related work shows that no single metric is enough to judge a forecasting model completely. A model can have a good R² value but still produce large errors in some critical hours. In the same way, a low MAE doesn’t always mean the model is strong in handling extreme demand changes. That is why many previous studies report several metrics together, usually a combination of R², RMSE, and MAE, and sometimes MAPE too. This gives a more balanced view of model quality.
+In my project, the same idea was followed. The main evaluation metrics used for comparing models were R², RMSE, and MAE, since these are also the most common metrics found in related work. They are useful because they show different sides of model performance. R² gives an overall view of fit, RMSE highlights larger mistakes, and MAE gives a direct average error value. Using these metrics together makes the comparison more meaningful and helps choose the best model in a more reliable way.
+Research Gap and Positioning of This Work
+From the related work, it can be seen that many studies have already tried to predict bike sharing demand by using statistical methods, ML methods and sometimes ensemble methods. A lot of them show good results, especially when weather and time variables are included. Some studies focus more on model accuracy, while others focus on time series behavior or feature engineering. This means the topic isn’t new, but there are still some practical gaps in low these systems are designed and used.
+One gap is that many previous works give more attention to the model itself than to the full prediction pipeline. In some papers, the model training part is explained well, but preprocessing, applications, this can become a problem. A model may perform well during experiments, but if the training features and prediction time features aren’t handled in the same way, the system may become unreliable. So, the gap isn’t only about getting a strong model, but also about making the whole workflow correct and usable.
+Another gap found in related work is the issue of the data leakage or unrealistic evaluation. Some prediction studies still use random train-test split even when the data is ordered by time. For forecasting tasks, this can give results that look better than reality, because information from future periods may indirectly affect the training stage. In bike demand prediction, this is important because demand changes with time and season. If the evaluation method isn’t time-aware, the reported performance may not reflect real future prediction quality.
+There is also a gap between research results and practical implementation. Many studies step at model comparison and final metric tables. They don’t continue to build a usable application where the model can actually be tested by users, connected to APIs, or integrated into a dashboard. Because of that, some research gives good theoretical results, but less attention to how the prediction system can  be used in practice. For a project like urban bike demand prediction, practical deployment is also important, not only offline model performance.
+This work is positioned to address these gaps in a more complete way. First, it doesn’t only compare models, but also uses a unified pipeline for preprocessing, features engineering, training, evaluation, and artifact management. Second, it uses a time-based split and lag features created carefully to reduce leakage problems. Third, it goes beyond training by integrating the prediction system into a flask web application with prediction routes, analytics pages, and model-related endpoints. In this way, the work is positioned between academic model comparison and practical system implementation.
+The project also focuses on combining several strengths together instead of looking at only one side of the problem. It uses the Seoul bike dataset with real weather and time-related inputs, applied engineered features, compares multiple machine learning approaches, and keep the final solution deployable. So the contribution of this work isn’t that it invents a completely new forecasting method, but that it builds a more complete and reliable prediction system for the bike demand use case. This is where the project stands in relation to the previous studies.
+Chapter 3: Data and Methodology
+Dataset Description 
+About my project uses the Seoul Bike Sharing Demand dataset to predict the number of rented bikes for each hour. The dataset contains historical bike rental records together with weather and calendar related information. It is suitable for this problem because bike demand doesn’t depend on one factor only. It changes with time, weather factors and seasonal conditions.
+The dataset used in this work contains 8760 rows and 14 columns. It covers the period from 1 December 2017 to 30 November 2018, with one record for each hour. The target variable is Rented Bike Count, which represents the number of bikes rented in that hour. This makes the task a supervised regression problem, since the goal is to predict a continuous numerical value.
+The input features include both environmental and temporal variables. The main weather related variables are temperature, humidity, wind speed, visibility, dew point temperature, solar radiation, rainfall, and snowfall. The dataset also includes time and operational variables such as hour, season, holiday, and functioning day. These features are important because bike rental demand is strongly affected by daily activity patterns and by weather comfort.
+One useful point about this dataset is that it contains real hourly observations instead of simulated data. Because of that, it reflects practical changes in urban mobility more realistically. For example, demand may increase during commuting hours, decrease late at night, and drop during rain or snow. This makes the dataset appropriate for training and evaluating prediction models for real world use.
+Before modeling, the dataset must be prepared carefully. Some variables are already numerical, while others are categorical and need suitable encoding. In addition, because the data is ordered by time, the methodology must respect chronology during training and testing. This is important to make evaluation more realistic and to reduce the risk of data leakage.
+Overall, the dataset provides a strong base for the project. It includes enough observations, relevant features and realistic demand behavior to support feature engineering, model comparison and deployment in practical bike demand prediction system.
+Data Preprocessing
+Before training the models, the dataset was prepared carefully to make it suitable for machine learning. Raw data cannot always be used directly because some columns need to be converted, some patterns need to be organized, and the input format must stay consistent from training to prediction time. For this reason, preprocessing was an important part of the methodology.
+The first step was to inspect the dataset structure and check the type of each variable. The target variable was Rented Bike Count, while the remaining columns were treated as input features. Numerical variables such as temperature, humidity, wind speed, visibility, rainfall and snowfall were kept in numerical form. At the same time, categorical information such as season, holiday and functioning day to be transformed into a format that models could use.
+Another important step was the handling of date and time information. Since the dataset contains hourly records, time isn’t just an identifier; it is part of the demand pattern itself. The hour column was kept as an important predictor, and the data order was preserved to respect chronology. This was necessary because the project deals with forecasting behavior, so future observations shouldn’t influence past training data. 
+Categorical variables were encoded into machine readable form. Instead of keeping text values directly, they were converted into separate indicator variables. This helped the models use seasonal and operational information more effectively. For example, season related categories were represented in a structured way so that the algorithms could learn how bike demand changes across the year. 
+The preprocessing stag also made sure that the training pipeline and the prediction pipeline remained aligned. This is very important in practical system; if the model is trained on one feature format and receives a different format during prediction, the output may become unreliable. For that reason, the project followed a more consistent preprocessing flow before model evaluation and deployment.
+Finally, the dataset was split in a time aware way instead of using a fully random split. This choice was made to reduce data leakage and to make testing closer to real future prediction. In this way, preprocessing wasn’t only a cleaning step, but also a way to improve reliability and make the whole system more realistic.
+Feature Engineering Strategy
+In this project, feature engineering was used to make the input data more suitable for model training. The original dataset already contained useful variables, but some demand patterns were not represented clearly enough in their raw form. Because of that, new features were created inside the pipeline to improve how the models learn from time, weather and past demand behavior.
+The first part of the strategy focused on time representation. Since bike rentals follow repeated daily and weekly patters, time couldn’t be treated as a simple linear value only. To handle this, cyclic features such as hour_sin and hour_cos were generated, together with hour_squared. Additional calendar based variables such as month, month_sin, month_cos, day_of_week, dow_sin, dow_cos and is_weekend were also included to help the models capture weekly and seasonal variation more effectively.
+ The second part of the strategy focused on demand intensity during specific periods of the day. In urban mobility data. Demand often rises during commuting hours and becomes lower during off peak periods. To represent this behavior more directly, features such as is_peak_hour and rush_hour intensity were added. These variables helped the models distinguish ordinary hours from time periods were bike usage is usually higher.
+Weather interaction was another important part of the strategy. Instead of using only the original weather variables separately, the pipeline also created features that describe combined effects. Examples include temp_hour, temp_humidity and confort_index. A binary indicator for precipitation was also used to represent whether rainfall or snowfall was present. These engineered variables were useful because bike demand is often affected by overall riding conditions, not by one weather factor alone.
+A more advanced part of the feature engineering strategy was the use of historical demand features. The pipeline generated lag and rolling variables such as demand_lag_24h, demand_lag168H, demand_rolling_3h_mean and demand_rolling_24_mean. These features were included to capture short term and weekly demand memory. Since the task is forecasting, they were created carefully with time aware shifting so that future values didn’t leak into the training process.
+Finally, categorical variables were transformed into model friendly form using indicator encoding. This allowed seasonal and operational information to be represented in a way that ML models could use directly.
+Overall, the feature engineering strategy was designed to strengthen the predictive information available to the models. It combined raw variables with engineered time, weather and lag based features so that the final models could capture demand patterns more accurately and more reliably.
+Training/Validation Split and Experimental Protocol
+In my project, the dataset was split by time and not randomly. I used this choice because bike rental demand is a time dependent problem. The demand at one hour is related to what happened before it, so keeping the order of the records is important. If the rows are mixed randomly, the model may learn from future Information in an unrealistic way.
+Before the split, the dataset was arranged in chronological order using the date and hour fields. After that the first 80% of the observations were used for training and the last 20% were used for testing. According to the project pipeline, this produced 7008 training samples and 1752 test samples. This same split was kept for all main experiments in order to make the comparison between models fair.
+I preferred this method because the goal wasn’t only to get a good score, but also to simulate a real use case. In practice, a bike sharing system only has access to past data when making a forecast. So the evaluation should follow the same logic.
+Inside the training phase, validation was done with TimeSeriesSplit using 5 splits. This method creates several training and validation windows while preserving the temporal sequence. The model is first trained on an earlier part of the data and then validated on the next part. Then the training window becomes larger and the process repeats. This is more suitable than normal across validation for a forecasting problem.
+Another point that needed attention was data leakage. In this project, scaling was applied only after the training and test sets were separated. The scaler was fitted on the training data and then used to transform the test data. This step is important because fitting preprocessing tools on the full dataset can allow information from the test set to influence the training process.
+The same idea was followed when creating lag and rolling features. Features such as previous demand values and rolling averages were calculated from earlier observations only. Future bike demand values weren’t used when constructing these variables. This helped keep the experiment more realistic and avoided giving the model hidden information.
+For the experiments, seven models were trained under the same protocol like RF, XGBoost, LightGBM and the Stacking Ensemble. They all used the same training portion, the same test portion and the same evaluation logic. Because of this, the performance differences between models can be interpreted more clearly. Model performance was mainly measured using R², RMSE, and MAE.
+At the end of the protocol, the models were compared on the held out test set. Based on the recorded results in the unified pipeline so the stacking ensemble was selected as the final deployed model.
+Overall, the experimental protocol was designed to be simple but reliable. The main idea was to evaluate the models in a way that gives attractive numbers.
+Table 3.1: Performance Comparison of All Implemented Bike Demand Prediction Models (R², RMSE, MAE)
+Model 
+R² 
+Accuracy (%) 
+RMSE
+MAE
+Original (RF baseline)
+0.8455
+84.6
+241.08
+169.77
+Improved (engineered)
+0.9345
+93.5
+156.97
+102.24
+Advanced RF 
+0.9406
+94.1
+149.53
+100.02
+XGBoost
+0.9406
+94.1
+149.53
+100.02
+LightGBM
+0.9363
+93.6
+154.83
+104.68
+Stacking Ensemble
+0.9444
+94.4
+144.66
+96.53
+Unified Pipeline Ensemble
+0.9444
+94.4
+144.66
+96.53
+Models Implemented
+In my project, several ML models were implemented in order to predict bike rental demand and compare their performance under the same general workflow. The idea wasn’t to depend on one model from the beginning, but to test different approaches and understand how each one behaves with the same dataset.
+The following subsections present the main models that were implemented and integrated into the application. Each model is briefly described in terms of its role in the project, its main characteristics, and why it was included in the experimental comparison.
+Random Forest (Baseline)
+The first model used was the baseline RF model. I selected it as a starting point because RF is well-known ML algorithm that is often used for regression tasks. It is also easier to understand compared with more complex boosting or ensemble methods, so it was a good reference model for the beginning of the experiments.
+This baseline version was trained with a smaller and more direct set of input features. In my project, it used 14 features, mainly based on hour, weather conditions, season indicators, holiday status and functioning day. The goal of the model was to give a simple but solid benchmark before moving to models with more feature engineering.
+RF works by combining many decision trees. Each tree makes its own prediction, and then the final output is obtained by averaging the predictions of all trees. Because of this, the model is usually more stable than a single decision tree and less sensitive to noise in the data.
+One reason I kept this model is that it gives a clear baseline for comparison. If a more advanced model doesn’t perform better than the baseline, then the additional complexity isn’t really justified. So this model was important not only for prediction, but also for evaluating whether the later improvements were actually useful. 
+In the web applications, it appears as Random Forest (baseline). It represents the original version of the prediction model before adding richer engineered features and more advanced ensemble strategies.
+Its performance was lower than the best models used later, but it still played an important role in the experimental process. It showed that the problem can already the modeled reasonably well with a simple feature set, while also making it easier to measure the benefit of improved and advanced approaches.
+Improved Random Forest
+After building the previous model, I developed an improved version in order to get better prediction results. The main idea wasn’t to completely change the algorithm, but to improve the input representation given to the model. Instead of relying only on the original basic variables, this version used engineered features that could describe the demand pattern in a richer way.
+The improved RF still belongs to the same model family, but it was trained with more features than the baseline version. In the application, this model uses 38 features. These features include not only the basic weather and time variables, but also extra information derived from them, such as interaction terms and time related features. This helped the model capture relationships that weren’t clearly visible in the original input set.
+I considered it as an intermediate step between the simple baseline and the more advanced models. It was useful because it allowed me to test whether feature engineering alone could improve performance, even before moving to other algorithms.
+The reason for keeping the same RF algorithm was practical. Since the baseline model was already working, changing the features while keeping the learning method mostly the same made it easier to understand where the improvement was coming from. In this case, the difference was mainly due to better feature design, not because of a completely different model structure.
+In the web, this model appears as Improved RF (engineered). This name reflects the fact that the model is still a RF, but it uses engineered features instead of only the original variables.
+Compared with the baseline random forest, the improved version achieved better performance. This shows that feature engineering had a positive effect on the prediction task. Even if it wasn’t the final best model, it was an important stage because it demonstrated that the quality of the input features can strongly affect the final prediction accuracy.
+Advanced Random Forest
+The advanced RF model was developed after the previous model in order to explore a richer feature space and capture more complex patterns in bike rental demand. In this stage, the goal wasn’t only to add a few extra variables, but to build a model with a wider set of engineered features that could better describe the effects of tile, weather and their interactions.
+This model used 36 features. These features included the main original variables together with additional transformed and derived variables. For example, the feature space was extended with time based indicators, interaction terms, seasonal encoding and other engineered inputs that could help the model represent demand changes more effectively.
+Compared with the previous RF versions, this model was more advanced in terms of feature design. It was still based on the Random Forest algorithm, but worked with a more detailed input structure. Because of this, it was expected to perform better than the baseline model and to compete more strongly with boosting methods.
+I included this model because I wanted to see how far the Random Forest family could go before switching to other algorithms. In other words, it was useful to test whether a well prepared random forest with stronger features and acts as stronger tree based model than the baseline and improved RF variants.
+Its results were clearly better than the basic RF and also better than the improved version. This shows that expanding the feature space had a positive effect on prediction quality. Even if another model later achieved the best final result, the Advanced Random was still an important part of the project because it proved that careful engineering can significantly improve model performance.
+XGBoost
+XGBoost was one of the strongest models used in my project. After testing different RF versions, I wanted to include a boosting model that could learn more complex relationships and possibly give better prediction accuracy. XGBoost was selected because it is widely used in prediction problems and is known for string performance on structured tabular data.
+Unlike RF, which combines many trees in parallel, XGBoost builds trees step by step. Each new tree tries to correct the mistakes made by the previous ones. Because of this learning process, the model can often capture patterns in the data more effectively, especially when the relationship between features and target isn’t simple.
+In this project, XGBoost used the advanced feature set. In the application, it appears with 36 features. These features include the main weather and time variables together with engineered inputs that help describe hourly demand behavior in a more detailed way.
+I included XGBoost in the comparison because I expected it to perform better than the standard tree based models. Since bike rental demand depends on many factors at the same time, a stronger boosting model was a good choice for testing whether the prediction quality could be improved further.
+In the web application, this model appears simply as XGBoost. It is presented as a gradient boosting model using the advanced feature set.
+The results of this model were among the best. Its prediction accuracy was much higher than the baseline model and also better than several other individual models. This confirmed that XGBoost was a very suitable method for this demand prediction task.
+Another important point is that this model performed well without needing a completely different project structure. It could be integrated into the same general pipeline and compared under the same experimental conditions. That’s way it became one of the key models in the final comparison.
+LightGBM
+LightGBM was another boosting model included. I added it because it is known for being efficient and fast, especially when working with structured datasets. It was useful as another strong model for comparison.
+LightGBM is based on gradient boosting. It builds trees step by step and tries to reduce the errors made by earlier trees. This difference is that LightGBM is designed to train more efficiently, which can be helpful when the feature space becomes larger or when many experiments are needed.
+In my project, it used the advanced feature set and worked with 36 features in the application. These features included original variables such as hour and weather conditions, together with engineered variables that were created to better describe demand patterns.
+I used this model to see whether a faster boosting framework could still produce strong prediction results on the bike demand problem. It was important to test not only accuracy, but also how different algorithms behave when they use a similar feature design.
+In the application, it appears as LightGBM, it’s described as a LightGBM regressor with advanced features.
+Its performance was better than the basic baseline model, but it wasn’t the strongest model in the final comparison. Even so, it remained useful because it provided another meaningful reference point between simpler Random Forest models and the best performing ensemble methods.
+Including LightGBM made the model comparison more complete. It showed that even among boosting models, the results can still be different depending on how the algorithm learns from the data and how well it fits the structure of the prediction task.
+Stacking Ensemble
+The stacking Ensemble model was included to combine the strengths of several individual models. Instead of depending on only one algorithm, stacking tries to improve prediction by using multiple models together. This idea was useful because different models can capture different patterns in bike rental demand.
+In general, a stacking model works in two levels. First, several base models make predictions from the same input data. Then, another model uses these prediction outputs to produce the final result. In this way, the ensemble doesn’t rely on one model alone, but learns how to benefit from the behavior of several models at the same time.
+In my project, the stacking ensemble was built over the advanced model family. According to the project artifacts, it combined strong boosting models such as XGBoost, LightGBM and Gradient Boosting. This made it a more advanced solution than using one single model separately.
+I added tis model because I wanted to test whether combining models could improve overall prediction quality. Sometimes one model performs better in certain situations while another model performs better in different ones. Be combining them the final system may become more stable and more accurate.
+In the web application, this model appears as Stacking Ensemble. It is presented as a stacked ensemble over the advanced model family.
+Its performance was strong and competitive compared with the other standalone models. Even if it wasn’t always the easiest model to explain, it was important because it represented the ensemble learning approach and helped show how combining models can improve prediction results.
+It also played an important role in the path toward the final deployed solution. It showed that ensemble methods were suitable for this problem and helped support the decision to use an even stronger final pipeline model later in the project.
+Unified pipeline Ensemble
+The Unified Pipeline Ensemble was the final and most complete model setup used in this project. It was not only a prediction model, but a full pipeline that organized preprocessing, feature preparation, scaling, model loading and final prediction in one consistent workflow. I included this approach because I wanted the final system to be more reliable and easier to deploy, not only accurate.
+In the earlier stages, several models were trained and tested separately. That was useful for comparison, but for the final application I needed I cleaner structure. The unified pipeline solved this problem by bringing the main steps into one controlled process. This helped reduce confusion between different model versions and made the final deployment more practical.
+This pipeline uses 35 features in the application. It includes the main weather and time variables, engineered features and additional lag based demand information. Another important point is that this version was designed to be leakage safe; the training and preprocessing steps were organized carefully so that future information wasn’t accidentally used during model learning.
+In the web, this model appears as Unified Pipeline Ensemble. It is presented as the final deployable version of the system, and it achieved the best recorded performance among the available models.
+One reason this model is important is that it reflects the real final outcome of the project. The goal of the thesis wasn’t just to train many separate models, but to build a complete prediction system that could be used in practice. The unified pipeline represents that final stage because it connects model training results with application deployment.
+Its results were the strongest in the project, with the highest accuracy and the lowest error among the models shown in the application. This is why it became the preferred model for the final system.
+Compared with the earlier standalone models, this pipeline is more than just another algorithm. It is a structured prediction solution that combines model performance with better organization, safer preprocessing and easier reuse inside the web. Because of that, it can be considered the final production oriented model of my project.
+Table 3.1 : Summary of models 
+Model 
+App Name
+Feature Count
+Model Family
+Main Purpose
+Baseline RF
+Random Forest (baseline)
+14
+Random Forest
+Baseline reference model
+Improved RF
+Improved RF (engineered)
+38
+Random Forest
+Evaluate effect of engineered features
+Advanced RF
+Advanced RF
+36
+Random Forest
+Stronger RF with expanded feature space
+XGBoost
+XGBoost
+36
+Gradient Boosting
+High performance boosted model
+LightGBM
+LightGBM
+36
+Gradient Boosting
+Efficient boosting based prediction
+Stacking Ensemble
+Stacking Ensemble
+36
+Ensemble
+Combine multiple advanced models 
+Unified Pipeline Ensemble
+Unified Pipeline Ensemble
+35
+Pipeline Ensemble
+Final deployable leakage safe model
+Chapter4: System Design and Implementation
+Overall System Architecture
+The overall architecture of my project was designed to connect the machine learning part with a usable web application. The main idea wasn’t only to train a model for bike demand prediction, but also to make the prediction process accessible through a practical system. For that reason, the project combines trained model artifacts, backend login, frontend pages and supporting files in one complete workflow.
+At the center of the system is he prediction engine. The app receives user input; this input is then passed to the backend, where it’s checked, normalized and prepared is the correct format before being sent the model. After that, the selected model generates the predicted bike demand and the result is returned to the user through the web interface or API response.
+The backend of the system is implemented using flask. It’s responsible for handling requests, loading the trained models, preprocessing input values, generating predictions and managing analytics related operations. To keep the app organized, the backend is separated into multiple modules such as blueprints, services, utility functions and model loaders. This structure makes the project easier to understand and easier to maintain when new features are added.
+Another important part of the architecture is the model artifact layer. Instead of the retraining models each time the app runs, the trained models and their related files are saved and loaded when needed. These files include the serialized models, scaler, feature names, metrics and pipeline configuration. This approach improves efficiency and allows the deployed application to use the sale artifacts produced during the training phase.
+The frontend part of the system provides the user facing side of the application. It includes pages for predictor interface, analytics dashboard, API Status page and Test Suite page. These pages interact with the backend through defined routed, which means the user can enter data, request predictions and view analysis results without directly dealing with the internal code or model files.
+In a general flow, the system works as follows. The user submits input, the flask backend processes it, the model performs inference and the result is returned for display and storage. Additional components such as prediction history, analytics calculation and export functions are connected to this same workflow. Because of this design, the project isn’t limited to model experimentation only but becomes a complete app that can support practical bike demand prediction tasks.
+Overall, the architecture was designed with two goals in mind; accuracy and usability. The ML models provide the prediction capability while the application structure makes the system operational in a real usage scenario. This balance between prediction performance and system implementation is what gives the project its practical value.
+Backend Application Structure
+The backend was developed using flask. Its role is to connect the web interface with he trained ML models and the stored project artifacts. In practice, it receives requests from the frontend, processes the input data, calls the prediction logic and sends the result back in a readable format. It also supports other functions such as analytics, export, model information and runtime status checking.
+To make the project more organized, the backend was not written as one large file. Instead, it was divided into multiple parts inside the app folder. The main application starts from the application factory and then different blueprints are registered for separate responsibilities. As an example, there are blueprints for prediction routes, analytics routes, export routes, feature related routes and page rendering. This separation helped reduce confusion and made the code easier to follow during development.
+The services layer plays an important role in this structure. Rather than putting all the business logic directly inside route functions, the project uses service modules to handle tasks such as prediction workflow, export formatting and input normalization. This design is useful because the route mainly receives the request and returns the response, while the actual processing is handled in a more reusable place. As a result, the backend becomes cleaner and easier to test.
+Another important part of the backend structure is model management. The project contains several saved model files, including legacy models and the unified pipeline artifacts. These are stored in the models_artifact_manifest.json, pipeline_config.json, feature_names.json, lag_medians.json, and model metrics files are also used by the backend to keep prediction behavior consistent with the training results.
+The backend also works with real project data. The original dataset used is the Seoul bike rental dataset stored data/raw/seoul_bike.csv. In addition to this dataset, the backend reads sample request files, saved prediction history and model artifact metadata. This means the backend isn’t only serving pages but also interacting with the actual data resources that support prediction and analytics functions.
+A practical point in this structure is that the application supports both API use and browser based use. The same backend can return JSON responses for prediction and analytics endpoints, while also rendering pages such as prediction, analytics, and API Status and test Suite. This makes the backend flexible because it serves both machine readable and user friendly outputs.
+The backend structure also includes utility and configuration support. Files such as utils.py, config.py, model_metrics.pt and email_service.py handle supporting tasks like preprocessing, environment validation, artifact checking, performance reporting and export related communication. Even though these files aren’t directly visible to the user, they are important for making the whole app stable and complete.
+Overall, the backend application structure was designed to be modular, readable and practical; each part of the backend has a clear role and together these parts make it possible to run the prediction system as a complete application instead of only a standalone ML script.
+Model Integration and Inference Workflow
+After the training phase, the next step was to connect the trained models to the application so they could be used in real prediction requests. This part is important because a good model alone isn’t enough if it cannot be loaded correctly and used inside the system; for that reason, the app includes a workflow that links saved model artifacts with the flask backend and makes prediction available through the application.
+The integration process is based on saved artifacts instead of retraining models every time the app starts. The trained files are stored in the models directory, including both older model versions and the unified pipeline artifacts. In the unified pipeline folder, the backend uses files such as the model object, scaler, feature names, configuration file, lag medians, demand cache and artifact manifest. These files allow the application to reproduce the same inference logic that defined during training. 
+When a prediction request is received, the first step is input preparation. The backend reads the user provided values and checks that the required fields are available. Since the project supports more than one model path, the preprocessing stage is also responsible for normalizing field names and converting the input into the expected format. This is especially useful because more model artifacts were trained with slightly different feature naming conventions, so the backend must map the request data correctly before prediction.
+For the original and legacy compatible models, the system prepares the input according to the feature order expected by the saved model. For the unified pipeline, the process is more structured. The backend rebuilds the engineered feature vector using the stored feature list, applies scaling to the same columns used during training, and fills lag related values using the saved demand cache or lag medians when necessary. In this way, the deployed application stays consistent with the training pipeline and avoids using different feature logic at runtime.
+After preprocessing, the input is passed to the selected model for inference. The model returns a predicted bike demand value, which is then converted into a clear response format. The backend also makes sure that negative values aren’t returned as final demand predictions. In addition, the application generates extra information such as rounded prediction output and a prediction interval based on model error values, which makes the result more informative for the user;
+Another useful part of this workflow is model selection. The system can work with several available models, the model families including RF, gradient boosting, ensemble and ensemble pipeline. This gives flexibility during testing and comparison, while still keeping one supported deployment path through the unified pipeline artifacts.
+The inference workflow is also connected to prediction history. When a prediction is completed, the result can be saved together with timestamp, model type and input data. This makes it possible to use the same prediction events later in analytics, export and dashboard summaries.
+Overall, the model integration and inference workflow was designed to make the trained models usable in a real application environment. It ensures that saved artifacts are loaded correctly, input data is transformed in the required way and predictions are generated consistently and results can be reused by other parts of the system. In this way, the machine learning component becomes fully integrated into the practical system developed in my project.
+API Design and Endpoint Implementation
+The API layer was developed to make the prediction system accessible in a clear and practical way. So the backend doesn’t only serve HTML pages, but also exposes several routes that return JSON responses. This makes the app useful for both normal users through the browser and technical users who want to interact with the system programmatically. The API design was kept simple so that the main system functions can be reached without unnecessary complexity.
+The most import endpoint is the prediction endpoint. It is used send input data, after receiving this data; the backend preprocesses it and sends it to the selected model. The response includes the predicted bike demand, the raw prediction value, the model type used and additional information such as prediction interval and timestamp. This endpoint is the core connection between the trained models and the deployed application.
+Another important part of the API design is model selection support. The system doesn’t rely on only one prediction path. It can work with several available models such as the original model, improved model, advanced model, XGBoost, LightGBM, stacking model, and unified pipeline model. Because of this, the API allows the backend to route requests according to the selected model type. This design is useful for testing, comparison and demonstration purposes.
+The project also includes status and information endpoints. These routes are used to check whether the application is running correctly, whether the models are loaded, and what metrics or metadata are available. For example, the system provides routes for API status, model information, model metrics and the list of supported models. This is helpful because the project is not only returning predictions, but also exposing information about the deployed environment and model availability.
+Analytics endpoints are another important category in the API. These routes support the Analytics screen by returning values such as dashboard metrics, key performance indicators, hourly patterns, feature importance information, model performance data, SHAP based importance and date range analysis. Through these endpoints, the frontend can request processed analytics data directly from the backend instead of calculating everything inside the browser. This keeps the structure cleaner and makes the results more consistent.
+The API also supports prediction history and export related operations. When predictions are stored, they can later be retrieved through a history route. Other routes are used to export predictions, metrics or chart in formats such CSV, JSON, PDF and ZIP. In this way, the API goes beyond prediction only and becomes part of the full reporting and analysis workflow on the project.
+From an implementation point of view, the routes are grouped into separate blueprints. Prediction routes are handled in one module, analytics routes in another, export routes in a separate part, and page related routes in their own module. This made the code easier to organize and reduced duplication inside the backend. It also made testing simpler because each group of endpoints has a clear responsibility.
+A practical detail in the API design is that the project keeps both the main route structure and /v2 route aliases. This means the system supports compatibility while still exposing a cleaner modular route stack. As a result, the application can serve the current implementation without breaking access to the main API functions.
+Overall, the API design was implemented to support prediction, monitoring, analytics and export in one connected backend. The endpoints are simple to use, but together they provide the main operational functions required by the application. This makes the system more complete and more practical for real usage than a model that exists only in a notebook or standalone script.
+Table 4.1 Main API Endpoints of the UrbanFlow System
+Category
+Endpoint 
+Method 
+Purpose 
+Prediction 
+/v2/predict
+POST
+Sends input data to the selected model and returns predicted bike demand.
+Prediction 
+/v2/predict/advanced
+POST
+Provides a compatibility route for advanced model prediction.
+Prediction 
+/v2/predict/xgboost
+POST
+Provides a compatibility route for XGBoost prediction.
+Prediction 
+/v2/predict/compare
+POST
+Compares predictions across the available model types.
+History 
+/v2/prediction-history
+GET
+Retrieves stored prediction records for dashboard and analytics use.
+Status 
+/v2/api/status
+GET
+Checks app health, loaded models, and prediction count and email configuration.
+Model Information 
+/v2/model-info
+GET
+Returns metadata about a selected model.
+Model Information 
+/v2/api/models
+GET
+Lists supported models and their availability and performance information.
+Metrics 
+/v2/metrics
+GET
+Returns model evaluation metrics.
+Analytics 
+/v2/api/dashboard-metrics
+GET
+Provides summary dashboard values for the predictor page.
+Analytics
+/v2/api/analytics/kpis
+GET
+Returns KPI values such as accuracy, average error, predictions and feature count.
+Analytics
+/v2/api/analytics/hourly-patterns
+GET
+Returns demand patterns grouped by hour.
+Analytics
+/v2/api/analytics/feature-importance
+GET
+Provides feature importance data for visualization.
+Analytics
+/v2/api/analytics/shap-importance
+GET
+Returns SHAP based feature importance for model interpretation.
+Analytics
+/v2/api/analytics/model-performance
+GET
+Returns model comparison data used in the performance chart.
+Analytics
+/v2/api/analytics/insights
+GET
+Generates dashboard insights from model and prediction data.
+Analytics
+/v2/api/analytics/date-range
+POST
+Returns analytics results for a selected custom date range.
+Feature Engineering 
+/v2/api/features/advanced
+GET
+Returns the feature list used by the advanced model.
+Feature Engineering
+/v2/api/features/importance
+GET
+Returns feature importance data for model features.
+Feature Engineering
+/v2/api/features/calculate
+POST
+Calculates engineered features from basic input values.
+Export
+/v2/export/predictions/csv
+GET
+Exports prediction history in CSV format.
+Export
+/v2/export/predictions/json
+GET
+Exports prediction history in JSON format.
+Export
+/v2/export/model-report
+GET
+Exports a text-based model performance report.
+Export
+/v2/export/metrics/pdf
+GET
+Generates a PDF report of model metrics.
+Export
+/v2/api/export/chart/<chart_type>
+GET
+Exports one analytics chart.
+Export
+/v2/api/export/all-charts
+GET
+Exports analytics charts as a ZIP file.
+Export
+/v2/api/export/<export_type>
+POST
+Handles consolidated export requests.
+Email 
+/v2/api/send-analytics-email
+POST
+Sends analytics reports by email if SMTP is configured.
+Email 
+/v2/export/email
+POST
+Sends exported report to a selected email address
+Email 
+/v2/api/test-email
+GET
+Checks email configuration.
+User Interface and Dashboard Implementation
+The user interface was an important part of this project because it’s the part that the user sees and uses directly. After training the models and creating the backend logic, the system still needed a simple and clear web interface so that predictions and results could be accessed easily. For this reason, I built several screens that help the user interact with the app without needing to know the technical details behind it.
+The main idea of this part was to keep the design basic, practical and easy to understand. The home page was created for prediction, while other pages were added for analytics, system status, testing and feature engineering. Each page has its own role, but all of them work together as one complete interface. This makes the app more useful and more organized.
+The dashboard also helps the user see important information in a quick way. Instead of checking only the prediction output, the user can also view model accuracy, prediction history, charts and system health. So this part wasn’t only about visual design but also about making the system easier to use in real life.
+Main Prediction Page
+The main prediction page is the first page that the user sees when opening the app. It was designed to be the center of the whole system, because this is where the prediction process starts. On this page, the user can enter the bike demand inputs and get a result directly from the trained model. The page was made simple so the used can use it without needing any technical knowledge.
+This page is built around the real features used in the project dataset. The input from includes values such as hour, temperature, humidity, wind speed, visibility , dew point temperature, solar radiation, rainfall, snowfall, season, holiday, functioning day and day of week. These are the same kinds of variables used in the Seoul Bike dataset and in the trained models, so the prediction is based on real project data and not on random inputs. The form was split into sections using tabs like basic, advanced, weather and features because all the fields together would be too crowded in one place.
+Another important part of this page is the model selection area. The user can choose between the available models, such as original, improved, and advanced, XGBoost, LightGBM, stacking and the unified pipeline model. This helps the user compare different prediction outputs and understand that the system doesn’t depend on only one model. The page also shows a small dashboard with model accuracy, predictions today, average error and available models, so the user can quickly see the system status before making a prediction.
+After the user submits the form, the result appears on the same page. The interface shows the predicted number of bikes, the model used, the prediction time and the prediction interval. The page also includes short insights to help the user understand the result in a simple way. This makes the page more useful because it doesn’t only return a number, but also gives a small explanation of what the result means.
+There are also some extra features on this screen that make the page easier to use. The user can load sample data, clear the form, copy the prediction, and export the result format. These functions were added to make the workflow smoother and faster. Overall, the main prediction page is the most important screen in the app because it connects the input data, the trained models and the final prediction result in one simple interface.
+The main prediction page also supports input by file. The user can upload a CSV or JSON file instead of typing all values manually. This was added to make the prediction process faster, especially when the same data format is used many times or when the user wants to test a prepared sample. The application reads the uploaded file, extracts the values, and fills the prediction form automatically. This feature is useful because it saves time and makes the page easier to use for both simple tests and repeated experiments.
+Analytics Dashboard
+The analytics is the second main screen of the application. If the prediction page is used to generate one demand value, this page is used to analyze the system globally. It gives a full view of model performance, prediction history and trend behavior using real project data.
+When the user opens this page, the dashboard loads KPI cards such as model accuracy, average error, predictions count and features used. In the current project state, the best model performance shown in the system is around R² = 0.944 (94.4%), with RMSE ≈ 144.66 and MAE ≈ 96.53 from the unified stacking pipeline. These values aren’t hardcoded; they come from the backend metrics APIs and artifact files.
+A key part of this screen is the visual analytics section. It includes four main graphs: Model Performance graph, Feature Importance graph, SHAP Analysis graph, and Hourly Demand Pattern graph. The Model Performance graph compares model quality using evaluation metrics. The Feature Importance graph shows which variables are most influential in prediction. The SHAP Analysis graph gives deeper interpretability by showing how each feature increases or decreases predicted demand. The Hourly Demand Pattern graph shows demand behavior across the 24 hours of the day and helps identify peak and low-demand periods. Together, these visuals help the user understand not only what the prediction is, but also why demand changes over time and under different conditions.
+The dashboard also supports time filtering. The user can check data for today, week, month or custom date ranges. This is useful for comparing short term and longer term behavior in prediction history. For example, the user can quickly see if demand peaks are repeating at rush hours or if some periods have lower activity.
+Another important part is the model analysis block. It allows comparison between available models. The goal here is practical transparency: the app doesn’t hide model differences. The user can see how models behave and which one is more reliable for this dataset.
+This page also contains full export features, which are very important for project usability. The user can export: prediction history as CSV or JSON, model metrics reports (including PDF format), individual charts (PNG/PDF/SVG/JPG) and all charts together as ZIP.
+In addition, there is an email export/report option, so analytics outputs can be shared without manually copying data. This makes the system more useful for reporting and presentation work.
+The dashboard is connected to modular backend routes (analytics and export blueprints), so each function (KPIs, charts, history and export) is served by clear API endpoints. This architecture made testing and maintenance easier during development.
+In summary, the analytics dashboard transforms the project from a basic prediction tool into a more complete decision support interface. The prediction page gives one result, while the analytics page explains performs, trends, model quality and report ready outputs.
+API Status Screen
+The API Status screen was created to monitor the health of the application in real time. While the prediction page is used to get bike demand results, this page is used to check if the backend services are running correctly. It helps the user understand if the system is stable before using prediction or analytics features.
+At the top of this screen, there is a health overview with clear status cards. There cards show the global system state, model state, database state and API state (for example: operational, model active, database online, API responsive). This gives a quick technical summary without needing to open logs or developer tools.
+The screen also has a Service status block with filters (All, Operational, Degraded and Outage). This part lists internal services and endpoint checks in a readable way. The user can quickly see which component is healthy and which one needs attention. This is useful during testing sessions and before demonstrations.
+On the right, the page includes Performance Metrics. It shows values such as model accuracy, average response time, total predictions, active sessions, loaded models and app version. These values are loaded from real backend endpoints (/v2/api/status, /v2/metrics, /v2/prediction-history, /v2/model-info) so the screen reflects actual system behavior, not static text.
+Another practical part is the Uptime Monitor. It displays recent uptime indicators (24-hour, 7-day and 30-day) and visual bars for service continuity. This helps to communicate reliability in a simple visual form, especially when presenting the project.
+The screen also contains a log area and quick actions. The user can refresh the status, run diagnostic checks and export status/log information. This makes the page useful not only for viewing, but also for lightweight troubleshooting and reporting.
+In short, the API status screen acts as the monitoring center of the project. It connects service health, API availability, runtime metrics and operational checks in one interface. 
+Test Suite Screen
+The test suite screen was added to validate the project from inside the web application, not only from terminal commands. It gives a practical interface for checking API behavior, prediction flow and integration stability in one place. This was useful during development because I could quickly run tests and see pass/fail results without leaving the app.
+At the top of the screen, there is also a Run All Tests actions and test summary area showing total, passed and failed cases. Each test card has status updates like Pending, Running, Passed or Failed and execution time in milliseconds. This makes debugging easier because the result is immediate and readable.
+The tests are grouped by categories, including API endpoints and prediction related flows. From the implemented cases, the screen checks endpoints such as /v2/api/status, /v2/metrics, /v2/ prediction-history and prediction requests. It also includes validation test (for example, incomplete input should return HTTP 400), and integration checks (for example, after a prediction, history count should increase).
+A useful part of this screen is the API Console. The user can choose an endpoint and method, send a real request and inspect response output. The console also saves request history with status code and duration and supports replaying previous calls. So this part works like a lightweight manual API tester inside the project UI.
+Another practical function is export. The Test Suite supports exporting test results (JSON report with timestamp, passed/failed count, and case-level details). 
+Feature Engineering Interface
+The Feature Engineering Interface was added a separate screen to make feature logic easier to understand. In the prediction page, users can enter values and get demand output, but they cannot clearly see how features are build inside the model pipeline. This screen solves that by showing feature related information in a simple and visual way.
+At the top of the page, there is a model snapshot card; it focuses on the best model performance indicator (best R²) and also shows key reference values like unified model R² and advanced feature count. The idea is to keep a small, clean summary without overloading the user with too many numbers.
+On the same line, the page has a Live Feature Calculator; it takes only four basic inputs are hour, temperature, humidity and season. After clicking calculate, the app calls the backend feature API and returns engineered output such as hour_sin, hour_cos, hour_squared, temp_hour_interaction, temp_humidity_interaction, humidity_squared, comfort_index, is_peak_hour, and seasonal one hot features (season_Spring, season_Summer, season_Autumn, season_Winter).
+This part is important because it shows that feature engineering isn’t random. When humidity changes, values like comfort index and humidity based features change directly, when season changes then seasonal encoded features also change. So the user can see that the model input preparation is dynamic and tied to real values.
+The screen also includes a Feature Importance Table. For readability, it shows only the top 15 most important features and clearly states that it is a top 15 view. This avoids long unreadable tables while still giving useful interpretation about variables influence predictions the most.
+Another useful block is the model feature list selector. The user can choose a model and view its features set directly. It supports all 7 models, useful for comparison because each model may use a different number or style of features.
+From the technical side, this page is connected to real endpoints (/v2/api/features/advanced, /v2/api/features/importance, /v2/api/features/calculate, /v2/api/models). So the interface isn’t static. It reads actual project data and responds the user interaction in real time.
+Prediction History, Analytics and Export Features
+This section explains what happens after a prediction is generated. In my project, prediction isn’t only one-time output on screen. Each prediction is saved, reused in analytics and can be exported in different format. This part is important because it connects model inference to practical usage.
+When a user sends input to the prediction API, the system returns the predicted bikes value and model details, then stores a history record. Each history item keeps useful fields like prediction id, timestamp, input data, raw prediction value, rounded prediction value, model type and status. This gives a traceable record of model behavior over time.
+The prediction history is exposed through API endpoints and used directly by dashboard components. So analytics is based on real stored events not temporary frontend values. The system can also filter history by time windows, which helps users read trends at different levels.
+Analytics features are built on top of that history layer. For example, total predictions, filtered counts and hourly pattern summaries are generated from save prediction events. This makes analytics consistent with actual usage. If more predictions are made, analytics updates naturally because it reads from the same source.
+Another strong point is export support. The project includes export functions for prediction history as CSV and JSON, model report text export, metrics PDF export, chart export, full chart package export as ZIP and complete report exports.
+These export options make the system more useful for reporting. Instead of manually copying values, users can produce clean files for analytics, sharing or presentation.
+It also includes email report sending endpoint. If email configuration is available in environment variables, analytics reports can be sent directly to recipients. This extends the system from local visualization to practical communication workflow.
+From an implementation view, it is handled through modular services and blueprints. Prediction service handles inference and history writing, analytics routes read and summarize records and export service/ blueprint handles output format. This separation improves maintainability and avoids mixing logic in one large file.
+In short, this module turns the app from a simple predictor into a small decision support system. History gives continuity, analytics gives interpretation and export gives usability outside the web page.
+Configuration, Security and Environment Management
+This part of the project is about making the system stable and safe outside model training. Even if prediction accuracy is good, the app isn’t reliable if configuration is weak or secrets are hardcoded. For this reason, environment management was treated as an important implementation layer.
+The project uses environment variables for sensitive and runtime specific values. A main example is SECRET_KEY, which is required by the Flask app. In local run mode, if SECRET_KEY is missing, the startup script generates a temporary key so development can continue. In development, the key should be provided explicitly through environment settings. For email/report features, SMTP configuration is also externalized through variables like SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, and SENDER_PASSWORD.
+Another key point is runtime validation of model artifacts. The project includes an artifact contract for the unified pipeline (models/unified_pipeline/artifact_manifest.json), and checks runtime dependency compatibility (such as Scikit-learn, pandas, numpy, joblib, xgboost, lightgbm). If there is a mismatch between artifact dependency versions and current runtime, the system can report warnings. With strict mode enabled (STRICT_ARTIFACT_CHECK=1), it can block startup to avoid unsafe inference behavior.
+Configuration defaults and fallback behavior are also implemented to keep the app usable. If optional components aren’t configured, the system continues running with degraded behavior and clear status messaging, instead of fully crashing; in the same way, metrics and status routes include fallback values when some optional API calls fail.
+From a security perspective, the project avoids hardcoded credentials in source code. Sensitive values are loaded from environment variables and tis pattern is consistent with both local and deployment usage; this reduces the risk of exposing secrets in repository files and makes setup easier.
+For environment consistency, it includes standard dependency and deployment files (requirements.txt, Dockerfile, docker-compose.yml). This helps keep Python package versions and service behavior aligned between development and runtime execution. In practical terms, it reduces “works on my machine” problems during demo or final delivery.
+Overall, configuration and environment management are designed to support reproducibility, safer deployment, and easier maintenance. It isn’t only about running the app once, but about running it correctly and consistently under different conditions.
+Deployment and Execution Setup
+This section explains how the project is executed in practice, from local development to deployment ready execution. The goal is to make sure the app can be started in a predictable way, with the same behavior across environments.
+For local setup, the first step is installing the dependencies from requirements.txt. After that, the app can be started using run.py, which works as the main runtime entrypoint. During startup, the script checks required folders and key files, prints runtime information, validates artifact/runtime compatibility and then starts the flask server.
+The system expects core project resources to be present before launch. This includes the application code, templates/static files, model artifacts and dataset paths used by the project structure. In this implementation, supported model artifacts are centered around the unified pipeline bundle in models/unified_pipeline/, and the dataset path used by training/config is data/raw/seoul_bike.csv.
+A practical run sequence in local mode is simple; install dependencies, set environment values (especially SECRET_KEY), ten start the server and test key routes. Typically validation endpoints include /v2, /v2/api/status, /v2/metrics, /v2/predict, /v2/analytics, /v2/feature-engineering, and /v2/test. If these routes respond correctly, it confirms that main modules (prediction, analytics, status, feature tools and test UI) are connected correctly.
+For containerized execution, the project includes both Dockerfile and docker-compose.yml. This gives a consistent runtime layer and helps avoid machine specific issues. Docker startup is useful for demo, handover and reproducibility because environment packaging is more controlled than manual local setup.
+The app also supports production server usage through run:app entrypoint compatibility. This is useful when using WSGI deployment patterns (for example with Gunicorn) instead of flask deployment mode. 
+In short, deployment and execution setup is designed to be practical and repeatable, the process isn’t only “run and hope”, but a structured startup with checks, validation endpoints, and both local and container paths.

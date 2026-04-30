@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-from flask import Flask, redirect, request
+from flask import Flask
 
 
 def _register_modular_blueprints(app: Flask, url_prefix: str = "", name_prefix: str = ""):
@@ -28,12 +28,7 @@ def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = secret
 
+    _register_modular_blueprints(app)
     _register_modular_blueprints(app, url_prefix="/v2", name_prefix="v2")
-
-    @app.before_request
-    def redirect_to_v2():
-        if request.path.startswith("/v2") or request.path.startswith("/static") or request.path.startswith("/_debugger") or request.path == "/favicon.ico":
-            return
-        return redirect(f"/v2{request.path}", code=307)
 
     return app

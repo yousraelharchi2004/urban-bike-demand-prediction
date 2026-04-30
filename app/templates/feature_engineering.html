@@ -1,745 +1,313 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Feature Engineering | Bike Demand Prediction</title>
+    <title>UrbanFlow | Feature Engineering</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        .fe-wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .fe-hero { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
+        .fe-hero h1 { margin: 0; font-size: 1.8rem; }
+        .fe-hero p { margin: 6px 0 0; color: #64748b; }
+        .fe-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+        .fe-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; }
+        .span-12 { grid-column: span 12; }
+        .span-8 { grid-column: span 8; }
+        .span-6 { grid-column: span 6; }
+        .span-4 { grid-column: span 4; }
+        .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .kpi { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+        .kpi .label { font-size: 12px; color: #64748b; }
+        .kpi .value { font-size: 1.2rem; font-weight: 700; margin-top: 4px; }
+        .inputs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+        .inputs label { display: block; font-size: 12px; color: #475569; margin-bottom: 6px; }
+        .inputs input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+        .btn { border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+        .btn.primary { background: #2563eb; color: #fff; }
+        .btn.ghost { background: #e2e8f0; color: #0f172a; }
+        .table-wrap { overflow-x: auto; }
+        table.fe-table { width: 100%; border-collapse: collapse; }
+        .fe-table th, .fe-table td { border-bottom: 1px solid #e2e8f0; text-align: left; padding: 8px; font-size: 14px; }
+        .muted { color: #64748b; font-size: 13px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .chip { font-size: 12px; background: #eff6ff; color: #1e3a8a; padding: 6px 8px; border-radius: 999px; }
+        .chart-box { height: 340px; }
+        .chart-box canvas { max-height: 340px; }
+        @media (max-width: 1000px) {
+            .span-8, .span-6, .span-4 { grid-column: span 12; }
+            .kpis { grid-template-columns: repeat(2, 1fr); }
+            .inputs { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Navigation -->
-        <nav class="navbar">
-            <div class="nav-brand"><i class="fas fa-bicycle"></i> UrbanFlow Analytics</div>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-bicycle"></i>
+                <span class="brand-text">Urban<span class="brand-highlight">Flow</span></span>
+            </div>
             <div class="nav-links">
-                <a href="/v2"><i class="fas fa-home"></i> Home</a>
-                <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
-                <a href="/v2/feature-engineering" class="active"><i class="fas fa-cogs"></i> Feature Engineering</a>
-                <a href="/v2/status"><i class="fas fa-server"></i> API Status</a>
-                <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
+                <a href="/v2" class="nav-link"><i class="fas fa-chart-line"></i><span>Predictor</span></a>
+                <a href="/v2/analytics" class="nav-link"><i class="fas fa-chart-bar"></i><span>Analytics</span></a>
+                <a href="/v2/feature-engineering" class="nav-link active"><i class="fas fa-sliders-h"></i><span>Feature Engineering</span></a>
+                <a href="/v2/status" class="nav-link"><i class="fas fa-server"></i><span>API Status</span></a>
+                <a href="/v2/test" class="nav-link"><i class="fas fa-vial"></i><span>Test Suite</span></a>
             </div>
-        </nav>
+        </div>
+    </nav>
 
-        <!-- Header -->
-        <header class="page-header">
-            <h1><i class="fas fa-cogs"></i> Advanced Feature Engineering</h1>
-            <p class="subtitle">How we improved prediction accuracy by 15% with engineered features</p>
-            <div class="header-actions">
-                <button class="action-btn" onclick="refreshFeatureData()">
-                    <i class="fas fa-sync-alt"></i> Refresh Data
-                </button>
-                <button class="action-btn" onclick="window.open('/v2/api/features/advanced', '_blank')">
-                    <i class="fas fa-code"></i> View API
-                </button>
+    <main class="fe-wrap">
+        <section class="fe-hero">
+            <div>
+                <h1><i class="fas fa-sliders-h"></i> Feature Engineering Interface</h1>
+                <p>Clear view of model metrics, important features, and live feature calculation from your real APIs.</p>
             </div>
-        </header>
+            <div class="btn-row">
+                <button class="btn ghost" id="refreshBtn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <a class="btn primary" href="/v2" style="text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to Predictor</a>
+            </div>
+        </section>
 
-        <!-- Live Feature Calculator -->
-        <div class="calculate-features-section">
-            <h2 class="fe-section-heading">
-                <i class="fas fa-calculator"></i> Live Feature Calculator
-            </h2>
-            <p class="fe-section-subtitle">
-                Enter basic inputs to see how advanced features are automatically calculated
-            </p>
-            
-            <div class="calculate-inputs">
-                <div class="calculate-input">
-                    <label>Hour (0-23)</label>
-                    <input type="number" id="calcHour" min="0" max="23" value="14" placeholder="Enter hour">
+        <section class="fe-grid">
+            <div class="fe-card span-6">
+                <h3>Model Snapshot</h3>
+                <div class="kpis" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="kpi"><div class="label">Best Model</div><div class="value" id="kpi-best-model">--</div></div>
+                    <div class="kpi"><div class="label">Best R²</div><div class="value" id="kpi-best-r2">--</div></div>
+                    <div class="kpi"><div class="label">Unified R²</div><div class="value" id="kpi-unified-r2">--</div></div>
+                    <div class="kpi"><div class="label">Advanced Features</div><div class="value" id="kpi-advanced-count">--</div></div>
                 </div>
-                <div class="calculate-input">
-                    <label>Temperature (°C)</label>
-                    <input type="number" id="calcTemp" step="0.1" value="20" placeholder="Enter temperature">
+                <p class="muted">Snapshot is focused on the current best-performing model for cleaner monitoring.</p>
+            </div>
+
+            <div class="fe-card span-6">
+                <h3>Live Feature Calculator</h3>
+                <p class="muted">Enter basic values and calculate engineered outputs from <code>/v2/api/features/calculate</code>.</p>
+                <div class="inputs">
+                    <div><label for="hour">Hour</label><input id="hour" type="number" min="0" max="23" value="14"></div>
+                    <div><label for="temp">Temperature (°C)</label><input id="temp" type="number" step="0.1" value="20"></div>
+                    <div><label for="hum">Humidity (%)</label><input id="hum" type="number" min="0" max="100" value="65"></div>
+                    <div><label for="season">Season Index (optional)</label><input id="season" type="number" min="0" max="3" value="1"></div>
                 </div>
-                <div class="calculate-input">
-                    <label>Humidity (%)</label>
-                    <input type="number" id="calcHumidity" min="0" max="100" value="65" placeholder="Enter humidity">
+                <div class="btn-row">
+                    <button class="btn primary" id="calcBtn">Calculate</button>
                 </div>
-                <div class="calculate-input">
-                    <label>Season</label>
-                    <select id="calcSeason">
-                        <option value="Spring">Spring</option>
-                        <option value="Summer" selected>Summer</option>
-                        <option value="Autumn">Autumn</option>
-                        <option value="Winter">Winter</option>
+                <div class="chips" id="calc-chips"></div>
+            </div>
+
+            <div class="fe-card span-8">
+                <h3>Feature Importance Table</h3>
+                <p class="muted"><strong>Note:</strong> This table displays only the <strong>Top 15</strong> most important features for readability.</p>
+                <div class="table-wrap">
+                    <table class="fe-table">
+                        <thead><tr><th>#</th><th>Feature</th><th>Importance</th></tr></thead>
+                        <tbody id="importance-body"><tr><td colspan="3">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="fe-card span-4">
+                <h3>Advanced Feature List</h3>
+                <p class="muted">Select a model to view its feature list.</p>
+                <div style="margin-bottom: 10px;">
+                    <label for="feature-model-select" class="muted">Model</label>
+                    <select id="feature-model-select" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <option value="advanced" selected>Advanced RF</option>
+                        <option value="original">Original RF</option>
+                        <option value="improved">Improved RF</option>
+                        <option value="xgboost">XGBoost</option>
+                        <option value="lightgbm">LightGBM</option>
+                        <option value="stacking">Stacking</option>
+                        <option value="unified">Unified Pipeline Ensemble</option>
                     </select>
                 </div>
+                <div class="chips" id="advanced-chips"></div>
             </div>
-            
-            <button class="calculate-btn" onclick="calculateFeatures()">
-                <i class="fas fa-bolt"></i> Calculate Engineered Features
-            </button>
-            
-            <div class="engineered-features-result" id="engineeredResult">
-                <div class="features-count">
-                    <div class="count-item">
-                        <div class="count-value" id="basicCount">0</div>
-                        <div class="count-label">Basic Inputs</div>
-                    </div>
-                    <div class="count-item">
-                        <div class="count-value" id="engineeredCount">0</div>
-                        <div class="count-label">Engineered Features</div>
-                    </div>
-                    <div class="count-item">
-                        <div class="count-value" id="totalCount">0</div>
-                        <div class="count-label">Total Features</div>
-                    </div>
+        </section>
+    </main>
+
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <div class="footer-brand">
+                    <i class="fas fa-bicycle"></i>
+                    <span>UrbanFlow Feature Engineering</span>
                 </div>
-                
-                <h4>Calculated Features Preview:</h4>
-                <div class="features-preview" id="featuresPreview">
-                    <!-- Features will be populated here -->
-                </div>
-                
-                <div class="fe-result-actions">
-                    <button class="action-btn" onclick="useForPrediction()">
-                        <i class="fas fa-rocket"></i> Use for Prediction
-                    </button>
+            </div>
+            <div class="footer-right">
+                <div class="footer-meta">
+                    <span class="version">v2.1.4</span>
+                    <span class="status-indicator active"></span>
+                    <span class="status-text">Feature Tools Active</span>
                 </div>
             </div>
         </div>
-
-        <!-- Performance Comparison -->
-        <div class="card">
-            <h2><i class="fas fa-chart-line"></i> Model Performance Comparison</h2>
-            <div class="comparison-container">
-                <div class="model-card">
-                    <h3>Original Model</h3>
-                    <div class="metric">
-                        <div class="metric-label">R² Score</div>
-                        <div class="metric-value" id="original-r2">0.820</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">RMSE</div>
-                        <div class="metric-value" id="original-rmse">112.5</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Features</div>
-                        <div class="metric-value" id="original-features">14</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Engineered Features</div>
-                        <div class="metric-value">0</div>
-                    </div>
-                </div>
-                
-                <div class="improvement-arrow">
-                    <div class="arrow">➡️</div>
-                    <div class="improvement-text" id="improvement-text">+15.1% improvement</div>
-                </div>
-                
-                <div class="model-card improved">
-                    <h3>Advanced Model</h3>
-                    <div class="metric">
-                        <div class="metric-label">R² Score</div>
-                        <div class="metric-value improved-value" id="advanced-r2">0.911</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">RMSE</div>
-                        <div class="metric-value" id="advanced-rmse">89.4</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Features</div>
-                        <div class="metric-value" id="advanced-features">45</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Engineered Features</div>
-                        <div class="metric-value" id="engineered-count">31</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Feature Importance -->
-        <div class="feature-importance-grid">
-            <div class="card">
-                <h2><i class="fas fa-trophy"></i> Top Feature Importance</h2>
-                <div class="chart-container">
-                    <canvas id="featureImportanceChart"></canvas>
-                </div>
-                <div class="chart-insight">
-                    <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> Engineered features contribute 45% to prediction accuracy</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2><i class="fas fa-chart-pie"></i> Feature Categories</h2>
-                <div class="chart-container">
-                    <canvas id="featureCategoriesChart"></canvas>
-                </div>
-                <div class="chart-insight">
-                    <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> Time-based features are most important for bike demand</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Engineered Features Grid -->
-        <div class="card">
-            <h2><i class="fas fa-cogs"></i> Engineered Features Breakdown</h2>
-            <div class="feature-grid" id="engineered-features-grid">
-                <!-- Will be populated by JavaScript -->
-            </div>
-        </div>
-
-        <!-- Feature Categories Details -->
-        <div class="card">
-            <h2><i class="fas fa-layer-group"></i> Feature Categories Explained</h2>
-            <div class="categories-container">
-                <div class="category-card">
-                    <h3><i class="fas fa-clock"></i> Time-Based Features</h3>
-                    <ul>
-                        <li><strong>hour_squared (hour²)</strong> - Captures non-linear time effects</li>
-                        <li><strong>hour_sin / hour_cos</strong> - Cyclical time patterns (sine/cosine)</li>
-                        <li><strong>is_peak_hour</strong> - 7-9 AM & 5-7 PM peak periods</li>
-                        <li><strong>is_weekend</strong> - Weekend vs weekday patterns</li>
-                        <li><strong>rush_hour_intensity</strong> - Graduated peak hour scoring</li>
-                        <li><strong>day_of_week</strong> - Day of week encoding</li>
-                    </ul>
-                    <div class="feature-impact high">High Impact (35%)</div>
-                </div>
-                
-                <div class="category-card">
-                    <h3><i class="fas fa-thermometer-half"></i> Weather Interaction Features</h3>
-                    <ul>
-                        <li><strong>temp_hour_interaction</strong> - Temperature × Time interaction</li>
-                        <li><strong>temp_squared</strong> - Non-linear temperature effects</li>
-                        <li><strong>temp_category_*</strong> - Categorical weather classification</li>
-                        <li><strong>comfort_index</strong> - Temperature-Humidity balance</li>
-                        <li><strong>good_biking_conditions</strong> - Combined weather factors flag</li>
-                        <li><strong>wind_speed_squared</strong> - Non-linear wind effect</li>
-                    </ul>
-                    <div class="feature-impact medium">Medium Impact (25%)</div>
-                </div>
-                
-                <div class="category-card">
-                    <h3><i class="fas fa-exchange-alt"></i> Interaction Features</h3>
-                    <ul>
-                        <li><strong>temp_hour_interaction</strong> - How temperature effect varies by time</li>
-                        <li><strong>comfort_index</strong> - Combined weather comfort metric</li>
-                        <li><strong>hour_sin/hour_cos</strong> - Cyclical time interactions</li>
-                    </ul>
-                    <div class="feature-impact high">High Impact (30%)</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Technical Implementation -->
-        <div class="card">
-            <h2><i class="fas fa-code"></i> Technical Implementation</h2>
-            <div class="code-section">
-                <h3>Feature Engineering Code Samples:</h3>
-                <pre><code># Time-based features
-df['hour_squared'] = df['hour'] ** 2
-df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
-df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
-df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
-
-# Peak hour indicators
-df['is_morning_peak'] = ((df['hour'] >= 7) & (df['hour'] <= 9)).astype(int)
-df['is_evening_peak'] = ((df['hour'] >= 17) & (df['hour'] <= 19)).astype(int)
-df['is_peak_hour'] = (df['is_morning_peak'] | df['is_evening_peak']).astype(int)
-
-# Weather interaction features
-df['temp_hour_interaction'] = df['temperature'] * df['hour']
-df['temp_squared'] = df['temperature'] ** 2
-df['comfort_index'] = df['temperature'] - (df['humidity'] / 10)
-
-# Rush hour intensity
-def rush_hour_intensity(hour):
-    if hour in [7, 8, 17, 18]: return 1.0
-    elif hour in [6, 9, 16, 19]: return 0.6
-    elif hour in [10, 15, 20]: return 0.3
-    else: return 0.0
-
-df['rush_hour_intensity'] = df['hour'].apply(rush_hour_intensity)
-
-# Good biking conditions
-df['good_biking_conditions'] = ((df['temperature'] >= 10) & 
-                                (df['temperature'] <= 30) & 
-                                (df['rainfall'] == 0) & 
-                                (df['snowfall'] == 0) & 
-                                (df['wind_speed'] < 10)).astype(int)
-
-# Categorical encoding
-df = pd.get_dummies(df, columns=['season', 'temp_category', 'time_of_day'])</code></pre>
-            </div>
-        </div>
-
-        <!-- Auto-Calculation Demo -->
-        <div class="card">
-            <h2><i class="fas fa-robot"></i> Auto Feature Calculation</h2>
-            <p>The system automatically calculates all engineered features from basic inputs. Try it:</p>
-            
-            <div class="fe-demo-block">
-                <h4>Sample Input:</h4>
-                <pre><code>{
-  "Hour": 14,
-  "Temperature(°C)": 20,
-  "Humidity(%)": 65,
-  "Season": "Summer"
-}</code></pre>
-                
-                <h4>Automatically Calculated Features:</h4>
-                <pre><code>{
-  "hour_sin": 0.9659,
-  "hour_cos": -0.2588,
-  "hour_squared": 196,
-  "is_weekend": 0,
-  "is_peak_hour": 0,
-  "temp_hour_interaction": 280,
-  "temp_squared": 400,
-  "comfort_index": 13.5,
-  "rush_hour_intensity": 0.3,
-  "good_biking_conditions": 1,
-  "season_Summer": 1,
-  "season_Spring": 0,
-  ...
-}</code></pre>
-            </div>
-            
-            <div class="action-buttons">
-                <button class="action-btn" onclick="window.open('/v2/api/features/calculate', '_blank')">
-                    <i class="fas fa-external-link-alt"></i> Try API Endpoint
-                </button>
-                <button class="action-btn" onclick="testAutoCalculation()">
-                    <i class="fas fa-play"></i> Test Auto-Calculation
-                </button>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <p>Graduation Project - UrbanFlow Bike Demand Prediction System</p>
-            <p>Advanced Feature Engineering | Auto-calculation enabled | 45+ features</p>
-            <p>
-                <a href="/v2/api/features/advanced" class="fe-footer-link">
-                    <i class="fas fa-code"></i> View API Documentation
-                </a>
-            </p>
-        </footer>
-    </div>
+    </footer>
 
     <script>
-        // Feature Engineering Dashboard JavaScript
-        class FeatureEngineeringDashboard {
-            constructor() {
-                this.featuresData = null;
-                this.featureImportance = null;
-                this.charts = {};
-                this.init();
-            }
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
 
-            async init() {
-                this.loadAdvancedFeatures();
-                this.loadFeatureImportance();
-                this.initializeCharts();
-                this.setupEventListeners();
-            }
+        function toFixedMaybe(v, d = 3) {
+            return typeof v === 'number' ? v.toFixed(d) : '--';
+        }
 
-            async loadAdvancedFeatures() {
-                try {
-                    const response = await fetch('/v2/api/features/advanced');
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        this.featuresData = data;
-                        this.updateFeatureGrid();
-                        this.updateModelStats();
-                    }
-                } catch (error) {
-                    console.error('Error loading advanced features:', error);
-                }
-            }
+        async function loadModels() {
+            const res = await fetch('/v2/api/models');
+            const data = await res.json();
+            if (!data.success || !data.models) return;
 
-            async loadFeatureImportance() {
-                try {
-                    const response = await fetch('/v2/api/features/importance');
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        this.featureImportance = data.importance;
-                        this.updateFeatureImportanceChart();
-                        this.updateFeatureCategoriesChart();
-                    }
-                } catch (error) {
-                    console.error('Error loading feature importance:', error);
-                }
-            }
+            const m = data.models;
+            setText('kpi-unified-r2', toFixedMaybe(m.unified?.r2));
 
-            updateFeatureGrid() {
-                const grid = document.getElementById('engineered-features-grid');
-                if (!grid || !this.featuresData) return;
-
-                const categories = this.featuresData.categorized || {};
-                
-                let html = '';
-                
-                // Time features
-                if (categories.time_features && categories.time_features.length > 0) {
-                    categories.time_features.forEach(feature => {
-                        html += this.createFeatureCard(feature, 'time', 'Time Feature');
-                    });
-                }
-                
-                // Weather features
-                if (categories.weather_features && categories.weather_features.length > 0) {
-                    categories.weather_features.forEach(feature => {
-                        html += this.createFeatureCard(feature, 'weather', 'Weather Feature');
-                    });
-                }
-                
-                // Interaction features
-                if (categories.interaction_features && categories.interaction_features.length > 0) {
-                    categories.interaction_features.forEach(feature => {
-                        html += this.createFeatureCard(feature, 'interaction', 'Interaction Feature');
-                    });
-                }
-                
-                // Indicator features
-                if (categories.indicator_features && categories.indicator_features.length > 0) {
-                    categories.indicator_features.forEach(feature => {
-                        html += this.createFeatureCard(feature, 'indicator', 'Indicator Feature');
-                    });
-                }
-                
-                grid.innerHTML = html;
-            }
-
-            createFeatureCard(featureName, category, type) {
-                const icon = this.getFeatureIcon(featureName);
-                const description = this.getFeatureDescription(featureName);
-                const impact = this.getFeatureImpact(featureName);
-                
-                return `
-                    <div class="feature-card ${category}">
-                        <h4>${icon} ${featureName}</h4>
-                        <div class="feature-description">${description}</div>
-                        <div class="feature-impact ${impact.level}">${type} | ${impact.text}</div>
-                    </div>
-                `;
-            }
-
-            getFeatureIcon(featureName) {
-                if (featureName.includes('hour')) return '<i class="fas fa-clock"></i>';
-                if (featureName.includes('temp')) return '<i class="fas fa-thermometer-half"></i>';
-                if (featureName.includes('season')) return '<i class="fas fa-leaf"></i>';
-                if (featureName.includes('holiday')) return '<i class="fas fa-calendar-day"></i>';
-                if (featureName.includes('comfort')) return '<i class="fas fa-wind"></i>';
-                if (featureName.includes('is_')) return '<i class="fas fa-flag"></i>';
-                if (featureName.includes('good_')) return '<i class="fas fa-check-circle"></i>';
-                if (featureName.includes('rush_')) return '<i class="fas fa-running"></i>';
-                return '<i class="fas fa-cog"></i>';
-            }
-
-            getFeatureDescription(featureName) {
-                const descriptions = {
-                    'hour_squared': 'Hour squared - captures non-linear time effects',
-                    'hour_sin': 'Sine of hour - cyclical time pattern (morning/evening)',
-                    'hour_cos': 'Cosine of hour - cyclical time pattern (noon/midnight)',
-                    'temp_hour_interaction': 'Temperature × Hour - interaction effect',
-                    'is_weekend': 'Weekend flag (1=weekend, 0=weekday)',
-                    'is_peak_hour': 'Peak hour indicator (7-9 AM, 5-7 PM)',
-                    'comfort_index': 'Weather comfort (temperature - humidity/10)',
-                    'good_biking_conditions': 'Optimal biking weather conditions flag',
-                    'rush_hour_intensity': 'Graduated rush hour intensity score',
-                    'temp_squared': 'Temperature squared - non-linear temperature effect',
-                    'wind_speed_squared': 'Wind speed squared - non-linear wind effect',
-                    'humidity_squared': 'Humidity squared - non-linear humidity effect'
-                };
-                
-                return descriptions[featureName] || 'Engineered feature for better prediction accuracy';
-            }
-
-            getFeatureImpact(featureName) {
-                // This would be based on actual importance from the model
-                if (featureName.includes('hour') || featureName.includes('temp')) {
-                    return { level: 'high', text: 'High Impact' };
-                }
-                if (featureName.includes('interaction') || featureName.includes('comfort')) {
-                    return { level: 'medium', text: 'Medium Impact' };
-                }
-                return { level: 'low', text: 'Low Impact' };
-            }
-
-            updateModelStats() {
-                if (!this.featuresData) return;
-                
-                // Update advanced model stats
-                document.getElementById('advanced-features').textContent = 
-                    this.featuresData.total_features || '45';
-                
-                // Calculate engineered features count
-                const categories = this.featuresData.categorized || {};
-                let engineeredCount = 0;
-                Object.values(categories).forEach(features => {
-                    engineeredCount += features.length;
-                });
-                
-                document.getElementById('engineered-count').textContent = engineeredCount;
-                
-                // Load actual performance metrics if available
-                this.loadModelMetrics();
-            }
-
-            async loadModelMetrics() {
-                try {
-                    const response = await fetch('/v2/api/models');
-                    const data = await response.json();
-                    
-                    if (data.success && data.models.advanced) {
-                        const advanced = data.models.advanced;
-                        
-                        if (advanced.rmse && typeof advanced.rmse === 'number') {
-                            document.getElementById('advanced-rmse').textContent = 
-                                advanced.rmse.toFixed(1);
-                            
-                            // Calculate improvement
-                            const originalRmse = 112.5;
-                            const improvement = ((originalRmse - advanced.rmse) / originalRmse * 100).toFixed(1);
-                            document.getElementById('improvement-text').textContent = 
-                                `+${improvement}% improvement`;
-                        }
-                        
-                        if (advanced.r2 && typeof advanced.r2 === 'number') {
-                            document.getElementById('advanced-r2').textContent = 
-                                advanced.r2.toFixed(3);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error loading model metrics:', error);
-                }
-            }
-
-            initializeCharts() {
-                // Feature Importance Chart
-                const featureImportanceCtx = document.getElementById('featureImportanceChart');
-                if (featureImportanceCtx) {
-                    this.charts.featureImportance = new Chart(featureImportanceCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: [],
-                            datasets: [{
-                                label: 'Feature Importance',
-                                data: [],
-                                backgroundColor: '#4361ee',
-                                borderColor: '#3a0ca3',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: {
-                                legend: { display: false },
-                                title: { display: false }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    title: { display: true, text: 'Importance' }
-                                },
-                                x: {
-                                    ticks: { maxRotation: 45 }
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // Feature Categories Chart
-                const categoriesCtx = document.getElementById('featureCategoriesChart');
-                if (categoriesCtx) {
-                    this.charts.featureCategories = new Chart(categoriesCtx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Time', 'Weather', 'Interactions', 'Indicators', 'Categories'],
-                            datasets: [{
-                                data: [35, 25, 20, 10, 10],
-                                backgroundColor: [
-                                    '#4361ee',
-                                    '#f72585',
-                                    '#7209b7',
-                                    '#4cc9f0',
-                                    '#06d6a0'
-                                ],
-                                borderWidth: 2
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: {
-                                legend: { position: 'right' },
-                                title: {
-                                    display: true,
-                                    text: 'Feature Category Distribution'
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-
-            updateFeatureImportanceChart() {
-                if (!this.featureImportance || !this.charts.featureImportance) return;
-                
-                const topFeatures = this.featureImportance.slice(0, 10);
-                const labels = topFeatures.map(f => f.feature);
-                const data = topFeatures.map(f => f.importance * 100);
-                
-                this.charts.featureImportance.data.labels = labels;
-                this.charts.featureImportance.data.datasets[0].data = data;
-                this.charts.featureImportance.update();
-            }
-
-            updateFeatureCategoriesChart() {
-                // This would be calculated from the actual feature importance
-                // Using static data for now
-            }
-
-            setupEventListeners() {
-                // Add any additional event listeners here
-            }
-
-            refresh() {
-                this.loadAdvancedFeatures();
-                this.loadFeatureImportance();
-                this.loadModelMetrics();
+            const entries = Object.entries(m)
+                .filter(([, model]) => model && model.available !== false && typeof model.r2 === 'number')
+                .map(([key, model]) => ({ key, name: model.name || key, r2: model.r2 }));
+            if (entries.length > 0) {
+                entries.sort((a, b) => b.r2 - a.r2);
+                const best = entries[0];
+                setText('kpi-best-model', best.name);
+                setText('kpi-best-r2', best.r2.toFixed(3));
             }
         }
 
-        // Global functions for HTML onclick handlers
-        async function calculateFeatures() {
-            const hour = document.getElementById('calcHour').value;
-            const temp = document.getElementById('calcTemp').value;
-            const humidity = document.getElementById('calcHumidity').value;
-            const season = document.getElementById('calcSeason').value;
-            
-            const basicData = {
-                Hour: parseInt(hour),
-                'Temperature(°C)': parseFloat(temp),
-                'Humidity(%)': parseInt(humidity),
-                Seasons: season
-            };
-            
-            try {
-                const response = await fetch('/v2/api/features/calculate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(basicData)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    displayCalculatedFeatures(result);
-                } else {
-                    showNotification('Error calculating features: ' + result.error, 'error');
-                }
-            } catch (error) {
-                showNotification('Error calculating features: ' + error.message, 'error');
-            }
-        }
+        async function loadAdvancedFeatures() {
+            const modelSelect = document.getElementById('feature-model-select');
+            const selectedModel = modelSelect ? modelSelect.value : 'advanced';
+            const res = await fetch(`/v2/api/features/advanced?model_type=${encodeURIComponent(selectedModel)}`);
+            const data = await res.json();
+            if (!data.success) return;
 
-        function displayCalculatedFeatures(data) {
-            document.getElementById('basicCount').textContent = data.basic_features;
-            document.getElementById('engineeredCount').textContent = data.engineered_features;
-            document.getElementById('totalCount').textContent = data.total_features;
-            
-            const preview = document.getElementById('featuresPreview');
-            preview.innerHTML = '';
-            
-            // Display first 20 features
-            const allFeatures = data.all_features || {};
-            const featuresToShow = Object.entries(allFeatures).slice(0, 20);
-            
-            featuresToShow.forEach(([key, value]) => {
-                const div = document.createElement('div');
-                div.className = 'feature-item';
-                div.innerHTML = `
-                    <span class="feature-name">${key}</span>
-                    <span class="feature-value">${typeof value === 'number' ? value.toFixed(4) : value}</span>
-                `;
-                preview.appendChild(div);
+            if (selectedModel === 'advanced') {
+                setText('kpi-advanced-count', data.count ?? '--');
+            }
+            const chips = document.getElementById('advanced-chips');
+            chips.innerHTML = '';
+            (data.features || []).forEach((f) => {
+                const span = document.createElement('span');
+                span.className = 'chip';
+                span.textContent = f;
+                chips.appendChild(span);
             });
-            
-            if (Object.keys(allFeatures).length > 20) {
-                const moreDiv = document.createElement('div');
-                moreDiv.className = 'feature-item';
-                moreDiv.innerHTML = `
-                    <span class="feature-name">... and ${Object.keys(allFeatures).length - 20} more features</span>
-                    <span class="feature-value">→</span>
-                `;
-                preview.appendChild(moreDiv);
+        }
+
+        function classifyFeature(name) {
+            const n = String(name || '').toLowerCase();
+            if (n.includes('hour') || n.includes('day') || n.includes('month') || n.includes('weekend') || n.includes('peak')) return 'Time';
+            if (n.includes('temp') || n.includes('humidity') || n.includes('wind') || n.includes('rain') || n.includes('snow') || n.includes('solar') || n.includes('dew')) return 'Weather';
+            if (n.includes('interaction') || n.includes('comfort')) return 'Interaction';
+            if (n.startsWith('is_') || n.includes('holiday') || n.includes('functioning')) return 'Indicator';
+            return 'Other';
+        }
+
+        async function loadImportance() {
+            const res = await fetch('/v2/api/features/importance?model_type=advanced');
+            const data = await res.json();
+            const rows = data.features || [];
+
+            const body = document.getElementById('importance-body');
+            body.innerHTML = '';
+            rows.slice(0, 15).forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${idx + 1}</td><td>${row.name}</td><td>${Number(row.importance).toFixed(4)}</td>`;
+                body.appendChild(tr);
+            });
+            if (rows.length === 0) {
+                body.innerHTML = '<tr><td colspan="3">No feature importance available.</td></tr>';
             }
-            
-            document.getElementById('engineeredResult').style.display = 'block';
+
         }
 
-        function useForPrediction() {
-            showNotification('Opening prediction page with pre-filled features...', 'info');
-            // In production: window.location.href = `/test?prefilled=${encodeURIComponent(JSON.stringify(features))}`;
-        }
+        async function calculateFeatures() {
+            const hourValue = Number(document.getElementById('hour').value);
+            const tempValue = Number(document.getElementById('temp').value);
+            const humidityValue = Number(document.getElementById('hum').value);
+            const payload = {
+                Hour: hourValue,
+                temperature: tempValue,
+                humidity: humidityValue,
+                'Temperature(°C)': tempValue,
+                'Humidity(%)': humidityValue,
+                season_index: Number(document.getElementById('season').value)
+            };
 
-        function testAutoCalculation() {
-            // Test the auto-calculation endpoint with sample data
-            fetch('/v2/api/features/calculate', {
+            const res = await fetch('/v2/api/features/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    Hour: 8,
-                    'Temperature(°C)': 15,
-                    'Humidity(%)': 70,
-                    Seasons: 'Spring'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(`Auto-calculation successful! Generated ${data.engineered_features} engineered features`, 'success');
-                } else {
-                    showNotification('Auto-calculation failed: ' + data.error, 'error');
-                }
-            })
-            .catch(error => {
-                showNotification('Error: ' + error.message, 'error');
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            const chips = document.getElementById('calc-chips');
+            chips.innerHTML = '';
+            if (!data.success) {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                chip.textContent = data.error || 'Calculation failed';
+                chips.appendChild(chip);
+                return;
+            }
+
+            const calc = data.calculated_features || {};
+            Object.entries(calc).forEach(([k, v]) => {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                const num = typeof v === 'number' ? v.toFixed(4) : v;
+                chip.textContent = `${k}: ${num}`;
+                chips.appendChild(chip);
             });
         }
 
-        function refreshFeatureData() {
-            if (window.dashboard) {
-                window.dashboard.refresh();
-                showNotification('Feature data refreshed!', 'success');
+        async function refreshAll() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+            }
+            try {
+                await Promise.allSettled([loadModels(), loadAdvancedFeatures(), loadImportance()]);
+            } catch (e) {
+                console.error('Refresh error:', e);
+            } finally {
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                }
             }
         }
 
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' :
-                                type === 'error' ? 'exclamation-circle' :
-                                type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                <span>${message}</span>
-            `;
+        document.addEventListener('DOMContentLoaded', () => {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const calcBtn = document.getElementById('calcBtn');
 
-            document.body.appendChild(notification);
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    window.location.reload();
+                });
+            }
+            if (calcBtn) {
+                calcBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    calculateFeatures();
+                });
+            }
+            const modelSelect = document.getElementById('feature-model-select');
+            if (modelSelect) {
+                modelSelect.addEventListener('change', () => {
+                    loadAdvancedFeatures();
+                });
+            }
 
-            setTimeout(() => {
-                notification.style.animation = 'slideOutRight 0.3s ease';
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
-        }
-
-        // Initialize dashboard when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            window.dashboard = new FeatureEngineeringDashboard();
+            refreshAll();
         });
     </script>
 </body>
 </html>
+

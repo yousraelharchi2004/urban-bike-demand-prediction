@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrbanFlow | System Status</title>
+    <title>UrbanFlow | API Status</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -25,9 +25,13 @@
                     <i class="fas fa-analytics"></i>
                     <span>Analytics</span>
                 </a>
+                <a href="/v2/feature-engineering" class="nav-link">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Feature Engineering</span>
+                </a>
                 <a href="/v2/status" class="nav-link active">
                     <i class="fas fa-server"></i>
-                    <span>System Status</span>
+                    <span>API Status</span>
                 </a>
                 <a href="/v2/test" class="nav-link">
                     <i class="fas fa-vial"></i>
@@ -44,7 +48,7 @@
             <div class="nav-left">
                 <div class="nav-title">
                     <i class="fas fa-server"></i>
-                    System Status Dashboard
+                    API Status Dashboard
                 </div>
                 <div class="nav-time">
                     <i class="far fa-clock"></i>
@@ -174,7 +178,7 @@
                                 <i class="fas fa-brain"></i>
                                 <span>Models Loaded</span>
                             </div>
-                            <div class="metric-value" id="metric-memory">--/6</div>
+                            <div class="metric-value" id="metric-memory">--/7</div>
                         </div>
                         <div class="metric-item">
                             <div class="metric-label">
@@ -274,8 +278,9 @@
             </div>
             <div class="footer-right">
                 <div class="footer-links">
-                    <a href="/v2/status"><i class="fas fa-server"></i> System Status</a>
+                    <a href="/v2/status"><i class="fas fa-server"></i> API Status</a>
                     <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
+                    <a href="/v2/feature-engineering"><i class="fas fa-sliders-h"></i> Feature Engineering</a>
                     <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
                 </div>
                 <div class="footer-meta">
@@ -286,7 +291,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>© 2026 UrbanFlow Predictive Systems. Real-time System Monitoring Dashboard.</p>
+            <p>Â© 2026 UrbanFlow Predictive Systems. Real-time System Monitoring Dashboard.</p>
         </div>
     </footer>
 
@@ -355,7 +360,7 @@
                     
                     // Load prediction history
                     try {
-                        const historyResponse = await fetch(`${this.baseUrl}/prediction-history?limit=1`);
+                        const historyResponse = await fetch(`${this.baseUrl}/prediction-history?limit=0`);
                         if (historyResponse.ok) {
                             this.statusData.history = await historyResponse.json();
                         } else {
@@ -487,7 +492,7 @@
                     endpoint: '/v2/api/status',
                         method: 'GET',
                         status: 'operational',
-                        detail: `v${sysInfo.version || '2.6.0'}`
+                        detail: `v${sysInfo.version || '2.1.4'}`
                     },
                     {
                         name: 'Metrics API',
@@ -501,7 +506,7 @@
                     endpoint: '/v2/model-info',
                         method: 'GET',
                         status: totalModels > 0 ? 'operational' : 'outage',
-                        detail: totalModels > 0 ? `${totalModels}/6 loaded` : 'No models loaded'
+                        detail: totalModels > 0 ? `${totalModels}/7 loaded` : 'No models loaded'
                     },
                     {
                         name: 'History Service',
@@ -529,7 +534,8 @@
                 // Add individual model services
                 const modelNames = {
                     original: 'Random Forest', improved: 'Improved RF', advanced: 'Advanced RF',
-                    xgboost: 'XGBoost', lightgbm: 'LightGBM', stacking: 'Stacking Ensemble'
+                    xgboost: 'XGBoost', lightgbm: 'LightGBM', stacking: 'Stacking Ensemble',
+                    unified: 'Unified Pipeline'
                 };
                 for (const [key, info] of Object.entries(models)) {
                     services.push({
@@ -585,13 +591,25 @@
                 const metrics = this.statusData.metrics?.metrics || this.statusData.metrics;
                 const history = this.statusData.history;
 
-                // Update model accuracy from the shared metrics payload
+                // Update model accuracy using the best model R² in the metrics catalog.
                 const accuracyElement = document.getElementById('metric-accuracy');
-                if (metrics?.r2_score && metrics.r2_score !== 'N/A') {
-                    accuracyElement.textContent = `${(parseFloat(metrics.r2_score) * 100).toFixed(1)}%`;
-                } else {
-                    accuracyElement.textContent = '--%';
+                let bestR2 = null;
+                const registry = metrics?.models;
+                if (registry && typeof registry === 'object') {
+                    for (const model of Object.values(registry)) {
+                        const r2 = typeof model?.r2 === 'number' ? model.r2 : parseFloat(model?.r2);
+                        if (!Number.isNaN(r2) && Number.isFinite(r2)) {
+                            bestR2 = bestR2 === null ? r2 : Math.max(bestR2, r2);
+                        }
+                    }
                 }
+                if (bestR2 === null) {
+                    const fallbackR2 = typeof metrics?.r2_score === 'number' ? metrics.r2_score : parseFloat(metrics?.r2_score);
+                    if (!Number.isNaN(fallbackR2) && Number.isFinite(fallbackR2)) {
+                        bestR2 = fallbackR2;
+                    }
+                }
+                accuracyElement.textContent = bestR2 !== null ? `${(bestR2 * 100).toFixed(1)}%` : '--%';
 
                 // Measure actual response time by timing the API call
                 const responseEl = document.getElementById('metric-response');
@@ -604,16 +622,18 @@
                 // Update total predictions from API data
                 const predictionsElement = document.getElementById('metric-predictions');
                 const totalPreds = system?.prediction_history?.total_predictions
-                    || history?.total_predictions || 0;
+                    || history?.total_predictions
+                    || history?.count
+                    || 0;
                 predictionsElement.textContent = totalPreds.toLocaleString();
 
-                // Active sessions (always 1 for single-server Flask)
+                // Single local web session (this project does not run a session tracker service).
                 document.getElementById('metric-sessions').textContent = '1';
 
                 // Models loaded count
                 const totalModels = system?.system_info?.total_models_loaded
                     || Object.values(system?.models || {}).filter(m => m.loaded).length;
-                document.getElementById('metric-memory').textContent = `${totalModels}/6`;
+                document.getElementById('metric-memory').textContent = `${totalModels}/7`;
                 document.getElementById('metric-cpu').textContent =
                     system?.system_info?.version || '--';
             }
@@ -686,7 +706,7 @@
                         logs.push({
                             time: timeStr,
                             level: 'info',
-                            message: `Models loaded: ${loadedModels.join(', ')} (${loadedModels.length}/6)`
+                            message: `Models loaded: ${loadedModels.join(', ')} (${loadedModels.length}/7)`
                         });
                     }
 
@@ -854,7 +874,7 @@
         function exportLogs() {
             const exportData = {
                 timestamp: new Date().toISOString(),
-                system: 'UrbanFlow System Status',
+                system: 'UrbanFlow API Status',
                 version: '2.1.4',
                 logs: Array.from(document.querySelectorAll('.log-entry')).map(log => ({
                     time: log.querySelector('.log-time').textContent,
@@ -918,3 +938,4 @@
     </script>
 </body>
 </html>
+

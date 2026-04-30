@@ -58,6 +58,12 @@ PREDICTION_HISTORY_FILE = Path(os.environ.get('PREDICTION_HISTORY_FILE', PROJECT
 PREDICTION_HISTORY_SCHEMA_VERSION = 2
 
 
+def _prediction_history_path() -> Path:
+    """Return history file as Path (supports tests monkeypatching a string path)."""
+    path = PREDICTION_HISTORY_FILE
+    return path if isinstance(path, Path) else Path(path)
+
+
 def _detect_canonical_column(name: str) -> str | None:
     lower = name.lower()
     if 'temperature' in lower and 'dew' not in lower:
@@ -1321,8 +1327,9 @@ def validate_input(data, model_type='original'):
 
 def _write_prediction_history(history: list[dict]) -> None:
     """Persist prediction history using the canonical event schema."""
-    PREDICTION_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with PREDICTION_HISTORY_FILE.open('w', encoding='utf-8') as f:
+    path = _prediction_history_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('w', encoding='utf-8') as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
 
 
@@ -1469,11 +1476,16 @@ def normalize_prediction_history_entry(entry: dict, default_model_type: str = 'o
 
 def _load_prediction_history(migrate: bool = True) -> list[dict]:
     """Load prediction history and optionally persist migrated legacy records."""
-    if not PREDICTION_HISTORY_FILE.exists():
+    path = _prediction_history_path()
+    if not path.exists():
         return []
 
-    with PREDICTION_HISTORY_FILE.open('r', encoding='utf-8') as f:
-        history = json.load(f)
+    try:
+        with path.open('r', encoding='utf-8-sig') as f:
+            history = json.load(f)
+    except json.JSONDecodeError:
+        with path.open('r', encoding='utf-8') as f:
+            history = json.load(f)
 
     migrated = []
     changed = False

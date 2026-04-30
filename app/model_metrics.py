@@ -174,13 +174,9 @@ def _unified_summary() -> dict | None:
 
 
 def _model_artifact_metrics(model_key: str) -> dict:
-    # Prefer the supported unified artifact bundle whenever available so
-    # dashboard metrics remain consistent with the deployed pipeline.
-    if model_key != 'unified':
-        unified_metrics = _unified_metrics_for(model_key)
-        if unified_metrics:
-            return unified_metrics
-
+    # Strict identity mode:
+    # - legacy model keys read their own dedicated artifact files
+    # - unified key reads unified bundle artifacts
     if model_key == 'unified':
         unified_summary = _unified_summary()
         if unified_summary:
@@ -296,12 +292,6 @@ def _model_artifact_metrics(model_key: str) -> dict:
             'artifact_path': str(base_dir / manifest.get('config_path', 'pipeline_config.json')),
             'best_model': best_model,
         }
-
-    # Last-resort fallback to unified pipeline comparison metrics only when
-    # neither canonical unified selection nor dedicated artifacts are usable.
-    unified_metrics = _unified_metrics_for(model_key)
-    if unified_metrics:
-        return unified_metrics
 
     return {}
 

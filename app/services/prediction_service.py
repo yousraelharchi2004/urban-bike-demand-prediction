@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+from functools import lru_cache
+from statistics import NormalDist
 from typing import Any
 
 import numpy as np
@@ -38,28 +41,67 @@ COMPARISON_MODEL_TYPES = (
     'unified',
 )
 
+CALIBRATED_INTERVAL_LEVEL = 91.0
 
-def calculate_confidence(predicted_bikes: float, input_data: dict) -> float:
-    """Calculate a simple confidence score (0-100) for a prediction."""
-    confidence = 85.0
 
-    if predicted_bikes > 3000 or predicted_bikes < 0:
-        confidence -= 15
-    elif predicted_bikes > 2000:
-        confidence -= 5
+@lru_cache(maxsize=1)
+def _model_rmse_catalog() -> dict[str, float]:
+    """Load model RMSE values from artifact-backed metrics."""
+    fallback_rmse = {
+        'original': 220.0,
+        'improved': 190.0,
+        'advanced': 170.0,
+        'xgboost': 160.0,
+        'lightgbm': 170.0,
+        'stacking': 150.0,
+        'unified': 145.0,
+    }
+    try:
+        from app.model_metrics import get_model_catalog
 
-    temp = float(input_data.get('Temperature(Â°C)', input_data.get('temperature', 20)))
-    if temp < -10 or temp > 40:
-        confidence -= 10
-    elif temp < 0 or temp > 35:
-        confidence -= 5
+        catalog = get_model_catalog()
+        if not catalog:
+            return fallback_rmse
 
-    rain = float(input_data.get('Rainfall(mm)', input_data.get('rainfall', 0)))
-    if rain > 10:
-        confidence -= 10
+        loaded = {}
+        for key, entry in catalog.items():
+            rmse_value = entry.get('test_rmse', entry.get('rmse'))
+            if rmse_value is None:
+                continue
+            try:
+                value = float(rmse_value)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value) and value > 0:
+                loaded[key] = value
+        return {**fallback_rmse, **loaded}
+    except Exception:
+        return fallback_rmse
 
-    return max(0, min(100, round(confidence, 1)))
 
+def calculate_prediction_interval(
+    predicted_bikes: float,
+    model_type: str,
+    confidence_level: float = CALIBRATED_INTERVAL_LEVEL,
+) -> dict[str, float | int]:
+    """
+    Build a normal-approximation prediction interval from model RMSE.
+    """
+    level = float(confidence_level)
+    if not math.isfinite(level):
+        level = CALIBRATED_INTERVAL_LEVEL
+    level = max(50.0, min(99.9, level))
+    alpha = 0.5 + (level / 200.0)
+    z_value = NormalDist().inv_cdf(alpha)
+    rmse = _model_rmse_catalog().get(model_type, _model_rmse_catalog().get('original', 220.0))
+    half_width = z_value * float(rmse)
+    lower = max(0.0, float(predicted_bikes) - half_width)
+    upper = max(lower, float(predicted_bikes) + half_width)
+    return {
+        'confidence_level': int(round(level)),
+        'lower_bound': lower,
+        'upper_bound': upper,
+    }
 
 def load_history(limit: int = 50) -> list[dict]:
     """Load prediction history from the canonical storage."""
@@ -95,7 +137,7 @@ def _build_saved_prediction(input_data: dict, predicted: float, model_type: str,
     return {
         'prediction_id': None,
         'timestamp': None,
-        'confidence': calculate_confidence(predicted, input_data),
+        'confidence': 0.0,
     }
 
 
@@ -106,6 +148,7 @@ def _unified_prediction_response(data: dict, save_history: bool) -> tuple[dict, 
 
     processed = preprocess_unified(data)
     predicted = max(0.0, float(pipeline['model'].predict(processed)[0]))
+    interval = calculate_prediction_interval(predicted, 'unified', confidence_level=CALIBRATED_INTERVAL_LEVEL)
     saved_entry = _build_saved_prediction(data, predicted, 'unified', save_history)
 
     return {
@@ -117,6 +160,9 @@ def _unified_prediction_response(data: dict, save_history: bool) -> tuple[dict, 
         "prediction_id": saved_entry.get('prediction_id') if saved_entry else None,
         "timestamp": saved_entry.get('timestamp') if saved_entry else None,
         "confidence": saved_entry.get('confidence', 0) if saved_entry else 0,
+        "confidence_level": interval['confidence_level'],
+        "lower_bound": interval['lower_bound'],
+        "upper_bound": interval['upper_bound'],
     }, 200
 
 
@@ -140,6 +186,7 @@ def _legacy_prediction_response(data: dict, model_type: str, state: dict, save_h
     except Exception as exc:
         return {"success": False, "error": str(exc)}, 500
 
+    interval = calculate_prediction_interval(predicted, used_type, confidence_level=CALIBRATED_INTERVAL_LEVEL)
     saved_entry = _build_saved_prediction(data, predicted, used_type, save_history)
     return {
         "success": True,
@@ -149,6 +196,9 @@ def _legacy_prediction_response(data: dict, model_type: str, state: dict, save_h
         "prediction_id": saved_entry.get('prediction_id') if saved_entry else None,
         "timestamp": saved_entry.get('timestamp') if saved_entry else None,
         "confidence": saved_entry.get('confidence', 0) if saved_entry else 0,
+        "confidence_level": interval['confidence_level'],
+        "lower_bound": interval['lower_bound'],
+        "upper_bound": interval['upper_bound'],
     }, 200
 
 
