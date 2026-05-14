@@ -8,12 +8,14 @@ import io
 import json
 import os
 import zipfile
+import base64
 from datetime import datetime
 
 from app.blueprints.analytics import _loaded_models, get_model_meta
 from app.email_service import email_service
-from app.model_metrics import calculate_model_metrics, generate_performance_report
+from app.model_metrics import calculate_model_metrics, get_model_catalog
 from app.models.loader import get_state
+from app.shap_analysis import get_or_generate_shap_analysis
 from app.services.export_service import filtered_history, history_rows, predictions_to_csv, predictions_to_json
 
 export = Blueprint('export', __name__)
@@ -29,14 +31,22 @@ def _email_config():
     }
 
 
-def _chart_payload(chart_type, time_filter='all'):
+def _chart_payload(chart_type, time_filter='all', selected_model=None, shap_model=None):
     state = get_state()
 
     if chart_type == 'feature_importance':
         search_order = ['xgboost', 'stacking', 'lightgbm', 'advanced', 'improved', 'original']
         model = None
         source = 'original'
+        if selected_model:
+            requested = str(selected_model).strip().lower()
+            candidate = state.get(f'{requested}_model')
+            if candidate and hasattr(candidate, 'feature_importances_') and hasattr(candidate, 'feature_names_in_'):
+                model = candidate
+                source = requested
         for key in search_order:
+            if model is not None:
+                break
             candidate = state.get(f'{key}_model')
             if candidate and hasattr(candidate, 'feature_importances_') and hasattr(candidate, 'feature_names_in_'):
                 model = candidate
@@ -118,6 +128,31 @@ def _chart_payload(chart_type, time_filter='all'):
             'options': {'title': 'Model Performance Radar'},
         }
 
+    if chart_type == 'shap_importance':
+        selected_shap_model = str(shap_model or selected_model or 'lightgbm').strip().lower()
+        shap_payload = get_or_generate_shap_analysis(selected_shap_model)
+        shap_features = shap_payload.get('features', []) if shap_payload.get('success') else []
+        if not shap_features and selected_shap_model != 'lightgbm':
+            shap_payload = get_or_generate_shap_analysis('lightgbm')
+            shap_features = shap_payload.get('features', []) if shap_payload.get('success') else []
+        if not shap_features:
+            return None
+
+        top = shap_features[:12]
+        return {
+            'type': 'bar',
+            'data': {
+                'labels': [item.get('feature', 'Unknown') for item in top],
+                'datasets': [{
+                    'label': f"SHAP Importance ({shap_payload.get('source', 'LightGBM')})",
+                    'data': [round(float(item.get('importance', 0.0)), 2) for item in top],
+                    'backgroundColor': '#2563eb',
+                    'borderColor': '#1d4ed8',
+                }],
+            },
+            'options': {'title': 'SHAP Feature Importance', 'ylabel': 'Mean |SHAP|'},
+        }
+
     return None
 
 
@@ -179,13 +214,20 @@ def _generate_chart_image(chart_data, format_type='png'):
 
 def _metrics_pdf_response(metrics):
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.pagesizes import landscape, letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch
 
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(letter),
+        leftMargin=0.45 * inch,
+        rightMargin=0.45 * inch,
+        topMargin=0.45 * inch,
+        bottomMargin=0.45 * inch,
+    )
     styles = getSampleStyleSheet()
 
     story = [
@@ -194,23 +236,49 @@ def _metrics_pdf_response(metrics):
         Spacer(1, 20),
     ]
 
-    data = [
-        ['Metric', 'Value'],
-        ['R2 Score', f"{metrics.get('r2_score', 0):.3f}"],
-        ['Mean Absolute Error', f"{metrics.get('mean_absolute_error', 0):.1f} bikes"],
-        ['Root Mean Squared Error', f"{metrics.get('root_mean_squared_error', 0):.1f} bikes"],
-        ['Features Count', str(metrics.get('features_count', 0))],
-        ['Model Name', metrics.get('model_name', 'Unknown')],
-    ]
+    model_catalog = get_model_catalog()
+    story.append(Paragraph("All Model Performance", styles['Heading2']))
+    story.append(Spacer(1, 8))
 
-    table = Table(data, colWidths=[2.8 * inch, 3.4 * inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-    ]))
-    story.append(table)
+    model_order = ['original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking', 'unified']
+    report_rows = [['Model', 'R2', 'RMSE', 'MAE', 'Features']]
+
+    for model_key in model_order:
+        model = model_catalog.get(model_key)
+        if not model:
+            continue
+        report_rows.append([
+            model.get('name', model_key),
+            f"{float(model.get('r2', 0.0)):.3f}",
+            f"{float(model.get('rmse', 0.0)):.1f}",
+            f"{float(model.get('mae', 0.0)):.1f}",
+            str(model.get('features', 0)),
+        ])
+
+    if len(report_rows) > 1:
+        all_models_table = Table(
+            report_rows,
+            colWidths=[4.0 * inch, 1.1 * inch, 1.4 * inch, 1.4 * inch, 1.1 * inch],
+            repeatRows=1,
+        )
+        all_models_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.75, colors.lightgrey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ]))
+        story.append(all_models_table)
+
     doc.build(story)
 
     response = make_response(buffer.getvalue())
@@ -247,12 +315,141 @@ def export_predictions_json():
 
 @export.route('/export/model-report', methods=['GET'])
 def export_model_report():
-    """Export a model performance report as text."""
+    """Export a model performance report as HTML."""
     try:
-        report = generate_performance_report()
-        response = make_response(report)
-        response.headers["Content-Disposition"] = "attachment; filename=model_report.txt"
-        response.headers["Content-Type"] = "text/plain"
+        catalog = get_model_catalog()
+        model_order = ['original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking', 'unified']
+        rows = [catalog[key] for key in model_order if key in catalog]
+        rows.sort(key=lambda row: float(row.get('r2', 0.0)), reverse=True)
+
+        generated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        table_rows = []
+        for idx, model in enumerate(rows, start=1):
+            table_rows.append(
+                f"""
+                <tr>
+                    <td>{idx}</td>
+                    <td>{model.get('name', 'Unknown')}</td>
+                    <td>{float(model.get('r2', 0.0)):.3f}</td>
+                    <td>{float(model.get('rmse', 0.0)):.1f}</td>
+                    <td>{float(model.get('mae', 0.0)):.1f}</td>
+                    <td>{int(model.get('features', 0))}</td>
+                    <td>{model.get('recommended_for', 'General use')}</td>
+                </tr>
+                """
+            )
+
+        best_model_name = rows[0].get('name', 'Unknown') if rows else 'Unknown'
+        best_model_r2 = f"{float(rows[0].get('r2', 0.0)):.3f}" if rows else "0.000"
+
+        report_html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UrbanFlow Model Report</title>
+  <style>
+    body {{
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      margin: 24px;
+      color: #0f172a;
+      background: #f8fafc;
+    }}
+    .container {{
+      max-width: 1080px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+    }}
+    h1 {{
+      margin: 0 0 8px;
+      color: #2563eb;
+    }}
+    .meta {{
+      color: #475569;
+      margin-bottom: 18px;
+      font-size: 14px;
+    }}
+    .summary {{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }}
+    .card {{
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 12px;
+    }}
+    .card .label {{
+      color: #334155;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }}
+    .card .value {{
+      margin-top: 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }}
+    th, td {{
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }}
+    th {{
+      background: #2563eb;
+      color: white;
+    }}
+    tr:nth-child(even) td {{
+      background: #f8fafc;
+    }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>UrbanFlow Model Performance Report</h1>
+    <div class="meta">Generated: {generated_at}</div>
+    <div class="summary">
+      <div class="card"><div class="label">Models Covered</div><div class="value">{len(rows)}</div></div>
+      <div class="card"><div class="label">Best Model</div><div class="value">{best_model_name}</div></div>
+      <div class="card"><div class="label">Best R2</div><div class="value">{best_model_r2}</div></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Model</th>
+          <th>R2</th>
+          <th>RMSE</th>
+          <th>MAE</th>
+          <th>Features</th>
+          <th>Recommended Use</th>
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(table_rows)}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+        """
+
+        response = make_response(report_html)
+        response.headers["Content-Disposition"] = "attachment; filename=model_report.html"
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
         return response
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -378,10 +575,12 @@ def export_chart(chart_type):
     try:
         format_type = request.args.get('format', 'png').lower()
         time_filter = request.args.get('filter', 'all')
+        selected_model = request.args.get('model')
+        selected_shap_model = request.args.get('shap_model')
         if format_type not in ('png', 'pdf', 'svg', 'jpg'):
             return jsonify({"success": False, "error": "Invalid format"}), 400
 
-        chart_data = _chart_payload(chart_type, time_filter)
+        chart_data = _chart_payload(chart_type, time_filter, selected_model=selected_model, shap_model=selected_shap_model)
         if not chart_data:
             return jsonify({"success": False, "error": "Invalid or unavailable chart type"}), 400
 
@@ -402,27 +601,92 @@ def export_all_charts():
     try:
         format_type = request.args.get('format', 'png').lower()
         time_filter = request.args.get('filter', 'all')
+        selected_model = request.args.get('model')
+        selected_shap_model = request.args.get('shap_model')
         if format_type not in ('png', 'pdf'):
             return jsonify({"success": False, "error": "Invalid format"}), 400
 
         zip_buffer = io.BytesIO()
+        exported = []
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
-            for chart_type in ('feature_importance', 'hourly_patterns', 'performance_radar'):
-                chart_data = _chart_payload(chart_type, time_filter)
+            for chart_type in ('feature_importance', 'shap_importance', 'performance_radar', 'hourly_patterns'):
+                chart_data = _chart_payload(
+                    chart_type,
+                    time_filter,
+                    selected_model=selected_model,
+                    shap_model=selected_shap_model,
+                )
                 if not chart_data:
                     continue
                 archive.writestr(
                     f'urbanflow_{chart_type}.{format_type}',
                     _generate_chart_image(chart_data, format_type),
                 )
+                exported.append(chart_type)
             archive.writestr(
                 'README.txt',
-                f'UrbanFlow chart export\nGenerated: {datetime.now():%Y-%m-%d %H:%M:%S}\nFilter: {time_filter}\n',
+                (
+                    f'UrbanFlow chart export\n'
+                    f'Generated: {datetime.now():%Y-%m-%d %H:%M:%S}\n'
+                    f'Filter: {time_filter}\n'
+                    f'Charts exported: {", ".join(exported) if exported else "none"}\n'
+                ),
             )
 
         response = make_response(zip_buffer.getvalue())
         response.headers['Content-Type'] = 'application/zip'
         response.headers['Content-Disposition'] = f'attachment; filename="urbanflow_charts_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
+        return response
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@export.route('/api/export/all-charts-exact', methods=['POST'])
+def export_all_charts_exact():
+    """Export exactly what is currently rendered on the dashboard charts."""
+    try:
+        payload = request.get_json() or {}
+        chart_images = payload.get('charts', [])
+        if not isinstance(chart_images, list) or not chart_images:
+            return jsonify({"success": False, "error": "No chart images provided"}), 400
+
+        zip_buffer = io.BytesIO()
+        exported = []
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+            for item in chart_images:
+                filename = str(item.get('filename', '')).strip()
+                data_url = item.get('data_url')
+                if not filename or not isinstance(data_url, str) or not data_url.startswith('data:image/'):
+                    continue
+
+                # Expected form: data:image/png;base64,XXXXX
+                try:
+                    _, encoded = data_url.split(',', 1)
+                    binary = base64.b64decode(encoded)
+                except Exception:
+                    continue
+
+                if not filename.lower().endswith('.png'):
+                    filename = f"{filename}.png"
+                archive.writestr(filename, binary)
+                exported.append(filename)
+
+            if not exported:
+                return jsonify({"success": False, "error": "No valid chart images to export"}), 400
+
+            archive.writestr(
+                'README.txt',
+                (
+                    f'UrbanFlow exact chart export\n'
+                    f'Generated: {datetime.now():%Y-%m-%d %H:%M:%S}\n'
+                    f'Charts exported: {", ".join(exported)}\n'
+                    f'Source: client-rendered dashboard state\n'
+                ),
+            )
+
+        response = make_response(zip_buffer.getvalue())
+        response.headers['Content-Type'] = 'application/zip'
+        response.headers['Content-Disposition'] = f'attachment; filename="urbanflow_charts_exact_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
         return response
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

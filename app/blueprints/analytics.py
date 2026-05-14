@@ -117,8 +117,14 @@ def hourly_patterns():
             inp = pred.get('input_data', {})
             hour = inp.get('Hour', pred.get('hour'))
             bikes, _ = extract_prediction_from_history(pred)
-            if hour is not None and bikes is not None:
-                hourly[int(hour)].append(float(bikes))
+            if hour is None or bikes is None:
+                continue
+            try:
+                hour_int = int(float(hour))
+            except (TypeError, ValueError):
+                continue
+            if 0 <= hour_int <= 23:
+                hourly[hour_int].append(float(bikes))
 
         patterns = []
         for h in range(24):

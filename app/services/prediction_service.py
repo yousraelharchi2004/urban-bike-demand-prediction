@@ -42,6 +42,28 @@ COMPARISON_MODEL_TYPES = (
 )
 
 CALIBRATED_INTERVAL_LEVEL = 91.0
+REQUIRED_PREDICTION_FIELDS = (
+    'Hour',
+    'Temperature(Â°C)',
+    'Humidity(%)',
+    'Wind speed (m/s)',
+    'Visibility (10m)',
+    'Dew point temperature(Â°C)',
+    'Solar Radiation (MJ/m2)',
+    'Rainfall(mm)',
+    'Snowfall (cm)',
+)
+FIELD_ALIASES = {
+    'Hour': ('Hour', 'hour'),
+    'Temperature(Â°C)': ('Temperature(Â°C)', 'Temperature(ìºœ)', 'temperature'),
+    'Humidity(%)': ('Humidity(%)', 'humidity'),
+    'Wind speed (m/s)': ('Wind speed (m/s)', 'wind_speed'),
+    'Visibility (10m)': ('Visibility (10m)', 'visibility'),
+    'Dew point temperature(Â°C)': ('Dew point temperature(Â°C)', 'Dew point temperature(ìºœ)', 'dew_point'),
+    'Solar Radiation (MJ/m2)': ('Solar Radiation (MJ/m2)', 'solar_radiation'),
+    'Rainfall(mm)': ('Rainfall(mm)', 'rainfall'),
+    'Snowfall (cm)': ('Snowfall (cm)', 'snowfall'),
+}
 
 
 @lru_cache(maxsize=1)
@@ -115,6 +137,26 @@ def _normalize_model_type(requested_model_type: str | None) -> str:
     return model_type
 
 
+def _validate_required_input_fields(data: dict) -> list[str]:
+    """Return missing required fields for baseline prediction input."""
+    lowered_keys = {str(key).lower() for key in data.keys()}
+
+    def _has_any_alias(field: str) -> bool:
+        aliases = FIELD_ALIASES.get(field, (field,))
+        for alias in aliases:
+            if alias in data:
+                return True
+            if str(alias).lower() in lowered_keys:
+                return True
+        return False
+
+    missing: list[str] = []
+    for field in REQUIRED_PREDICTION_FIELDS:
+        if not _has_any_alias(field):
+            missing.append(field)
+    return missing
+
+
 def _make_prediction(model: Any, features: Any, model_type: str) -> float:
     """Run inference for one model and clamp predictions to non-negative values."""
     if model_type == 'stacking' and hasattr(features, 'values'):
@@ -154,6 +196,7 @@ def _unified_prediction_response(data: dict, save_history: bool) -> tuple[dict, 
     return {
         "success": True,
         "predicted_bikes": round(predicted),
+        "predicted_rented_bikes": round(predicted),
         "predicted_bikes_raw": predicted,
         "model_type": "unified",
         "model_name": pipeline.get('model_name', 'stacking_ensemble'),
@@ -191,6 +234,7 @@ def _legacy_prediction_response(data: dict, model_type: str, state: dict, save_h
     return {
         "success": True,
         "predicted_bikes": round(predicted),
+        "predicted_rented_bikes": round(predicted),
         "predicted_bikes_raw": predicted,
         "model_type": used_type,
         "prediction_id": saved_entry.get('prediction_id') if saved_entry else None,
@@ -212,6 +256,15 @@ def predict(data: dict | None, requested_model_type: str | None = None, save_his
         return {"success": False, "error": "No data provided"}, 400
 
     model_type = _normalize_model_type(requested_model_type)
+    missing_fields = _validate_required_input_fields(data)
+    # Treat clearly sparse payloads as incomplete while tolerating encoding/key aliases.
+    if model_type in ('original', 'improved', 'advanced', 'xgboost', 'lightgbm', 'stacking') and len(data.keys()) <= 3:
+        return {
+            "success": False,
+            "error": "Missing required input fields",
+            "missing_fields": missing_fields,
+        }, 400
+
     if model_type in ('unified', 'ensemble'):
         try:
             return _unified_prediction_response(data, save_history)

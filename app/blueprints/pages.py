@@ -62,20 +62,55 @@ def status():
 def api_status():
     """API status endpoint (JSON)."""
     state = get_state()
+    catalog = get_model_catalog()
     try:
         # Use full history count (no default limit) for accurate status metrics.
         history = get_prediction_history(limit=None)
     except (FileNotFoundError, json.JSONDecodeError):
         history = []
 
+    def _feature_count(model_obj, fallback_key):
+        if model_obj is not None and hasattr(model_obj, 'feature_names_in_'):
+            try:
+                return len(list(model_obj.feature_names_in_))
+            except Exception:
+                pass
+        if model_obj is not None and hasattr(model_obj, 'n_features_in_'):
+            try:
+                return int(model_obj.n_features_in_)
+            except Exception:
+                pass
+        return catalog.get(fallback_key, {}).get('features')
+
     models = {
-        "original": {"loaded": state['original_model'] is not None},
-        "improved": {"loaded": state['improved_model'] is not None},
-        "advanced": {"loaded": state['advanced_model'] is not None},
-        "xgboost": {"loaded": state['xgboost_model'] is not None},
-        "lightgbm": {"loaded": state['lightgbm_model'] is not None},
-        "stacking": {"loaded": state['stacking_model'] is not None},
-        "unified": {"loaded": _unified_available()},
+        "original": {
+            "loaded": state['original_model'] is not None,
+            "features": _feature_count(state['original_model'], 'original'),
+        },
+        "improved": {
+            "loaded": state['improved_model'] is not None,
+            "features": _feature_count(state['improved_model'], 'improved'),
+        },
+        "advanced": {
+            "loaded": state['advanced_model'] is not None,
+            "features": _feature_count(state['advanced_model'], 'advanced'),
+        },
+        "xgboost": {
+            "loaded": state['xgboost_model'] is not None,
+            "features": _feature_count(state['xgboost_model'], 'xgboost'),
+        },
+        "lightgbm": {
+            "loaded": state['lightgbm_model'] is not None,
+            "features": _feature_count(state['lightgbm_model'], 'lightgbm'),
+        },
+        "stacking": {
+            "loaded": state['stacking_model'] is not None,
+            "features": _feature_count(state['stacking_model'], 'stacking'),
+        },
+        "unified": {
+            "loaded": _unified_available(),
+            "features": catalog.get('unified', {}).get('features'),
+        },
     }
 
     total_loaded = sum(1 for entry in models.values() if entry.get('loaded'))
@@ -89,6 +124,13 @@ def api_status():
 
     return jsonify({
         "status": "success",
+        "endpoints": {
+            "status": "/v2/api/status",
+            "predict": "/v2/predict",
+            "prediction_history": "/v2/prediction-history",
+            "metrics": "/v2/metrics",
+            "analytics_kpis": "/v2/api/analytics/kpis",
+        },
         "models": models,
         "total_predictions": total_predictions,
         "prediction_history": {
@@ -117,11 +159,12 @@ def model_info():
     state = get_state()
     model_type = request.args.get('model_type', 'original')
 
-    info = {"model_type": model_type, "available": False}
+    info = {"model_type": model_type, "available": False, "model_loaded": False}
 
     model = state.get(f'{model_type}_model')
     if model is not None:
         info["available"] = True
+        info["model_loaded"] = True
         info["model_class"] = type(model).__name__
         if hasattr(model, 'n_features_in_'):
             info["features_count"] = int(model.n_features_in_)

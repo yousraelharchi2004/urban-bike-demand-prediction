@@ -440,13 +440,23 @@ def prepare_input_with_engineered_features(input_data):
             print(f" Error converting day_of_week: {e}")
             df['day_of_week'] = 0
     
+    # Keep Hour/hour synchronized so incoming payloads can use either style.
+    if 'Hour' in df.columns and 'hour' not in df.columns:
+        df['hour'] = df['Hour']
+    elif 'hour' in df.columns and 'Hour' not in df.columns:
+        df['Hour'] = df['hour']
+
     # Basic engineered features
     df['hour_squared'] = df['Hour'] ** 2
     df['hour_cubed'] = df['Hour'] ** 3
     
     # Weekend flag - FIXED: ensure day_of_week is integer before comparison
+    if 'day_of_week' in df.columns:
+        raw_day = df['day_of_week'].iloc[0]
+    else:
+        raw_day = 0
     try:
-        day_of_week_val = int(df.get('day_of_week', 0).iloc[0])
+        day_of_week_val = int(raw_day)
     except (ValueError, TypeError):
         day_of_week_val = 0
     

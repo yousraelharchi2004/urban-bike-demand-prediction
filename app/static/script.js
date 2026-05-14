@@ -4,6 +4,41 @@ function dbg(...args) { if (DEBUG) console.log(...args); }
 
 const API_BASE = '/v2';
 
+function formatLocalTime(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(value);
+    return date.toLocaleTimeString([], {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
+}
+
+function formatLocalDate(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(value);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatLocalIso(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(value);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    const ss = String(date.getSeconds()).padStart(2, '0');
+    const ms = String(date.getMilliseconds()).padStart(3, '0');
+    const tzMin = -date.getTimezoneOffset();
+    const sign = tzMin >= 0 ? '+' : '-';
+    const abs = Math.abs(tzMin);
+    const tzH = String(Math.floor(abs / 60)).padStart(2, '0');
+    const tzM = String(abs % 60).padStart(2, '0');
+    return `${y}-${m}-${d}T${hh}:${mm}:${ss}.${ms}${sign}${tzH}:${tzM}`;
+}
+
 // DOM Elements
 const form = document.getElementById('prediction-form');
 const resultContent = document.getElementById('result-content');
@@ -205,10 +240,7 @@ function updatePredictionResults(data, responseTime) {
     // Update timestamp
     const timestamp = new Date(data.timestamp || new Date());
     if (predictionTimestamp) {
-        predictionTimestamp.textContent = timestamp.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        predictionTimestamp.textContent = formatLocalTime(timestamp);
     }
     
     // Update prediction interval
@@ -1405,7 +1437,7 @@ function exportPrediction(format = 'json') {
                 features_used: document.getElementById('detail-features')?.textContent || '14'
             },
             prediction_id: document.getElementById('prediction-id')?.textContent || 'N/A',
-            timestamp: new Date().toISOString(),
+            timestamp: formatLocalIso(new Date()),
             confidence_level: 90,
             lower_bound: null,
             upper_bound: null
@@ -1415,7 +1447,7 @@ function exportPrediction(format = 'json') {
     try {
         // Get current date and time for filename
         const now = new Date();
-        const dateStr = now.toISOString().slice(0,10);
+        const dateStr = formatLocalDate(now);
         const timeStr = now.toTimeString().slice(0,8).replace(/:/g, '-');
         
         // Get input parameters from the form
@@ -1444,7 +1476,7 @@ function exportPrediction(format = 'json') {
         
         // Prepare export data
         const exportData = {
-            exportDate: now.toLocaleString(),
+            exportDate: `${formatLocalDate(now)} ${formatLocalTime(now)}`,
             predictionId: currentPredictionData.prediction_id || 'N/A',
             modelUsed: formatModelName(currentPredictionData.model_type),
             modelType: currentPredictionData.model_type,

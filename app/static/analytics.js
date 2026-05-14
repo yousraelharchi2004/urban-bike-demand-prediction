@@ -2,6 +2,14 @@
 const ANALYTICS_DEBUG = false;
 function analyticsDbg(...args) { if (ANALYTICS_DEBUG) console.log(...args); }
 
+function formatLocalDate(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(value);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 class AnalyticsDashboard {
     constructor() {
         this.baseUrl = '/v2';
@@ -402,8 +410,8 @@ class AnalyticsDashboard {
             });
             
             // Format dates for display
-            const formattedStart = startDate.toISOString().split('T')[0];
-            const formattedEnd = endDate.toISOString().split('T')[0];
+            const formattedStart = formatLocalDate(startDate);
+            const formattedEnd = formatLocalDate(endDate);
             
             this.showNotification(`Loading custom range: ${formattedStart} to ${formattedEnd}`, 'info');
             this.showLoadingState();
@@ -994,7 +1002,7 @@ class AnalyticsDashboard {
 
         insightElement.innerHTML = `
             <p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong>
-            Comparing ${modelCount} model${modelCount > 1 ? 's' : ''}. ${bestLabel} currently leads with R² ${typeof bestR2 === 'number' ? bestR2.toFixed(1) : '--'} and Low Error ${typeof bestLowError === 'number' ? bestLowError.toFixed(1) : '--'}.</p>
+            Comparing ${modelCount} model${modelCount > 1 ? 's' : ''}. ${bestLabel} currently leads with R&sup2; ${typeof bestR2 === 'number' ? bestR2.toFixed(1) : '--'} and Low Error ${typeof bestLowError === 'number' ? bestLowError.toFixed(1) : '--'}.</p>
         `;
     }
 
@@ -1314,15 +1322,18 @@ class AnalyticsDashboard {
             // Show sending state
             this.showNotification('Sending analytics report...', 'info');
             
-            // Send to real API endpoint
+            // Send to real API endpoint with timeout to avoid indefinite spinner
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
             const response = await fetch(`${this.baseUrl}/api/send-analytics-email`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(emailData)
+                body: JSON.stringify(emailData),
+                signal: controller.signal,
             });
-            
+            clearTimeout(timeoutId);
             const result = await response.json();
             
             if (result.success) {
@@ -1335,6 +1346,10 @@ class AnalyticsDashboard {
             
         } catch (error) {
             console.error('Email sending error:', error);
+            if (error && error.name === 'AbortError') {
+                this.showNotification('Email request timed out after 20 seconds. Check SMTP/network access and try again.', 'error');
+                return { success: false, error: 'Email request timed out after 20 seconds' };
+            }
             this.showNotification('Failed to send email. Please try again.', 'error');
             throw error;
         }
@@ -1372,6 +1387,7 @@ class AnalyticsDashboard {
             // Map chart IDs to backend chart types
             const chartTypeMap = {
                 'featureImportance': 'feature_importance',
+                'shapImportance': 'shap_importance',
                 'hourlyPattern': 'hourly_patterns',
                 'performanceRadar': 'performance_radar'
             };
@@ -1388,7 +1404,9 @@ class AnalyticsDashboard {
             const timeFilter = this.currentTimeFilter || 'all';
             
             // Call backend export endpoint
-            const url = `${this.baseUrl}/api/export/chart/${chartType}?format=${format}&filter=${timeFilter}`;
+            const selectedModel = this.currentFeatureModel || 'xgboost';
+            const selectedShapModel = this.currentShapModel || selectedModel;
+            const url = `${this.baseUrl}/api/export/chart/${chartType}?format=${format}&filter=${timeFilter}&model=${encodeURIComponent(selectedModel)}&shap_model=${encodeURIComponent(selectedShapModel)}`;
             const response = await fetch(url);
             
             if (!response.ok) {
@@ -1404,7 +1422,7 @@ class AnalyticsDashboard {
             
             // Get filename from content-disposition header or generate one
             const contentDisposition = response.headers.get('content-disposition');
-            let filename = `urbanflow_${chartType}_${new Date().toISOString().slice(0, 10)}.${format}`;
+            let filename = `urbanflow_${chartType}_${formatLocalDate(new Date())}.${format}`;
             
             if (contentDisposition) {
                 const filenameMatch = contentDisposition.match(/filename="(.+)"/);
@@ -1441,7 +1459,7 @@ class AnalyticsDashboard {
             
             if (format === 'png') {
                 link.href = chart.toBase64Image();
-                link.download = `${chartId}_${new Date().toISOString().slice(0, 10)}.png`;
+                link.download = `${chartId}_${formatLocalDate(new Date())}.png`;
                 link.click();
                 this.showNotification('Chart exported as PNG (client-side)', 'success');
             } else {
@@ -1452,35 +1470,48 @@ class AnalyticsDashboard {
 
     async exportAllCharts(format = 'zip') {
         try {
-            this.showNotification('Preparing all charts for export...', 'info');
-            
-            const timeFilter = this.currentTimeFilter || 'all';
-            const url = `${this.baseUrl}/api/export/all-charts?format=png&filter=${timeFilter}`;
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error('Failed to export charts');
+            this.showNotification('Preparing exact chart export...', 'info');
+            const chartSources = [
+                { id: 'featureImportance', filename: 'urbanflow_feature_importance.png' },
+                { id: 'shapImportance', filename: 'urbanflow_shap_importance.png' },
+                { id: 'performanceRadar', filename: 'urbanflow_performance_radar.png' },
+                { id: 'hourlyPattern', filename: 'urbanflow_hourly_patterns.png' },
+            ];
+            const charts = [];
+            for (const item of chartSources) {
+                const chart = this.charts[item.id];
+                if (!chart || !chart.canvas) continue;
+                charts.push({
+                    filename: item.filename,
+                    data_url: chart.canvas.toDataURL('image/png'),
+                });
             }
-            
+            if (!charts.length) {
+                throw new Error('No rendered charts available to export');
+            }
+            const response = await fetch(this.baseUrl + '/api/export/all-charts-exact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ charts }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to export exact charts');
+            }
             const blob = await response.blob();
             const urlObject = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = urlObject;
-            link.download = `urbanflow_all_charts_${new Date().toISOString().slice(0, 10)}.zip`;
+            link.download = 'urbanflow_all_charts_' + formatLocalDate(new Date()) + '.zip';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(urlObject);
-            
-            this.showNotification('All charts exported as ZIP!', 'success');
-            
+            this.showNotification('Exact charts exported as ZIP!', 'success');
         } catch (error) {
             console.error('All charts export error:', error);
             this.showNotification('Failed to export charts. Please try individual exports.', 'error');
         }
-    }
-
-    // ========== REAL DATA EXPORT FUNCTIONALITY ==========
+    }    // ========== REAL DATA EXPORT FUNCTIONALITY ==========
 
     async exportPredictions(format) {
         try {
@@ -1512,7 +1543,7 @@ class AnalyticsDashboard {
             }
             
             const blob = await response.blob();
-            this.downloadBlob(blob, `predictions_${new Date().toISOString().slice(0, 10)}.${format}`);
+            this.downloadBlob(blob, `predictions_${formatLocalDate(new Date())}.${format}`);
             
             this.showNotification(`Predictions exported as ${format.toUpperCase()}!`, 'success');
             
@@ -1541,7 +1572,7 @@ class AnalyticsDashboard {
                 }
 
                 const blob = await response.blob();
-                this.downloadBlob(blob, `model_report_${new Date().toISOString().slice(0, 10)}.html`);
+                this.downloadBlob(blob, `model_report_${formatLocalDate(new Date())}.html`);
                 this.showNotification('Model report exported as HTML!', 'success');
 
             } else if (format === 'pdf') {
@@ -1555,7 +1586,7 @@ class AnalyticsDashboard {
                 const contentType = response.headers.get('content-type') || '';
                 if (contentType.includes('application/pdf')) {
                     const blob = await response.blob();
-                    this.downloadBlob(blob, `urbanflow_metrics_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    this.downloadBlob(blob, `urbanflow_metrics_report_${formatLocalDate(new Date())}.pdf`);
                     this.showNotification('PDF report downloaded successfully!', 'success');
                 } else {
                     // Server returned JSON instead of PDF (fallback)
@@ -1596,7 +1627,7 @@ class AnalyticsDashboard {
             }
             
             const blob = await response.blob();
-            this.downloadBlob(blob, `urbanflow_complete_export_${new Date().toISOString().slice(0, 10)}.zip`);
+            this.downloadBlob(blob, `urbanflow_complete_export_${formatLocalDate(new Date())}.zip`);
             
             this.showNotification('Complete data export successful!', 'success');
             
@@ -1811,7 +1842,7 @@ function openEmailModal(context = 'full') {
     const modal = document.getElementById('emailModal');
     const subject = document.getElementById('emailSubject');
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(now);
 
     switch (context) {
         case 'charts':
@@ -1902,11 +1933,11 @@ async function sendAnalyticsEmailFromForm() {
 
 function openDateRangeModal() {
     const modal = document.getElementById('dateRangeModal');
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('startDate').value = formatLocalDate(weekAgo);
     document.getElementById('endDate').value = today;
     document.getElementById('endDate').max = today;
     document.getElementById('startDate').max = today;
@@ -1953,8 +1984,8 @@ function applyPresetRange(days, months) {
     if (days) startDate.setDate(startDate.getDate() - days);
     else if (months) startDate.setMonth(startDate.getMonth() - months);
 
-    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
-    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    document.getElementById('startDate').value = formatLocalDate(startDate);
+    document.getElementById('endDate').value = formatLocalDate(endDate);
     updateDateRangeSummary();
 }
 
@@ -2053,6 +2084,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === this) closeDateRangeModal();
     });
 });
+
+
+
+
+
+
 
 
 

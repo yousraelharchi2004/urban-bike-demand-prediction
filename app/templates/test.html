@@ -313,7 +313,7 @@
                     <a href="/v2/status"><i class="fas fa-server"></i> API Status</a>
                     <a href="/v2/analytics"><i class="fas fa-chart-bar"></i> Analytics</a>
                     <a href="/v2/feature-engineering"><i class="fas fa-sliders-h"></i> Feature Engineering</a>
-                    <a href="/v2/test"><i class="fas fa-vial"></i> Test Suite</a>
+                    <a href="/v2"><i class="fas fa-chart-line"></i> Predictor</a>
                 </div>
                 <div class="footer-meta">
                     <span class="version" id="footer-version"></span>
@@ -1699,9 +1699,35 @@
             showNotification('Test results cleared!', 'success');
         }
 
+        function formatLocalIso(value = new Date()) {
+            const date = value instanceof Date ? value : new Date(value);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            const ms = String(date.getMilliseconds()).padStart(3, '0');
+            const tzMin = -date.getTimezoneOffset();
+            const sign = tzMin >= 0 ? '+' : '-';
+            const abs = Math.abs(tzMin);
+            const tzH = String(Math.floor(abs / 60)).padStart(2, '0');
+            const tzM = String(abs % 60).padStart(2, '0');
+            return `${y}-${m}-${d}T${hh}:${mm}:${ss}.${ms}${sign}${tzH}:${tzM}`;
+        }
+
+        function formatLocalDate(value = new Date()) {
+            const date = value instanceof Date ? value : new Date(value);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
         function exportTestResults() {
+            const exportTimestamp = formatLocalIso(new Date());
             const exportData = {
-                timestamp: new Date().toISOString(),
+                timestamp: exportTimestamp,
                 system: 'UrbanFlow Test Suite',
                 version: apiVersion || 'unknown',
                 test_results: testResults.map(result => {
@@ -1714,7 +1740,7 @@
                         duration_ms: result.duration,
                         message: result.message,
                         error: result.error,
-                        timestamp: new Date().toISOString()
+                        timestamp: exportTimestamp
                     };
                 }),
                 summary: {
@@ -1729,7 +1755,7 @@
             const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
             const link = document.createElement('a');
             link.href = dataUri;
-            link.download = `urbanflow_test_results_${new Date().toISOString().slice(0, 10)}.json`;
+            link.download = `urbanflow_test_results_${formatLocalDate(new Date())}.json`;
             link.click();
 
             showNotification('Test results exported!', 'success');

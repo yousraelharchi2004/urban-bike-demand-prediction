@@ -11,6 +11,7 @@ class EmailService:
     def __init__(self):
         self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
         self.smtp_port = int(os.getenv('SMTP_PORT', 587))
+        self.smtp_timeout = int(os.getenv('SMTP_TIMEOUT', 15))
         self.sender_email = os.getenv('SENDER_EMAIL', '')
         self.sender_password = os.getenv('SENDER_PASSWORD', '')
         self._configured = all([self.sender_email, self.sender_password])
@@ -53,7 +54,7 @@ class EmailService:
                 self.attach_chart_images(msg, chart_images)
             
             # Send email
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=self.smtp_timeout) as server:
                 server.starttls()
                 server.login(self.sender_email, self.sender_password)
                 server.send_message(msg)
