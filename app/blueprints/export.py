@@ -80,8 +80,15 @@ def _chart_payload(chart_type, time_filter='all', selected_model=None, shap_mode
             inp = item.get('input_data', {})
             hour = inp.get('Hour', item.get('hour'))
             value = item.get('predicted_bikes', 0)
-            if hour is not None and value is not None:
-                hourly[int(hour)].append(float(value))
+            if hour is None or value is None:
+                continue
+            try:
+                hour_int = int(float(hour))
+                demand = float(value)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= hour_int <= 23:
+                hourly[hour_int].append(demand)
         return {
             'type': 'line',
             'data': {
@@ -291,7 +298,8 @@ def _metrics_pdf_response(metrics):
 def export_predictions_csv():
     """Export prediction history as CSV."""
     try:
-        rows = history_rows(filtered_history('all'))
+        time_filter = request.args.get('filter', 'all')
+        rows = history_rows(filtered_history(time_filter))
         response = make_response(predictions_to_csv(rows))
         response.headers["Content-Disposition"] = "attachment; filename=predictions_history.csv"
         response.headers["Content-Type"] = "text/csv"
@@ -304,7 +312,8 @@ def export_predictions_csv():
 def export_predictions_json():
     """Export prediction history as JSON."""
     try:
-        rows = history_rows(filtered_history('all'))
+        time_filter = request.args.get('filter', 'all')
+        rows = history_rows(filtered_history(time_filter))
         response = make_response(predictions_to_json(rows))
         response.headers["Content-Disposition"] = "attachment; filename=predictions_history.json"
         response.headers["Content-Type"] = "application/json"
@@ -724,13 +733,23 @@ def handle_export(export_type):
             return export_chart('feature_importance')
 
         if export_type in ('all', 'report'):
-            rows = history_rows(filtered_history('all'))
+            filters = payload.get('filters') if isinstance(payload.get('filters'), dict) else {}
+            time_filter = filters.get('time_filter') or request.args.get('filter', 'all')
+            rows = history_rows(filtered_history(time_filter))
             metrics = calculate_model_metrics()
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
                 archive.writestr('predictions.csv', predictions_to_csv(rows))
                 archive.writestr('metrics.json', json.dumps(metrics, indent=2, default=str))
-                archive.writestr('README.txt', f'UrbanFlow complete export\nGenerated: {datetime.now():%Y-%m-%d %H:%M:%S}\n')
+                archive.writestr(
+                    'README.txt',
+                    (
+                        f'UrbanFlow complete export\n'
+                        f'Generated: {datetime.now():%Y-%m-%d %H:%M:%S}\n'
+                        f'Filter: {time_filter}\n'
+                        f'Predictions exported: {len(rows)}\n'
+                    ),
+                )
 
             response = make_response(zip_buffer.getvalue())
             response.headers['Content-Type'] = 'application/zip'

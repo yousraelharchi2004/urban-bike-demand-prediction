@@ -123,6 +123,28 @@ def _load_unified_features() -> list:
     return data if isinstance(data, list) else []
 
 
+def _load_model_feature_count(path: Path) -> int | None:
+    """Read feature count from a saved model artifact when possible."""
+    if not path.exists():
+        return None
+    try:
+        model = joblib.load(path)
+    except Exception:
+        return None
+
+    if hasattr(model, 'feature_names_in_'):
+        try:
+            return len(list(model.feature_names_in_))
+        except Exception:
+            return None
+    if hasattr(model, 'n_features_in_'):
+        try:
+            return int(model.n_features_in_)
+        except Exception:
+            return None
+    return None
+
+
 def _build_unified_record(alias_key: str, payload: dict, config: dict, model_key: str) -> dict:
     feature_names = _load_unified_features()
     record = {
@@ -183,16 +205,19 @@ def _model_artifact_metrics(model_key: str) -> dict:
             return unified_summary
 
     if model_key == 'original':
+        baseline_model_path = MODELS_DIR / 'random_forest_model.pkl'
         payload = _read_json(MODELS_DIR / 'proper_model_metrics.json')
+        feature_count = _load_model_feature_count(baseline_model_path)
         return {
             'r2': _safe_number(payload.get('r2')),
             'rmse': _safe_number(payload.get('rmse')),
             'mae': _safe_number(payload.get('mae')),
             'mape': _safe_number(payload.get('mape')),
-            'features': _safe_int(payload.get('n_features'), 14),
+            'features': feature_count if feature_count is not None else _safe_int(payload.get('n_features'), 14),
             'training_samples': _safe_int(payload.get('n_train_samples'), 7008),
             'testing_samples': _safe_int(payload.get('n_test_samples'), 1752),
-            'artifact_path': str(MODELS_DIR / 'proper_model_metrics.json'),
+            'artifact_path': str(baseline_model_path if baseline_model_path.exists() else MODELS_DIR / 'proper_model_metrics.json'),
+            'metrics_artifact_path': str(MODELS_DIR / 'proper_model_metrics.json'),
         }
 
     if model_key == 'improved':
@@ -353,7 +378,7 @@ def calculate_model_metrics():
     selected = catalog.get(selected_model_key, catalog.get(best_model_key, {}))
     model_path = MODELS_DIR / 'random_forest_model.pkl'
     proper_model_path = MODELS_DIR / 'proper_random_forest.pkl'
-    resolved_model_path = proper_model_path if proper_model_path.exists() else model_path
+    resolved_model_path = model_path if model_path.exists() else proper_model_path
 
     model = None
     load_error = None
@@ -408,6 +433,7 @@ def calculate_model_metrics():
         "validation_split": "80/20",
         "has_feature_importance": bool(model is not None and hasattr(model, 'feature_importances_')),
         "artifact_path": selected.get('artifact_path'),
+        "metrics_artifact_path": selected.get('metrics_artifact_path'),
         "metric_sources": metric_sources,
         "models": catalog,
         "original_model_metrics": catalog.get('original', {}),

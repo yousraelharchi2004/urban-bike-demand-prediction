@@ -565,9 +565,9 @@ class AnalyticsDashboard {
         } else {
             // Fallback data
             features = [
-                'Temperature(°C)', 'Hour', 'Solar Radiation (MJ/m²)', 
+                'Temperature(Â°C)', 'Hour', 'Solar Radiation (MJ/mÂ²)', 
                 'Functioning Day_Yes', 'Humidity(%)', 'Seasons_Summer',
-                'Wind speed (m/s)', 'Dew point temperature(°C)'
+                'Wind speed (m/s)', 'Dew point temperature(Â°C)'
             ];
             importanceData = [25, 20, 15, 12, 10, 8, 5, 5];
             chartTitle = "Feature Importance (Sample)";
@@ -633,6 +633,7 @@ class AnalyticsDashboard {
     createShapImportanceChart() {
         const ctx = document.getElementById('shapImportanceChart');
         if (!ctx) return;
+        const chartContainer = ctx.parentElement;
 
         let features = [];
         let shapValues = [];
@@ -664,6 +665,11 @@ class AnalyticsDashboard {
             if (insightEl) {
                 insightEl.innerHTML = '<p><i class="fas fa-lightbulb"></i> <strong>Insight:</strong> SHAP analysis not available. Run SHAP on a trained model to see directional feature impact.</p>';
             }
+        }
+
+        if (chartContainer) {
+            const dynamicHeight = Math.max(300, features.length * 28);
+            chartContainer.style.minHeight = `${dynamicHeight}px`;
         }
 
         this.charts.shapImportance = new Chart(ctx, {
@@ -706,7 +712,10 @@ class AnalyticsDashboard {
                         grid: { color: 'rgba(0,0,0,0.05)' }
                     },
                     y: {
-                        ticks: { font: { size: 11 } }
+                        ticks: {
+                            autoSkip: false,
+                            font: { size: 11 }
+                        }
                     }
                 }
             }
@@ -718,7 +727,7 @@ class AnalyticsDashboard {
         if (!ctx) return;
 
                 let radarData = {
-            labels: ['Accuracy', 'Stability', 'Speed', 'R� Score', 'Low Error'],
+            labels: ['Accuracy', 'Stability', 'Speed', 'R² Score', 'Low Error'],
             datasets: [{
                 label: 'No Model Data',
                 data: [0, 0, 0, 0, 0],
@@ -1061,11 +1070,11 @@ class AnalyticsDashboard {
             pred.input = input;
             pred.id = predictionId;
             pred.rounded = predictedBikes;
-            if (pred.input['Temperature(캜)'] !== undefined) {
-                pred.input['Temperature(Â°C)'] = pred.input['Temperature(캜)'];
+            if (pred.input['Temperature(ìºœ)'] !== undefined) {
+                pred.input['Temperature(Ã‚Â°C)'] = pred.input['Temperature(ìºœ)'];
             }
-            if (pred.input['Temperature(Â°C)'] === undefined && pred.input['Temperature(°C)'] !== undefined) {
-                pred.input['Temperature(Â°C)'] = pred.input['Temperature(°C)'];
+            if (pred.input['Temperature(Ã‚Â°C)'] === undefined && pred.input['Temperature(Â°C)'] !== undefined) {
+                pred.input['Temperature(Ã‚Â°C)'] = pred.input['Temperature(Â°C)'];
             }
             if (pred.input.Hour === undefined && pred.input.hour !== undefined) {
                 pred.input.Hour = pred.input.hour;
@@ -1111,7 +1120,7 @@ class AnalyticsDashboard {
             }
 
             // Get temperature value
-            const temp = pred.input?.['Temperature(°C)'] || pred.input?.['Temperature(캜)'] || 'N/A';
+            const temp = pred.input?.['Temperature(Â°C)'] || pred.input?.['Temperature(ìºœ)'] || 'N/A';
             
             // Get season
             let season = "Unknown";
@@ -1136,7 +1145,7 @@ class AnalyticsDashboard {
                     <div class="history-prediction">${(pred.rounded || pred.prediction || 0).toLocaleString()} bikes</div>
                     <div class="history-features">
                         <span class="feature-tag">Hour: ${pred.input?.Hour || 'N/A'}</span>
-                        <span class="feature-tag">Temp: ${temp}°C</span>
+                        <span class="feature-tag">Temp: ${temp}Â°C</span>
                         <span class="feature-tag">Season: ${season}</span>
                         <span class="feature-tag">Model: ${pred.model_type || 'original'}</span>
                     </div>

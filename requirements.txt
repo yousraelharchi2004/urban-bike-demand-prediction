@@ -34,5 +34,5 @@ openpyxl==3.1.2
 # Testing
 pytest==9.0.2
 
-# Production server
+# Production server (deployment)
 gunicorn==21.2.0
